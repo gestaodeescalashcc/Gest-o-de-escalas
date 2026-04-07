@@ -1,0 +1,616 @@
+import { useState, useEffect } from 'react';
+import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import ShiftCard from './ShiftCard';
+import CreateShiftModal from './CreateShiftModal';
+import CreateScheduleModal from './CreateScheduleModal';
+import ConfirmDialog from '../Common/ConfirmDialog';
+import ToastContainer from '../Common/ToastContainer';
+import { useToast } from '../../hooks/useToast';
+
+interface Shift {
+  id: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  shift_type: string;
+  status: string;
+  notes: string;
+  professional: {
+    full_name: string;
+    category: {
+      name: string;
+      color: string;
+    };
+  };
+  department: {
+    name: string;
+  };
+}
+
+interface MonthlySchedule {
+  id: string;
+  name: string;
+  month: string;
+  status: string;
+  created_at: string;
+  department: {
+    id: string;
+    name: string;
+  };
+}
+
+interface ScheduleViewProps {
+  onNavigateToSchedule?: (scheduleId: string) => void;
+}
+
+export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps) {
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [schedules, setSchedules] = useState<MonthlySchedule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateScheduleModal, setShowCreateScheduleModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'schedules' | 'shifts'>('schedules');
+  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterDepartment, setFilterDepartment] = useState<string>('');
+  const [filterMonth, setFilterMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const { toasts, toast, removeToast } = useToast();
+
+  useEffect(() => {
+    loadDepartments();
+  }, []);
+
+  useEffect(() => {
+    if (viewMode === 'schedules') {
+      loadSchedules();
+    } else {
+      loadShifts();
+    }
+  }, [viewMode]);
+
+  const loadDepartments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      if (data) setDepartments(data);
+    } catch (err) {
+      console.error('Error loading departments:', err);
+    }
+  };
+
+  const loadSchedules = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('monthly_schedules')
+        .select(`
+          *,
+          department:departments(id, name)
+        `)
+        .order('month', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) setSchedules(data as any);
+    } catch (err) {
+      console.error('Error loading schedules:', err);
+      toast.error('Erro ao carregar escalas.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadShifts = async () => {
+    setLoading(true);
+    try {
+      const startDate = getStartDate();
+      const endDate = getEndDate();
+
+      const { data, error } = await supabase
+        .from('shifts')
+        .select(`
+          *,
+          professional:professionals (
+            full_name,
+            category:professional_categories (
+              name,
+              color
+            )
+          ),
+          department:departments (
+            name
+          )
+        `)
+        .gte('shift_date', startDate)
+        .lte('shift_date', endDate)
+        .order('shift_date', { ascending: true })
+        .order('start_time', { ascending: true });
+
+      if (error) throw error;
+      if (data) setShifts(data as any);
+    } catch (err) {
+      console.error('Error loading shifts:', err);
+      toast.error('Erro ao carregar plantões.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStartDate = () => {
+    const date = new Date(currentDate);
+    date.setDate(1);
+    return date.toISOString().split('T')[0];
+  };
+
+  const getEndDate = () => {
+    const date = new Date(currentDate);
+    date.setMonth(date.getMonth() + 1, 0);
+    return date.toISOString().split('T')[0];
+  };
+
+  const handleDeleteRequest = (id: string) => {
+    setConfirmDeleteId(id);
+  };
+
+  const handleDeleteSchedule = async () => {
+    if (!confirmDeleteId) return;
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
+
+    try {
+      const { count, error: countError } = await supabase
+        .from('shifts')
+        .select('*', { count: 'exact', head: true })
+        .eq('schedule_id', id);
+
+      if (countError) throw countError;
+
+      if (count && count > 0) {
+        toast.error('Não é possível excluir esta escala pois existem plantões associados a ela. Exclua os plantões primeiro.');
+        return;
+      }
+
+      const { error } = await supabase.from('monthly_schedules').delete().eq('id', id);
+      if (error) throw error;
+
+      toast.success('Escala excluída com sucesso.');
+      loadSchedules();
+    } catch (err: any) {
+      console.error('Error deleting schedule:', err);
+      toast.error('Erro ao excluir escala: ' + (err.message || 'Tente novamente.'));
+    }
+  };
+
+  const handleViewSchedule = (scheduleId: string) => {
+    if (onNavigateToSchedule) {
+      onNavigateToSchedule(scheduleId);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      'Rascunho': 'bg-gray-100 text-gray-800',
+      'Publicada': 'bg-green-100 text-green-800',
+      'Fechada': 'bg-red-100 text-red-800'
+    };
+    return styles[status as keyof typeof styles] || styles['Rascunho'];
+  };
+
+  const filteredShifts = shifts.filter(shift => {
+    const profName = shift.professional?.full_name || '';
+    const categoryName = shift.professional?.category?.name || '';
+    const deptName = shift.department?.name || '';
+    return profName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      categoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      deptName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  const filteredSchedules = schedules.filter(schedule => {
+    const scheduleName = schedule.name || '';
+    const deptName = schedule.department?.name || '';
+    const matchesSearch =
+      scheduleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      deptName.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus = !filterStatus || schedule.status === filterStatus;
+    const matchesDepartment = !filterDepartment || schedule.department?.id === filterDepartment;
+
+    // Filtro por mês/ano
+    const scheduleMonth = schedule.month.slice(0, 7); // Formato YYYY-MM
+    const matchesMonth = !filterMonth || scheduleMonth === filterMonth;
+
+    return matchesSearch && matchesStatus && matchesDepartment && matchesMonth;
+  });
+
+  const activeFiltersCount = [filterStatus, filterDepartment, filterMonth !== new Date().toISOString().slice(0, 7) ? filterMonth : ''].filter(Boolean).length;
+
+  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  const isCurrentMonth = filterMonth === currentMonthStr;
+
+  const getMonthLabel = (monthStr: string) => {
+    const [year, month] = monthStr.split('-');
+    return new Date(parseInt(year), parseInt(month) - 1, 15).toLocaleDateString('pt-BR', {
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const [year, month] = filterMonth.split('-').map(Number);
+    const newDate = new Date(year, month - 1 + (direction === 'next' ? 1 : -1), 1);
+    setFilterMonth(newDate.toISOString().slice(0, 7));
+  };
+
+  const goToCurrentMonth = () => {
+    setFilterMonth(currentMonthStr);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Gestão de Escalas</h2>
+          <p className="text-gray-600 mt-1">
+            {viewMode === 'schedules'
+              ? `${filteredSchedules.length} ${filteredSchedules.length === 1 ? 'escala' : 'escalas'}`
+              : `${filteredShifts.length} ${filteredShifts.length === 1 ? 'plantão' : 'plantões'}`
+            }
+            {viewMode === 'schedules' && filteredSchedules.length !== schedules.length && ` de ${schedules.length}`}
+          </p>
+        </div>
+        <div className="flex gap-3">
+          {viewMode === 'schedules' && (
+            <button
+              onClick={() => setShowCreateScheduleModal(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+            >
+              <Plus className="w-5 h-5" />
+              Nova Escala Mensal
+            </button>
+          )}
+          {viewMode === 'shifts' && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+            >
+              <Plus className="w-5 h-5" />
+              Novo Plantão Avulso
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="space-y-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder={viewMode === 'schedules' ? "Buscar escalas por nome ou setor..." : "Buscar plantões..."}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('schedules')}
+                className={`px-4 py-2 rounded-lg transition whitespace-nowrap ${
+                  viewMode === 'schedules'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Calendar className="w-4 h-4 inline mr-2" />
+                Escalas Mensais
+              </button>
+              <button
+                onClick={() => setViewMode('shifts')}
+                className={`px-4 py-2 rounded-lg transition whitespace-nowrap ${
+                  viewMode === 'shifts'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <FileText className="w-4 h-4 inline mr-2" />
+                Plantões Avulsos
+              </button>
+            </div>
+          </div>
+
+          {viewMode === 'schedules' && (
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <Calendar className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-blue-700 font-medium">Exibindo escalas de</p>
+                      <p className="text-lg font-bold text-blue-900 capitalize">{getMonthLabel(filterMonth)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => navigateMonth('prev')}
+                      className="p-2 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg transition"
+                      title="Mês anterior"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-blue-600" />
+                    </button>
+
+                    <div className="relative">
+                      <input
+                        type="month"
+                        value={filterMonth}
+                        onChange={(e) => setFilterMonth(e.target.value)}
+                        className="px-4 py-2 bg-white border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium text-blue-900 cursor-pointer min-w-[160px]"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => navigateMonth('next')}
+                      className="p-2 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg transition"
+                      title="Proximo mês"
+                    >
+                      <ChevronRight className="w-5 h-5 text-blue-600" />
+                    </button>
+
+                    {!isCurrentMonth && (
+                      <button
+                        onClick={goToCurrentMonth}
+                        className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm font-medium whitespace-nowrap"
+                      >
+                        Mês Atual
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-blue-200 flex items-start gap-2">
+                  <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-blue-700">
+                    Para visualizar escalas de outros meses, utilize o seletor de data acima ou as setas de navegacao.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Todos os status</option>
+                  <option value="Rascunho">Rascunho</option>
+                  <option value="Publicada">Publicada</option>
+                  <option value="Fechada">Fechada</option>
+                </select>
+
+                <select
+                  value={filterDepartment}
+                  onChange={(e) => setFilterDepartment(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Todos os setores</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+
+                {(filterStatus || filterDepartment) && (
+                  <button
+                    onClick={() => {
+                      setFilterStatus('');
+                      setFilterDepartment('');
+                    }}
+                    className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium flex items-center gap-1"
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="text-gray-600 mt-4">Carregando...</p>
+          </div>
+        ) : viewMode === 'schedules' ? (
+          filteredSchedules.length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-2">
+                Nenhuma escala encontrada para <span className="font-semibold capitalize">{getMonthLabel(filterMonth)}</span>
+              </p>
+              {(searchTerm || filterStatus || filterDepartment) ? (
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFilterStatus('');
+                    setFilterDepartment('');
+                  }}
+                  className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                >
+                  Limpar busca e filtros
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-500">
+                    Utilize as setas ou o seletor de mes acima para navegar para outros periodos
+                  </p>
+                  <div className="flex justify-center gap-2">
+                    <button
+                      onClick={() => navigateMonth('prev')}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition text-sm font-medium"
+                    >
+                      Ver mes anterior
+                    </button>
+                    {!isCurrentMonth && (
+                      <button
+                        onClick={goToCurrentMonth}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm font-medium"
+                      >
+                        Ir para mes atual
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Nome da Escala
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Setor
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Mês/Ano
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Criado em
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredSchedules.map((schedule) => {
+                    const [year, month] = schedule.month.split('-');
+                    const monthName = new Date(parseInt(year), parseInt(month) - 1, 15).toLocaleDateString('pt-BR', {
+                      month: 'long',
+                      year: 'numeric'
+                    });
+
+                    return (
+                      <tr key={schedule.id} className="hover:bg-gray-50 transition">
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Calendar className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="font-medium text-gray-900">{schedule.name}</div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Building2 className="w-4 h-4" />
+                            {schedule.department?.name || 'Sem setor'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Clock className="w-4 h-4" />
+                            <span className="capitalize">{monthName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(schedule.status)}`}>
+                            {schedule.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="text-sm text-gray-600">
+                            {new Date(schedule.created_at).toLocaleDateString('pt-BR')}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleViewSchedule(schedule.id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium"
+                            >
+                              <Eye className="w-4 h-4" />
+                              Visualizar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRequest(schedule.id)}
+                              className="p-2 hover:bg-red-50 rounded-lg transition"
+                              title="Excluir escala"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : (
+          filteredShifts.length === 0 ? (
+            <div className="text-center py-12">
+              <Filter className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">Nenhum plantão encontrado</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredShifts.map((shift) => (
+                <ShiftCard key={shift.id} shift={shift} onUpdate={loadShifts} />
+              ))}
+            </div>
+          )
+        )}
+      </div>
+
+      <ConfirmDialog
+        isOpen={confirmDeleteId !== null}
+        title="Excluir Escala"
+        message="Deseja realmente excluir esta escala? Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        variant="danger"
+        onConfirm={handleDeleteSchedule}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {showCreateModal && (
+        <CreateShiftModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => {
+            setShowCreateModal(false);
+            loadShifts();
+          }}
+        />
+      )}
+
+      {showCreateScheduleModal && (
+        <CreateScheduleModal
+          onClose={() => setShowCreateScheduleModal(false)}
+          onSuccess={() => {
+            setShowCreateScheduleModal(false);
+            loadSchedules();
+          }}
+        />
+      )}
+    </div>
+  );
+}
