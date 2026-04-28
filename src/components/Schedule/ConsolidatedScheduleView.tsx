@@ -277,7 +277,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     }
   };
 
-  const loadData = async () => {
+  /**
+   * Carrega dados da escala.
+   * @param keepCurrent Quando true, preserva os profissionais que já estão visíveis
+   *   na tela (mesmo que tenham ficado sem turnos após uma operação tipo "limpar dias"
+   *   ou tenham acabado de ser adicionados via "Adicionar Profissional").
+   */
+  const loadData = async (keepCurrent = false) => {
     try {
       setLoading(true);
       const [year, month] = selectedMonth.split('-');
@@ -315,16 +321,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       if (allProfsData.data) {
         setAllProfessionals(allProfsData.data);
 
-        if (shiftsData.data) {
-          setShifts(shiftsData.data);
-          const profsWithShifts = new Set(shiftsData.data.map(s => s.professional_id));
-          setProfessionalIdsInSchedule(profsWithShifts);
-          setProfessionals(allProfsData.data.filter(p => profsWithShifts.has(p.id)));
-        } else {
-          setShifts([]);
-          setProfessionalIdsInSchedule(new Set());
-          setProfessionals([]);
-        }
+        const shiftsArr = shiftsData.data ?? [];
+        setShifts(shiftsArr);
+        const profsWithShifts = new Set(shiftsArr.map(s => s.professional_id));
+
+        // Se keepCurrent, mantém também quem já estava visível (mesmo sem turnos)
+        const currentIds = keepCurrent
+          ? new Set<string>([
+              ...profsWithShifts,
+              ...professionals.map(p => p.id),
+            ])
+          : profsWithShifts;
+
+        setProfessionalIdsInSchedule(currentIds);
+        setProfessionals(allProfsData.data.filter(p => currentIds.has(p.id)));
       }
     } catch (err) {
       console.error('Erro inesperado ao carregar dados:', err);
@@ -936,7 +946,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               console.error('Erro ao remover turnos:', error);
               toast.error('Erro ao remover turnos: ' + error.message);
             } else {
-              await loadData();
+              await loadData(true);
               setShowActionsMenu(null);
             }
           } else {
@@ -986,7 +996,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               console.error('Erro ao remover turnos:', error);
               toast.error('Erro ao remover turnos: ' + error.message);
             } else {
-              await loadData();
+              await loadData(true);
               setShowActionsMenu(null);
             }
           } else {
@@ -1036,7 +1046,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               console.error('Erro ao remover turnos:', error);
               toast.error('Erro ao remover turnos: ' + error.message);
             } else {
-              await loadData();
+              await loadData(true);
               setShowActionsMenu(null);
             }
           } else {
@@ -1243,7 +1253,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       }
 
       setShowAutoFillModal(false);
-      await loadData();
+      await loadData(true);
     } catch (error) {
       console.error('Erro ao aplicar preenchimento automático:', error);
       toast.error('Erro ao aplicar preenchimento automático. Verifique o console para mais detalhes.');
@@ -1694,7 +1704,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                           TOTAL<br/>HORAS
                         </th>
                         {editMode && (
-                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky right-0 bg-gray-100 z-10 whitespace-nowrap" style={{ minWidth: '50px' }}>
+                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky right-0 bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '50px', boxShadow: '-4px 0 6px -2px rgb(0 0 0 / 0.05)' }}>
                             AÇÕES
                           </th>
                         )}
@@ -1708,7 +1718,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         ))}
                         <th className="border border-gray-300 px-2 py-1"></th>
                         {editMode && (
-                          <th className="border border-gray-300 px-2 py-1 sticky right-0 bg-gray-50"></th>
+                          <th className="border border-gray-300 px-2 py-1 sticky right-0 bg-gray-50 z-20" style={{ boxShadow: '-4px 0 6px -2px rgb(0 0 0 / 0.05)' }}></th>
                         )}
                       </tr>
                     </thead>
@@ -1762,7 +1772,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                             </div>
                           </td>
                           {editMode && (
-                            <td className="border border-gray-300 px-2 py-2 text-center sticky right-0 bg-white">
+                            <td className={`border border-gray-300 px-2 py-2 text-center sticky right-0 z-20 ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ boxShadow: '-4px 0 6px -2px rgb(0 0 0 / 0.05)' }}>
                               <button
                                 onClick={(e) => {
                                   const button = e.target as HTMLElement;
