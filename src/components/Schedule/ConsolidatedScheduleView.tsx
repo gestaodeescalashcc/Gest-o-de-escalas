@@ -926,6 +926,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   };
 
   const handleClearAllDays = (professionalId: string) => {
+    setShowActionsMenu(null);
     setPendingConfirm({
       title: 'Remover Todos os Plantões',
       message: 'Deseja realmente remover TODOS os plantões deste profissional neste mês? Esta ação não pode ser desfeita.',
@@ -964,6 +965,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   };
 
   const handleClearOddDays = (professionalId: string) => {
+    setShowActionsMenu(null);
     setPendingConfirm({
       title: 'Remover Plantões dos Dias Ímpares',
       message: 'Deseja realmente remover os plantões dos dias ÍMPARES deste profissional? Esta ação não pode ser desfeita.',
@@ -1014,6 +1016,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   };
 
   const handleClearEvenDays = (professionalId: string) => {
+    setShowActionsMenu(null);
     setPendingConfirm({
       title: 'Remover Plantões dos Dias Pares',
       message: 'Deseja realmente remover os plantões dos dias PARES deste profissional? Esta ação não pode ser desfeita.',
@@ -1704,7 +1707,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                           TOTAL<br/>HORAS
                         </th>
                         {editMode && (
-                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky right-0 bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '50px', boxShadow: '-4px 0 6px -2px rgb(0 0 0 / 0.05)' }}>
+                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold bg-gray-100 whitespace-nowrap" style={{ minWidth: '50px' }}>
                             AÇÕES
                           </th>
                         )}
@@ -1718,7 +1721,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         ))}
                         <th className="border border-gray-300 px-2 py-1"></th>
                         {editMode && (
-                          <th className="border border-gray-300 px-2 py-1 sticky right-0 bg-gray-50 z-20" style={{ boxShadow: '-4px 0 6px -2px rgb(0 0 0 / 0.05)' }}></th>
+                          <th className="border border-gray-300 px-2 py-1 bg-gray-50"></th>
                         )}
                       </tr>
                     </thead>
@@ -1772,7 +1775,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                             </div>
                           </td>
                           {editMode && (
-                            <td className={`border border-gray-300 px-2 py-2 text-center sticky right-0 z-20 ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ boxShadow: '-4px 0 6px -2px rgb(0 0 0 / 0.05)' }}>
+                            <td className={`border border-gray-300 px-2 py-2 text-center ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}>
                               <button
                                 onClick={(e) => {
                                   const button = e.target as HTMLElement;
