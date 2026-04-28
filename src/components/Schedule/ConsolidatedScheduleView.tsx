@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import CreateScheduleModal from './CreateScheduleModal';
 import AutoFillModal, { ScaleConfig } from './AutoFillModal';
 import { exportToPDF, createPrintableSchedule } from '../../utils/pdfExport';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import ToastContainer from '../Common/ToastContainer';
+import EmptyState from '../Common/EmptyState';
 import { useToast } from '../../hooks/useToast';
 
 interface Professional {
@@ -68,8 +70,17 @@ interface ConsolidatedScheduleViewProps {
 
 export default function ConsolidatedScheduleView({ initialScheduleId }: ConsolidatedScheduleViewProps) {
   const { user } = useAuth();
+  const { isAdmin, canUpdate } = usePermissions();
   const { toasts, toast, removeToast } = useToast();
   const [pendingConfirm, setPendingConfirm] = useState<{ title: string; message: string; action: () => void } | null>(null);
+  const [statusChangeDialog, setStatusChangeDialog] = useState<{
+    targetStatus: 'Rascunho' | 'Publicada' | 'Fechada';
+    title: string;
+    message: string;
+    variant: 'default' | 'warning' | 'danger';
+    confirmLabel: string;
+  } | null>(null);
+  const [statusChangeLoading, setStatusChangeLoading] = useState(false);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [schedules, setSchedules] = useState<MonthlySchedule[]>([]);
@@ -104,6 +115,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     shifts: true,
     absences: false
   });
+
+  // Current schedule and lock state
+  const currentSchedule = useMemo(
+    () => schedules.find(s => s.id === selectedSchedule),
+    [schedules, selectedSchedule]
+  );
+  const scheduleStatus = (currentSchedule?.status ?? 'Rascunho') as
+    | 'Rascunho'
+    | 'Publicada'
+    | 'Fechada';
+  const isPublished = scheduleStatus === 'Publicada';
+  const isClosed = scheduleStatus === 'Fechada';
+  const isLocked = isPublished || isClosed;
+  // Admins can always edit; others only when status is Rascunho
+  const canEditSchedule = isAdmin() ? true : !isLocked && canUpdate('schedules');
 
   const shiftsCache = useMemo(() => {
     const cache = new Map<string, Map<string, Shift>>();
@@ -387,8 +413,86 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   const SHIFT_BADGE_CLASS =
     'inline-flex items-center justify-center min-w-[40px] h-6 px-2 rounded-md text-xs font-semibold tracking-wide';
 
+  // Force-exit edit mode when switching to a locked schedule
+  useEffect(() => {
+    if (isLocked && editMode) {
+      setEditMode(false);
+      setShowQuickMenu(false);
+    }
+  }, [isLocked, editMode]);
+
+  const updateScheduleStatus = async (newStatus: 'Rascunho' | 'Publicada' | 'Fechada') => {
+    if (!currentSchedule) return;
+    setStatusChangeLoading(true);
+    try {
+      const updates: any = { status: newStatus };
+      if (newStatus === 'Publicada' && !currentSchedule.status?.startsWith('Pub')) {
+        updates.published_at = new Date().toISOString();
+      }
+      const { error } = await supabase
+        .from('monthly_schedules')
+        .update(updates)
+        .eq('id', currentSchedule.id);
+      if (error) throw error;
+
+      // Update local state
+      setSchedules(prev =>
+        prev.map(s =>
+          s.id === currentSchedule.id ? { ...s, status: newStatus } : s
+        )
+      );
+
+      const messages = {
+        Rascunho: 'Escala reaberta para edição.',
+        Publicada: 'Escala publicada com sucesso.',
+        Fechada: 'Escala fechada. Não pode mais ser editada.',
+      };
+      toast.success(messages[newStatus]);
+      setStatusChangeDialog(null);
+    } catch (err: any) {
+      console.error('Error updating schedule status:', err);
+      toast.error('Erro ao alterar status: ' + (err.message || 'desconhecido'));
+    } finally {
+      setStatusChangeLoading(false);
+    }
+  };
+
+  const requestPublish = () =>
+    setStatusChangeDialog({
+      targetStatus: 'Publicada',
+      title: 'Publicar escala?',
+      message:
+        'Após publicar, a escala será visível e os profissionais poderão consultá-la. Coordenadores não poderão mais editá-la — apenas Administradores. Você pode reabrir depois se precisar.',
+      variant: 'default',
+      confirmLabel: 'Publicar',
+    });
+
+  const requestClose = () =>
+    setStatusChangeDialog({
+      targetStatus: 'Fechada',
+      title: 'Fechar escala?',
+      message:
+        'Ao fechar, a escala é arquivada e não poderá mais ser editada. Use esta opção quando o mês for concluído. Você pode reabrir depois (Administrador).',
+      variant: 'warning',
+      confirmLabel: 'Fechar escala',
+    });
+
+  const requestReopen = () =>
+    setStatusChangeDialog({
+      targetStatus: 'Rascunho',
+      title: 'Reabrir escala?',
+      message:
+        'A escala voltará para o estado de Rascunho e poderá ser editada novamente. Os profissionais não terão mais acesso até nova publicação.',
+      variant: 'warning',
+      confirmLabel: 'Reabrir',
+    });
+
   const handleCellClick = (profId: string, day: number, event: React.MouseEvent) => {
     if (!editMode) return;
+    if (isLocked) {
+      toast.warning('Esta escala está bloqueada. Reabra-a para editar.');
+      return;
+    }
 
     const rect = (event.target as HTMLElement).getBoundingClientRect();
     const viewportHeight = window.innerHeight;
@@ -1264,12 +1368,41 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     year: 'numeric'
   });
 
+  // Status badge styling
+  const statusBadgeStyles: Record<string, { container: string; icon: typeof Edit3; label: string }> = {
+    Rascunho: {
+      container: 'bg-gray-100 text-gray-700 ring-gray-200',
+      icon: Edit3,
+      label: 'Rascunho',
+    },
+    Publicada: {
+      container: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
+      icon: CheckCircle2,
+      label: 'Publicada',
+    },
+    Fechada: {
+      container: 'bg-slate-200 text-slate-700 ring-slate-300',
+      icon: Archive,
+      label: 'Fechada',
+    },
+  };
+  const StatusBadge = currentSchedule ? statusBadgeStyles[scheduleStatus] : null;
+  const StatusIcon = StatusBadge?.icon ?? Edit3;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Calendar className="w-8 h-8 text-blue-600" />
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Calendar className="w-7 h-7 text-blue-600 flex-shrink-0" aria-hidden="true" />
           <h1 className="text-2xl font-bold text-gray-900">Escala Consolidada</h1>
+          {StatusBadge && (
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ring-inset ${StatusBadge.container}`}
+            >
+              <StatusIcon className="w-3.5 h-3.5" aria-hidden="true" />
+              {StatusBadge.label}
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {!editMode ? (
@@ -1281,20 +1414,24 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 Nova Escala
               </button>
-              <button
-                onClick={() => setShowAddProfessionalModal(true)}
-                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                <UserPlus className="w-4 h-4" aria-hidden="true" />
-                Adicionar Profissional
-              </button>
-              <button
-                onClick={copyPreviousMonth}
-                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                <Copy className="w-4 h-4" aria-hidden="true" />
-                Copiar Mês Anterior
-              </button>
+              {!isLocked && (
+                <button
+                  onClick={() => setShowAddProfessionalModal(true)}
+                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <UserPlus className="w-4 h-4" aria-hidden="true" />
+                  Adicionar Profissional
+                </button>
+              )}
+              {!isLocked && (
+                <button
+                  onClick={copyPreviousMonth}
+                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <Copy className="w-4 h-4" aria-hidden="true" />
+                  Copiar Mês Anterior
+                </button>
+              )}
               <button
                 onClick={handleExportPDF}
                 className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -1302,13 +1439,53 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 <Download className="w-4 h-4" aria-hidden="true" />
                 Exportar PDF
               </button>
-              <button
-                onClick={() => setEditMode(true)}
-                className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                <Edit3 className="w-4 h-4" aria-hidden="true" />
-                Modo Edição
-              </button>
+              {/* Status transitions */}
+              {currentSchedule && scheduleStatus === 'Rascunho' && (
+                <button
+                  onClick={requestPublish}
+                  className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                  Publicar
+                </button>
+              )}
+              {currentSchedule && scheduleStatus === 'Publicada' && isAdmin() && (
+                <>
+                  <button
+                    onClick={requestReopen}
+                    className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                  >
+                    <Unlock className="w-4 h-4" aria-hidden="true" />
+                    Reabrir
+                  </button>
+                  <button
+                    onClick={requestClose}
+                    className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                  >
+                    <Archive className="w-4 h-4" aria-hidden="true" />
+                    Fechar Escala
+                  </button>
+                </>
+              )}
+              {currentSchedule && scheduleStatus === 'Fechada' && isAdmin() && (
+                <button
+                  onClick={requestReopen}
+                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                >
+                  <Unlock className="w-4 h-4" aria-hidden="true" />
+                  Reabrir
+                </button>
+              )}
+              {/* Edit mode (only when not locked, or admin can override) */}
+              {canEditSchedule && (
+                <button
+                  onClick={() => setEditMode(true)}
+                  className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <Edit3 className="w-4 h-4" aria-hidden="true" />
+                  Modo Edição
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -1363,38 +1540,90 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Escala:</span>
+      {!editMode && currentSchedule && isLocked && (
+        <div
+          className={`rounded-lg p-4 border ${
+            isPublished
+              ? 'bg-emerald-50 border-emerald-200'
+              : 'bg-slate-100 border-slate-300'
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <Lock
+              className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                isPublished ? 'text-emerald-700' : 'text-slate-600'
+              }`}
+              aria-hidden="true"
+            />
+            <div className="flex-1 min-w-0">
+              <p
+                className={`text-sm font-medium ${
+                  isPublished ? 'text-emerald-900' : 'text-slate-800'
+                }`}
+              >
+                {isPublished
+                  ? 'Esta escala está publicada e bloqueada para edição.'
+                  : 'Esta escala foi fechada (arquivada).'}
+              </p>
+              <p
+                className={`text-xs mt-0.5 ${
+                  isPublished ? 'text-emerald-700' : 'text-slate-600'
+                }`}
+              >
+                {isAdmin()
+                  ? 'Como Administrador, você pode reabri-la para fazer ajustes.'
+                  : 'Apenas Administradores podem reabri-la.'}
+              </p>
+            </div>
           </div>
-
-          <select
-            value={selectedSchedule}
-            onChange={(e) => {
-              const schedule = schedules.find(s => s.id === e.target.value);
-              if (schedule) {
-                setSelectedSchedule(schedule.id);
-                setSelectedDepartment(schedule.department_id);
-                setSelectedMonth(schedule.month.slice(0, 7));
-              }
-            }}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            {schedules.map((schedule) => (
-              <option key={schedule.id} value={schedule.id}>
-                {schedule.name}
-              </option>
-            ))}
-          </select>
         </div>
+      )}
+
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        {schedules.length > 0 && (
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Escala:</span>
+            </div>
+
+            <select
+              value={selectedSchedule}
+              onChange={(e) => {
+                const schedule = schedules.find(s => s.id === e.target.value);
+                if (schedule) {
+                  setSelectedSchedule(schedule.id);
+                  setSelectedDepartment(schedule.department_id);
+                  setSelectedMonth(schedule.month.slice(0, 7));
+                }
+              }}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              {schedules.map((schedule) => (
+                <option key={schedule.id} value={schedule.id}>
+                  {schedule.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Carregando escala...</p>
           </div>
+        ) : schedules.length === 0 ? (
+          <EmptyState
+            icon={Calendar}
+            title="Nenhuma escala criada ainda"
+            description="Comece criando sua primeira escala mensal. Você poderá adicionar profissionais e montar os turnos em seguida."
+            action={{
+              label: 'Criar Primeira Escala',
+              onClick: () => setShowCreateScheduleModal(true),
+              icon: Plus,
+            }}
+          />
         ) : (
           <>
             <div className="mb-6">
@@ -1406,6 +1635,32 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               </p>
             </div>
 
+            {professionals.length === 0 ? (
+              <div className="bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                <EmptyState
+                  icon={Users}
+                  title="Nenhum profissional na escala"
+                  description={
+                    editMode
+                      ? 'Adicione profissionais a esta escala para começar a montar os turnos.'
+                      : 'Esta escala ainda não tem profissionais. Entre em modo de edição para adicioná-los.'
+                  }
+                  action={
+                    editMode
+                      ? {
+                          label: 'Adicionar Profissional',
+                          onClick: () => setShowAddProfessionalModal(true),
+                          icon: UserPlus,
+                        }
+                      : {
+                          label: 'Entrar no Modo Edição',
+                          onClick: () => setEditMode(true),
+                          icon: Edit3,
+                        }
+                  }
+                />
+              </div>
+            ) : (
             <div className="overflow-x-auto -mx-6 px-6">
               <div className="inline-block min-w-full">
                 <div
@@ -1548,6 +1803,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 </div>
               </div>
             </div>
+            )}
 
             <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
               <h3 className="font-semibold text-gray-900 mb-3">Legenda</h3>
@@ -1996,6 +2252,18 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         onConfirm={() => { pendingConfirm?.action(); setPendingConfirm(null); }}
         onCancel={() => setPendingConfirm(null)}
       />
+
+      <ConfirmDialog
+        isOpen={statusChangeDialog !== null}
+        title={statusChangeDialog?.title ?? ''}
+        message={statusChangeDialog?.message ?? ''}
+        variant={statusChangeDialog?.variant}
+        confirmLabel={statusChangeDialog?.confirmLabel ?? 'Confirmar'}
+        loading={statusChangeLoading}
+        onConfirm={() => statusChangeDialog && updateScheduleStatus(statusChangeDialog.targetStatus)}
+        onCancel={() => setStatusChangeDialog(null)}
+      />
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

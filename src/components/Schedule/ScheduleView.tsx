@@ -196,9 +196,9 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      'Rascunho': 'bg-gray-100 text-gray-800',
-      'Publicada': 'bg-green-100 text-green-800',
-      'Fechada': 'bg-red-100 text-red-800'
+      'Rascunho': 'bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-200',
+      'Publicada': 'bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200',
+      'Fechada': 'bg-slate-200 text-slate-700 ring-1 ring-inset ring-slate-300'
     };
     return styles[status as keyof typeof styles] || styles['Rascunho'];
   };
