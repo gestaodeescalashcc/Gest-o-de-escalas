@@ -391,7 +391,29 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     if (!editMode) return;
 
     const rect = (event.target as HTMLElement).getBoundingClientRect();
-    setMenuPosition({ x: rect.left, y: rect.bottom + 5 });
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const popupHeight = 420; // approximate full popup height
+    const margin = 8;
+
+    let x = rect.left;
+    // Keep popup within horizontal viewport (260px wide)
+    const popupWidth = 260;
+    if (x + popupWidth > window.innerWidth - margin) {
+      x = Math.max(margin, window.innerWidth - popupWidth - margin);
+    }
+
+    // Position above the cell if not enough space below
+    let y: number;
+    if (spaceBelow >= popupHeight + margin || spaceBelow >= viewportHeight / 2) {
+      y = rect.bottom + 5;
+    } else {
+      // Place above; ensure it doesn't go off the top
+      const aboveTop = rect.top - 5 - Math.min(popupHeight, viewportHeight - margin * 2);
+      y = Math.max(margin, aboveTop);
+    }
+
+    setMenuPosition({ x, y });
     setSelectedCell({ profId, day });
     setShowQuickMenu(true);
   };
@@ -1592,7 +1614,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             style={{
               left: menuPosition.x,
               top: menuPosition.y,
-              maxHeight: 'calc(100vh - 20px)'
+              maxHeight: `calc(100vh - ${menuPosition.y}px - 16px)`,
             }}
           >
             <div className="py-2 space-y-1 overflow-y-auto flex-1">
@@ -1684,7 +1706,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             style={{
               left: actionsMenuPosition.x,
               top: actionsMenuPosition.y,
-              maxHeight: 'calc(100vh - 20px)'
+              maxHeight: `calc(100vh - ${actionsMenuPosition.y}px - 16px)`,
             }}
           >
             <div className="px-3 py-2 border-b border-gray-200 flex items-center gap-2 flex-shrink-0">
