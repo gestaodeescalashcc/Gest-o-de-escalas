@@ -42,8 +42,8 @@ const PATTERNS = [
   {
     id: '24x48',
     name: 'Plantão 24x48',
-    description: 'Trabalha 24h, folga 48h (24 no dia, FG nos próximos 2 dias)',
-    shift: '24',
+    description: 'Trabalha 24h, folga 48h (P no dia, FG nos próximos 2 dias)',
+    shift: 'P',
     icon: '⏰',
     color: 'bg-purple-50 border-purple-200 hover:bg-purple-100'
   },

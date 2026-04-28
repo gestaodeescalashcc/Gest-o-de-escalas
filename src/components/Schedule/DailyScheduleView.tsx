@@ -39,7 +39,7 @@ const SHIFT_TYPES = [
   { code: 'M2', name: 'Manhã', time: '08h-12h', color: 'bg-yellow-400' },
   { code: 'T', name: 'Tarde', time: '13h-19h', color: 'bg-orange-500' },
   { code: 'MT', name: 'Manhã e Tarde', time: '08h-17h', color: 'bg-amber-500' },
-  { code: '24', name: '24h', time: '07h-07h', color: 'bg-purple-500' },
+  { code: 'P', name: 'Plantão 24h', time: '07h-07h', color: 'bg-purple-500' },
   { code: 'FG', name: 'Folga', time: '-', color: 'bg-gray-400' },
   { code: 'FR', name: 'Feriado', time: '-', color: 'bg-gray-400' },
   { code: 'FE', name: 'Férias', time: '-', color: 'bg-gray-500' },

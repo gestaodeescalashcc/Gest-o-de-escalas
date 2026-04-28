@@ -136,7 +136,7 @@ export default function MealScheduleView({ onBack }: MealScheduleViewProps = {})
   };
 
   const is24hShift = (shiftType: string): boolean => {
-    const fullTypes = ['24h', '24'];
+    const fullTypes = ['24h', '24', 'P', 'Plantão 24h'];
     return fullTypes.includes(shiftType);
   };
 

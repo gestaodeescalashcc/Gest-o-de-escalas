@@ -36,7 +36,7 @@ const SHIFT_TYPES = [
   { code: 'M2', name: 'Manhã (8h às 12h) 4h', start: '08:00', end: '12:00', hours: 4 },
   { code: 'T', name: 'Tarde (12h às 18h) 6h', start: '12:00', end: '18:00', hours: 6 },
   { code: 'MT', name: 'Manhã e Tarde (8h às 17h) 8h', start: '08:00', end: '17:00', hours: 8 },
-  { code: '24', name: 'Plantão 24h (7h às 7h) 24h', start: '07:00', end: '07:00', hours: 24 },
+  { code: 'P', name: 'Plantão 24h (7h às 7h) 24h', start: '07:00', end: '07:00', hours: 24 },
   { code: 'FG', name: 'Folga', start: '00:00', end: '00:00', hours: 0 },
   { code: 'FR', name: 'Feriado', start: '00:00', end: '00:00', hours: 0 },
   { code: 'FE', name: 'Férias', start: '00:00', end: '00:00', hours: 0 },
@@ -423,7 +423,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         return 'bg-amber-100 text-amber-900 ring-1 ring-inset ring-amber-200';
       case 'MT':
         return 'bg-teal-100 text-teal-900 ring-1 ring-inset ring-teal-200';
-      case '24':
+      case 'P':
         return 'bg-blue-100 text-blue-900 ring-1 ring-inset ring-blue-200';
       default:
         return 'bg-blue-50 text-blue-900 ring-1 ring-inset ring-blue-200';
@@ -1150,7 +1150,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             }
           }
         } else if (pattern === '24x48') {
-          const shift24 = SHIFT_TYPES.find(st => st.code === '24')!;
+          const shift24 = SHIFT_TYPES.find(st => st.code === 'P')!;
           const professional = professionals.find(p => p.id === professionalId);
           const contractedHours = professional?.contracted_hours_per_month || 240;
           let totalHours = 0;
@@ -1930,7 +1930,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
 
               {quickMenuExpanded.shifts && (
                 <div className="space-y-1 px-2">
-                  {SHIFT_TYPES.filter(type => ['SN', 'SD', 'M', 'T', 'MT', '24'].includes(type.code)).map(type => (
+                  {SHIFT_TYPES.filter(type => ['SN', 'SD', 'M', 'T', 'MT', 'P'].includes(type.code)).map(type => (
                     <button
                       key={type.code}
                       onClick={() => handleShiftSelect(type)}
