@@ -81,7 +81,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     confirmLabel: string;
   } | null>(null);
   const [statusChangeLoading, setStatusChangeLoading] = useState(false);
-  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  // Note: `professionals` is derived from `allProfessionals` + `professionalIdsInSchedule`
+  // via useMemo (see below). This guarantees the visible list always matches who's in the schedule,
+  // regardless of shift state. Setters were replaced with explicit setProfessionalIdsInSchedule calls.
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [schedules, setSchedules] = useState<MonthlySchedule[]>([]);
   const [selectedSchedule, setSelectedSchedule] = useState<string>('');
@@ -115,6 +117,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     shifts: true,
     absences: false
   });
+
+  // Lista de profissionais visíveis na escala — derivada de allProfessionals + professionalIdsInSchedule.
+  // Single source of truth: quem está na escala = quem está em professionalIdsInSchedule.
+  // O conjunto é atualizado explicitamente em loadData (a partir de shifts) e nos handlers
+  // de Adicionar/Remover Profissional.
+  const professionals = useMemo(
+    () => allProfessionals.filter(p => professionalIdsInSchedule.has(p.id)),
+    [allProfessionals, professionalIdsInSchedule]
+  );
 
   // Current schedule and lock state
   const currentSchedule = useMemo(
@@ -325,16 +336,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         setShifts(shiftsArr);
         const profsWithShifts = new Set(shiftsArr.map(s => s.professional_id));
 
-        // Se keepCurrent, mantém também quem já estava visível (mesmo sem turnos)
-        const currentIds = keepCurrent
-          ? new Set<string>([
-              ...profsWithShifts,
-              ...professionals.map(p => p.id),
-            ])
-          : profsWithShifts;
-
-        setProfessionalIdsInSchedule(currentIds);
-        setProfessionals(allProfsData.data.filter(p => currentIds.has(p.id)));
+        // Se keepCurrent: mantém quem JÁ estava no Set (preserva profissionais
+        // adicionados mas ainda sem turnos, mesmo após auto-fill ou limpeza).
+        // Caso contrário: parte do zero (apenas quem tem turnos).
+        setProfessionalIdsInSchedule(prev => {
+          if (keepCurrent) {
+            return new Set<string>([...profsWithShifts, ...prev]);
+          }
+          return profsWithShifts;
+        });
+        // `professionals` é derivado via useMemo — não setamos aqui.
       }
     } catch (err) {
       console.error('Erro inesperado ao carregar dados:', err);
@@ -664,7 +675,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             setShifts(prev => prev.filter(s => s.professional_id !== professionalId));
           }
 
-          setProfessionals(prev => prev.filter(p => p.id !== professionalId));
           setProfessionalIdsInSchedule(prev => {
             const newSet = new Set(prev);
             newSet.delete(professionalId);
@@ -1344,7 +1354,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     setProfessionalIdsInSchedule(prev => new Set([...prev, professionalId]));
     const prof = allProfessionals.find(p => p.id === professionalId);
     if (prof) {
-      setProfessionals(prev => [...prev, prof]);
       setAddProfessionalSuccess(`${prof.full_name} adicionado com sucesso!`);
       setTimeout(() => setAddProfessionalSuccess(null), 3000);
     }
