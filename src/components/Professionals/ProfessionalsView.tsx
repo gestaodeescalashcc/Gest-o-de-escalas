@@ -166,6 +166,7 @@ export default function ProfessionalsView() {
     const { data, error } = await supabase
       .from('departments')
       .select('id, name')
+      .eq('active', true)
       .order('name');
     if (error) throw error;
     if (data) setDepartments(data);

@@ -52,7 +52,7 @@ export default function CreateScheduleModal({ onClose, onSuccess }: CreateSchedu
   }, [formData.department_id, formData.month, departments, nameDirty]);
 
   const loadDepartments = async () => {
-    const { data } = await supabase.from('departments').select('id, name').order('name');
+    const { data } = await supabase.from('departments').select('id, name').eq('active', true).order('name');
     if (data) setDepartments(data);
   };
 

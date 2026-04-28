@@ -85,6 +85,7 @@ export default function CreateSwapModal({ onClose, onSuccess }: CreateSwapModalP
         supabase
           .from('departments')
           .select('id, name')
+          .eq('active', true)
           .order('name')
       ]);
 

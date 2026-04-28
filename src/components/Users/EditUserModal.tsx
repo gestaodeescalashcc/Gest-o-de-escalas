@@ -64,6 +64,7 @@ export default function EditUserModal({ user, onClose, onSuccess }: EditUserModa
     const { data } = await supabase
       .from('departments')
       .select('*')
+      .eq('active', true)
       .order('name');
 
     if (data) setDepartments(data);

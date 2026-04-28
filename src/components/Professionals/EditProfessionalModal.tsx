@@ -107,6 +107,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
       const { data, error } = await supabase
         .from('departments')
         .select('*')
+        .eq('active', true)
         .order('name');
 
       if (error) throw error;
