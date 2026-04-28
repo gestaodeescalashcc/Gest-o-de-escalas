@@ -1,8 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, UserCheck, UserX, Edit2, Phone, Mail, FileText, Filter, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Plus,
+  Search,
+  UserCheck,
+  UserX,
+  Edit2,
+  Phone,
+  Mail,
+  FileText,
+  Filter,
+  X,
+  Users,
+  AlertCircle,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import CreateProfessionalModal from './CreateProfessionalModal';
 import EditProfessionalModal from './EditProfessionalModal';
+import { TableSkeleton } from '../Common/Skeleton';
+import EmptyState from '../Common/EmptyState';
+import Pagination from '../Common/Pagination';
 
 interface Professional {
   id: string;
@@ -50,6 +66,15 @@ interface Company {
   name: string;
 }
 
+const STORAGE_KEY_PAGE_SIZE = 'medscale.professionals.pageSize';
+
+function normalize(s: string | null | undefined) {
+  return (s ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
+
 export default function ProfessionalsView() {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -65,10 +90,33 @@ export default function ProfessionalsView() {
   const [filterDepartment, setFilterDepartment] = useState<string>('');
   const [filterCompany, setFilterCompany] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_PAGE_SIZE);
+      if (stored) return Number(stored);
+    } catch {
+      /* ignore */
+    }
+    return 20;
+  });
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_PAGE_SIZE, String(pageSize));
+    } catch {
+      /* ignore */
+    }
+  }, [pageSize]);
+
+  // Reset to first page when any filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filterActive, filterCategory, filterDepartment, filterCompany]);
 
   const loadData = async () => {
     setLoading(true);
@@ -91,22 +139,14 @@ export default function ProfessionalsView() {
   const loadProfessionals = async () => {
     const { data, error } = await supabase
       .from('professionals')
-      .select(`
+      .select(
+        `
         *,
-        category:professional_categories (
-          id,
-          name,
-          color
-        ),
-        department:departments (
-          id,
-          name
-        ),
-        company:companies (
-          id,
-          name
-        )
-      `)
+        category:professional_categories (id, name, color),
+        department:departments (id, name),
+        company:companies (id, name)
+      `
+      )
       .order('full_name');
 
     if (error) throw error;
@@ -148,94 +188,124 @@ export default function ProfessionalsView() {
     setFilterCompany('');
   };
 
-  const filteredProfessionals = professionals.filter(prof => {
-    const fullName = prof.full_name || '';
-    const categoryName = prof.category?.name || '';
-    const departmentName = prof.department?.name || '';
-    const matchesSearch =
-      fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      categoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (prof.registration_number && prof.registration_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (prof.phone && prof.phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (prof.email && prof.email.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredProfessionals = useMemo(() => {
+    const q = normalize(searchTerm);
+    return professionals.filter(prof => {
+      const matchesSearch =
+        !q ||
+        normalize(prof.full_name).includes(q) ||
+        normalize(prof.category?.name).includes(q) ||
+        normalize(prof.department?.name).includes(q) ||
+        normalize(prof.registration_number).includes(q) ||
+        normalize(prof.phone).includes(q) ||
+        normalize(prof.email).includes(q);
 
-    const matchesActive = filterActive === null || prof.active === filterActive;
-    const matchesCategory = !filterCategory || prof.category_id === filterCategory;
-    const matchesDepartment = !filterDepartment || prof.department_id === filterDepartment;
-    const matchesCompany = !filterCompany || (prof.company && prof.company.id === filterCompany);
+      const matchesActive = filterActive === null || prof.active === filterActive;
+      const matchesCategory = !filterCategory || prof.category_id === filterCategory;
+      const matchesDepartment = !filterDepartment || prof.department_id === filterDepartment;
+      const matchesCompany =
+        !filterCompany || (prof.company && prof.company.id === filterCompany);
 
-    return matchesSearch && matchesActive && matchesCategory && matchesDepartment && matchesCompany;
-  });
+      return matchesSearch && matchesActive && matchesCategory && matchesDepartment && matchesCompany;
+    });
+  }, [professionals, searchTerm, filterActive, filterCategory, filterDepartment, filterCompany]);
 
-  const activeFiltersCount = [filterActive !== null, filterCategory, filterDepartment, filterCompany].filter(Boolean).length;
+  const paginatedProfessionals = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredProfessionals.slice(start, start + pageSize);
+  }, [filteredProfessionals, page, pageSize]);
+
+  const activeFiltersCount = [
+    filterActive !== null,
+    filterCategory,
+    filterDepartment,
+    filterCompany,
+  ].filter(Boolean).length;
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <UserX className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Erro ao Carregar</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => {
+      <div className="bg-white rounded-xl border border-red-200 shadow-sm">
+        <EmptyState
+          variant="error"
+          icon={AlertCircle}
+          title="Erro ao carregar profissionais"
+          description={error}
+          action={{
+            label: 'Tentar novamente',
+            onClick: () => {
               setError(null);
               loadData();
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Tentar Novamente
-          </button>
-        </div>
+            },
+          }}
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Profissionais</h2>
-          <p className="text-gray-600 mt-1">
-            {filteredProfessionals.length} {filteredProfessionals.length === 1 ? 'profissional' : 'profissionais'}
-            {filteredProfessionals.length !== professionals.length && ` de ${professionals.length}`}
+          <h1 className="text-2xl font-bold text-gray-900">Profissionais</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            {loading ? (
+              'Carregando...'
+            ) : (
+              <>
+                <span className="font-medium text-gray-900">{filteredProfessionals.length}</span>{' '}
+                {filteredProfessionals.length === 1 ? 'profissional' : 'profissionais'}
+                {filteredProfessionals.length !== professionals.length && (
+                  <> de {professionals.length}</>
+                )}
+              </>
+            )}
           </p>
         </div>
         <button
+          type="button"
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+          className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-5 h-5" aria-hidden="true" />
           Novo Profissional
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="space-y-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="p-4 sm:p-6 space-y-4">
+          <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                aria-hidden="true"
+              />
+              <label className="sr-only" htmlFor="prof-search">
+                Buscar profissional
+              </label>
               <input
-                type="text"
-                placeholder="Buscar por nome, categoria, departamento, matrícula, telefone ou email..."
+                id="prof-search"
+                type="search"
+                placeholder="Buscar por nome, categoria, setor, matrícula, telefone ou email..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full min-h-[44px] pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
             <button
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition whitespace-nowrap ${
+              aria-expanded={showFilters}
+              className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-lg font-medium transition whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                 showFilters || activeFiltersCount > 0
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <Filter className="w-5 h-5" />
+              <Filter className="w-4 h-4" aria-hidden="true" />
               Filtros
               {activeFiltersCount > 0 && (
-                <span className="bg-white text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-white text-blue-600 text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px]">
                   {activeFiltersCount}
                 </span>
               )}
@@ -244,15 +314,16 @@ export default function ProfessionalsView() {
 
           {showFilters && (
             <div className="bg-gray-50 rounded-lg p-4 space-y-4 border border-gray-200">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-medium text-gray-900">Filtros Avançados</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-medium text-gray-900">Filtros avançados</h3>
                 {activeFiltersCount > 0 && (
                   <button
+                    type="button"
                     onClick={clearFilters}
-                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
                   >
-                    <X className="w-4 h-4" />
-                    Limpar Filtros
+                    <X className="w-4 h-4" aria-hidden="true" />
+                    Limpar filtros
                   </button>
                 )}
               </div>
@@ -262,8 +333,9 @@ export default function ProfessionalsView() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={() => setFilterActive(null)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm transition ${
+                      className={`flex-1 min-h-[40px] px-2 py-2 rounded-lg text-sm transition ${
                         filterActive === null
                           ? 'bg-blue-600 text-white'
                           : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
@@ -272,19 +344,21 @@ export default function ProfessionalsView() {
                       Todos
                     </button>
                     <button
+                      type="button"
                       onClick={() => setFilterActive(true)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm transition ${
+                      className={`flex-1 min-h-[40px] px-2 py-2 rounded-lg text-sm transition ${
                         filterActive === true
-                          ? 'bg-green-600 text-white'
-                          : 'bg-white text-green-700 hover:bg-green-50 border border-green-300'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-300'
                       }`}
                     >
                       <UserCheck className="w-4 h-4 inline mr-1" />
                       Ativo
                     </button>
                     <button
+                      type="button"
                       onClick={() => setFilterActive(false)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm transition ${
+                      className={`flex-1 min-h-[40px] px-2 py-2 rounded-lg text-sm transition ${
                         filterActive === false
                           ? 'bg-red-600 text-white'
                           : 'bg-white text-red-700 hover:bg-red-50 border border-red-300'
@@ -297,14 +371,20 @@ export default function ProfessionalsView() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                  <label
+                    htmlFor="filter-category"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Categoria
+                  </label>
                   <select
+                    id="filter-category"
                     value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={e => setFilterCategory(e.target.value)}
+                    className="w-full min-h-[40px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
                     <option value="">Todas as categorias</option>
-                    {categories.map((cat) => (
+                    {categories.map(cat => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
                       </option>
@@ -313,14 +393,20 @@ export default function ProfessionalsView() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Departamento</label>
-                  <select
-                    value={filterDepartment}
-                    onChange={(e) => setFilterDepartment(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  <label
+                    htmlFor="filter-dept"
+                    className="block text-sm font-medium text-gray-700 mb-2"
                   >
-                    <option value="">Todos os departamentos</option>
-                    {departments.map((dept) => (
+                    Setor
+                  </label>
+                  <select
+                    id="filter-dept"
+                    value={filterDepartment}
+                    onChange={e => setFilterDepartment(e.target.value)}
+                    className="w-full min-h-[40px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">Todos os setores</option>
+                    {departments.map(dept => (
                       <option key={dept.id} value={dept.id}>
                         {dept.name}
                       </option>
@@ -329,14 +415,20 @@ export default function ProfessionalsView() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Empresa</label>
+                  <label
+                    htmlFor="filter-company"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Empresa
+                  </label>
                   <select
+                    id="filter-company"
                     value={filterCompany}
-                    onChange={(e) => setFilterCompany(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={e => setFilterCompany(e.target.value)}
+                    className="w-full min-h-[40px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                   >
                     <option value="">Todas as empresas</option>
-                    {companies.map((comp) => (
+                    {companies.map(comp => (
                       <option key={comp.id} value={comp.id}>
                         {comp.name}
                       </option>
@@ -349,135 +441,158 @@ export default function ProfessionalsView() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="text-gray-600 mt-4">Carregando profissionais...</p>
+          <div className="px-4 sm:px-6 pb-6">
+            <TableSkeleton rows={pageSize > 10 ? 10 : pageSize} columns={6} />
           </div>
         ) : filteredProfessionals.length === 0 ? (
-          <div className="text-center py-12">
-            <UserX className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Nenhum profissional encontrado</p>
-            {activeFiltersCount > 0 && (
-              <button
-                onClick={clearFilters}
-                className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium"
-              >
-                Limpar filtros
-              </button>
-            )}
-          </div>
+          professionals.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              title="Nenhum profissional cadastrado"
+              description="Cadastre profissionais para começar a montar suas escalas."
+              action={{
+                label: 'Cadastrar primeiro profissional',
+                onClick: () => setShowCreateModal(true),
+                icon: Plus,
+              }}
+            />
+          ) : (
+            <EmptyState
+              variant="search"
+              title="Nenhum profissional encontrado"
+              description="Tente ajustar os filtros ou a busca para ver outros resultados."
+              action={
+                activeFiltersCount > 0 || searchTerm
+                  ? { label: 'Limpar filtros', onClick: clearFilters }
+                  : undefined
+              }
+            />
+          )
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Nome
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Categoria
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Departamento
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Empresa
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Contato
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Horas
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredProfessionals.map((prof) => (
-                  <tr key={prof.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-4">
-                      <div>
-                        <div className="font-medium text-gray-900">{prof.full_name}</div>
-                        {prof.registration_number && (
-                          <div className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-                            <FileText className="w-3 h-3" />
-                            {prof.registration_number}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-white"
-                        style={{ backgroundColor: prof.category?.color || '#6B7280' }}
-                      >
-                        {prof.category?.name || 'Sem categoria'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm text-gray-900">{prof.department?.name || 'Sem setor'}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm text-gray-900">
-                        {prof.company ? prof.company.name : '-'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="space-y-1">
-                        {prof.phone && (
-                          <div className="text-sm text-gray-600 flex items-center gap-1">
-                            <Phone className="w-3 h-3" />
-                            {prof.phone}
-                          </div>
-                        )}
-                        {prof.email && (
-                          <div className="text-sm text-gray-600 flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {prof.email}
-                          </div>
-                        )}
-                        {!prof.phone && !prof.email && (
-                          <span className="text-sm text-gray-400">-</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="text-sm text-gray-900">
-                        {prof.contracted_hours != null ? `${prof.contracted_hours}h` : '-'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      {prof.active ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <UserCheck className="w-3 h-3" />
-                          Ativo
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          <UserX className="w-3 h-3" />
-                          Inativo
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <button
-                        onClick={() => setEditingProfessional(prof)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        Editar
-                      </button>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-y border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Nome
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Categoria
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+                      Setor
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+                      Empresa
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+                      Contato
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+                      Horas
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                      <span className="sr-only">Ações</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedProfessionals.map(prof => (
+                    <tr key={prof.id} className="hover:bg-gray-50 transition">
+                      <td className="px-4 py-3">
+                        <div>
+                          <div className="font-medium text-gray-900">{prof.full_name}</div>
+                          {prof.registration_number && (
+                            <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                              <FileText className="w-3 h-3" aria-hidden="true" />
+                              {prof.registration_number}
+                            </div>
+                          )}
+                          {/* Mobile-only condensed info */}
+                          <div className="md:hidden text-xs text-gray-500 mt-1">
+                            {prof.department?.name || 'Sem setor'}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-white whitespace-nowrap"
+                          style={{ backgroundColor: prof.category?.color || '#6B7280' }}
+                        >
+                          {prof.category?.name || 'Sem categoria'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell text-sm text-gray-900">
+                        {prof.department?.name || '-'}
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell text-sm text-gray-900">
+                        {prof.company?.name || '-'}
+                      </td>
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        <div className="space-y-0.5">
+                          {prof.phone && (
+                            <div className="text-xs text-gray-600 flex items-center gap-1">
+                              <Phone className="w-3 h-3" aria-hidden="true" />
+                              {prof.phone}
+                            </div>
+                          )}
+                          {prof.email && (
+                            <div className="text-xs text-gray-600 flex items-center gap-1 truncate max-w-[200px]">
+                              <Mail className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                              <span className="truncate">{prof.email}</span>
+                            </div>
+                          )}
+                          {!prof.phone && !prof.email && (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden md:table-cell text-sm text-gray-900">
+                        {prof.contracted_hours != null ? `${prof.contracted_hours}h` : '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        {prof.active ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            <UserCheck className="w-3 h-3" aria-hidden="true" />
+                            Ativo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <UserX className="w-3 h-3" aria-hidden="true" />
+                            Inativo
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setEditingProfessional(prof)}
+                          aria-label={`Editar ${prof.full_name}`}
+                          className="inline-flex items-center gap-1 min-h-[36px] px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <Edit2 className="w-4 h-4" aria-hidden="true" />
+                          <span className="hidden sm:inline">Editar</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              page={page}
+              pageSize={pageSize}
+              total={filteredProfessionals.length}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              itemLabel="profissionais"
+            />
+          </>
         )}
       </div>
 

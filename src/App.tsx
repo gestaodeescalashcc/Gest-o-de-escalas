@@ -1,46 +1,61 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import LoginForm from './components/Auth/LoginForm';
 import DashboardLayout from './components/Dashboard/DashboardLayout';
+import { PageSkeleton } from './components/Common/Skeleton';
+import { Calendar } from 'lucide-react';
+
+// Eagerly load only the most-used views (initial UX)
 import ScheduleView from './components/Schedule/ScheduleView';
 import ConsolidatedScheduleView from './components/Schedule/ConsolidatedScheduleView';
 import DailyScheduleView from './components/Schedule/DailyScheduleView';
 import ProfessionalsView from './components/Professionals/ProfessionalsView';
-import SwapsView from './components/Swaps/SwapsView';
-import DepartmentsView from './components/Departments/DepartmentsView';
-import CategoriesView from './components/Tables/CategoriesView';
-import CompaniesView from './components/Tables/CompaniesView';
-import UsersView from './components/Users/UsersView';
-import HistoryView from './components/History/HistoryView';
-import ReportsView from './components/Reports/ReportsView';
-import TimesheetClockView from './components/Timesheet/TimesheetClockView';
-import TimesheetReportView from './components/Timesheet/TimesheetReportView';
-import PunchMirrorView from './components/Timesheet/PunchMirrorView';
-import PunchAdjustmentsView from './components/Timesheet/PunchAdjustmentsView';
-import EstablishmentsView from './components/Establishments/EstablishmentsView';
-import FiscalExportsView from './components/Reports/FiscalExportsView';
-import { HourBankView } from './components/HourBank/HourBankView';
+
+// Lazy load heavier / less-frequent views
+const SwapsView = lazy(() => import('./components/Swaps/SwapsView'));
+const DepartmentsView = lazy(() => import('./components/Departments/DepartmentsView'));
+const CategoriesView = lazy(() => import('./components/Tables/CategoriesView'));
+const CompaniesView = lazy(() => import('./components/Tables/CompaniesView'));
+const UsersView = lazy(() => import('./components/Users/UsersView'));
+const HistoryView = lazy(() => import('./components/History/HistoryView'));
+const ReportsView = lazy(() => import('./components/Reports/ReportsView'));
+const EstablishmentsView = lazy(() => import('./components/Establishments/EstablishmentsView'));
+const FiscalExportsView = lazy(() => import('./components/Reports/FiscalExportsView'));
+const HourBankView = lazy(() =>
+  import('./components/HourBank/HourBankView').then(m => ({ default: m.HourBankView }))
+);
+// Heavy: loads face-api.js (~16MB) — only when actually accessed
+const TimesheetClockView = lazy(() => import('./components/Timesheet/TimesheetClockView'));
+const TimesheetReportView = lazy(() => import('./components/Timesheet/TimesheetReportView'));
+const PunchMirrorView = lazy(() => import('./components/Timesheet/PunchMirrorView'));
+const PunchAdjustmentsView = lazy(() => import('./components/Timesheet/PunchAdjustmentsView'));
+
+function AppLoadingScreen() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-lg shadow-blue-500/30 mb-4 animate-pulse">
+          <Calendar className="w-8 h-8 text-white" />
+        </div>
+        <p className="text-gray-700 font-medium">Carregando MedScale...</p>
+        <p className="text-gray-500 text-sm mt-1">Preparando seu ambiente</p>
+      </div>
+    </div>
+  );
+}
+
+function ViewSuspense({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageSkeleton variant="table" />}>{children}</Suspense>;
+}
 
 function AppContent() {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('schedule');
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="text-gray-600 mt-4">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <LoginForm />;
-  }
+  if (loading) return <AppLoadingScreen />;
+  if (!user) return <LoginForm />;
 
   const handleNavigateToSchedule = (scheduleId: string) => {
     setSelectedScheduleId(scheduleId);
@@ -49,24 +64,84 @@ function AppContent() {
 
   return (
     <DashboardLayout currentView={currentView} onViewChange={setCurrentView}>
-      {currentView === 'schedule' && <ScheduleView onNavigateToSchedule={handleNavigateToSchedule} />}
-      {currentView === 'consolidated' && <ConsolidatedScheduleView initialScheduleId={selectedScheduleId} />}
+      {currentView === 'schedule' && (
+        <ScheduleView onNavigateToSchedule={handleNavigateToSchedule} />
+      )}
+      {currentView === 'consolidated' && (
+        <ConsolidatedScheduleView initialScheduleId={selectedScheduleId} />
+      )}
       {currentView === 'daily' && <DailyScheduleView />}
       {currentView === 'professionals' && <ProfessionalsView />}
-      {currentView === 'swaps' && <SwapsView />}
-      {currentView === 'timesheet-clock' && <TimesheetClockView />}
-      {currentView === 'timesheet-report' && <TimesheetReportView />}
-      {currentView === 'punch-mirror' && <PunchMirrorView />}
-      {currentView === 'punch-adjustments' && <PunchAdjustmentsView />}
-      {currentView === 'establishments' && <EstablishmentsView />}
-      {currentView === 'fiscal-exports' && <FiscalExportsView />}
-      {currentView === 'hour-bank' && <HourBankView />}
-      {currentView === 'departments' && <DepartmentsView />}
-      {currentView === 'categories' && <CategoriesView />}
-      {currentView === 'companies' && <CompaniesView />}
-      {currentView === 'users' && <UsersView />}
-      {currentView === 'history' && <HistoryView />}
-      {currentView === 'reports' && <ReportsView />}
+      {currentView === 'swaps' && (
+        <ViewSuspense>
+          <SwapsView />
+        </ViewSuspense>
+      )}
+      {currentView === 'timesheet-clock' && (
+        <ViewSuspense>
+          <TimesheetClockView />
+        </ViewSuspense>
+      )}
+      {currentView === 'timesheet-report' && (
+        <ViewSuspense>
+          <TimesheetReportView />
+        </ViewSuspense>
+      )}
+      {currentView === 'punch-mirror' && (
+        <ViewSuspense>
+          <PunchMirrorView />
+        </ViewSuspense>
+      )}
+      {currentView === 'punch-adjustments' && (
+        <ViewSuspense>
+          <PunchAdjustmentsView />
+        </ViewSuspense>
+      )}
+      {currentView === 'establishments' && (
+        <ViewSuspense>
+          <EstablishmentsView />
+        </ViewSuspense>
+      )}
+      {currentView === 'fiscal-exports' && (
+        <ViewSuspense>
+          <FiscalExportsView />
+        </ViewSuspense>
+      )}
+      {currentView === 'hour-bank' && (
+        <ViewSuspense>
+          <HourBankView />
+        </ViewSuspense>
+      )}
+      {currentView === 'departments' && (
+        <ViewSuspense>
+          <DepartmentsView />
+        </ViewSuspense>
+      )}
+      {currentView === 'categories' && (
+        <ViewSuspense>
+          <CategoriesView />
+        </ViewSuspense>
+      )}
+      {currentView === 'companies' && (
+        <ViewSuspense>
+          <CompaniesView />
+        </ViewSuspense>
+      )}
+      {currentView === 'users' && (
+        <ViewSuspense>
+          <UsersView />
+        </ViewSuspense>
+      )}
+      {currentView === 'history' && (
+        <ViewSuspense>
+          <HistoryView />
+        </ViewSuspense>
+      )}
+      {currentView === 'reports' && (
+        <ViewSuspense>
+          <ReportsView />
+        </ViewSuspense>
+      )}
     </DashboardLayout>
   );
 }
