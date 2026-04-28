@@ -948,14 +948,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
           const shiftIds = shiftsToDelete.map(s => s.id);
 
           if (shiftIds.length > 0) {
-            const { error } = await supabase
+            const { data: deleted, error } = await supabase
               .from('shifts')
               .delete()
-              .in('id', shiftIds);
+              .in('id', shiftIds)
+              .select('id');
 
             if (error) {
               console.error('Erro ao remover turnos:', error);
               toast.error('Erro ao remover turnos: ' + error.message);
+            } else if (!deleted || deleted.length === 0) {
+              toast.error(
+                'Não foi possível remover os turnos. Você não tem permissão para essa ação. Procure um Administrador.'
+              );
+              setShowActionsMenu(null);
             } else {
               await loadData(true);
               setShowActionsMenu(null);
@@ -999,14 +1005,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
           }
 
           if (shiftsToDelete.length > 0) {
-            const { error } = await supabase
+            const { data: deleted, error } = await supabase
               .from('shifts')
               .delete()
-              .in('id', shiftsToDelete);
+              .in('id', shiftsToDelete)
+              .select('id');
 
             if (error) {
               console.error('Erro ao remover turnos:', error);
               toast.error('Erro ao remover turnos: ' + error.message);
+            } else if (!deleted || deleted.length === 0) {
+              toast.error(
+                'Não foi possível remover os turnos. Você não tem permissão para essa ação. Procure um Administrador.'
+              );
+              setShowActionsMenu(null);
             } else {
               await loadData(true);
               setShowActionsMenu(null);
@@ -1050,14 +1062,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
           }
 
           if (shiftsToDelete.length > 0) {
-            const { error } = await supabase
+            const { data: deleted, error } = await supabase
               .from('shifts')
               .delete()
-              .in('id', shiftsToDelete);
+              .in('id', shiftsToDelete)
+              .select('id');
 
             if (error) {
               console.error('Erro ao remover turnos:', error);
               toast.error('Erro ao remover turnos: ' + error.message);
+            } else if (!deleted || deleted.length === 0) {
+              toast.error(
+                'Não foi possível remover os turnos. Você não tem permissão para essa ação. Procure um Administrador.'
+              );
+              setShowActionsMenu(null);
             } else {
               await loadData(true);
               setShowActionsMenu(null);
