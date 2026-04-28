@@ -2250,7 +2250,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       <AutoFillModal
         isOpen={showAutoFillModal}
         onClose={() => setShowAutoFillModal(false)}
-        professionals={professionals}
+        professionals={
+          // Fonte de verdade: todos os profissionais ATIVOS do setor que
+          // estão "na escala" (com ou sem turnos), unidos com os já
+          // visíveis na tabela. Garante que o auto-fill veja todos.
+          allProfessionals.filter(
+            p => professionalIdsInSchedule.has(p.id) || professionals.some(ep => ep.id === p.id)
+          )
+        }
         onApply={applyAutoFillPatterns}
       />
 
