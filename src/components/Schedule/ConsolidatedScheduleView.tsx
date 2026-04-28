@@ -349,35 +349,43 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   const getCellColorClass = (code: string) => {
     switch (code) {
       case 'FG':
-        return 'bg-gray-100 text-gray-700';
+        return 'bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-200';
       case 'FE':
-        return 'bg-yellow-100 text-yellow-900';
+        return 'bg-yellow-100 text-yellow-900 ring-1 ring-inset ring-yellow-200';
       case 'FA':
-        return 'bg-red-200 text-red-900';
+        return 'bg-red-200 text-red-900 ring-1 ring-inset ring-red-300';
+      case 'FR':
+        return 'bg-rose-100 text-rose-900 ring-1 ring-inset ring-rose-200';
       case 'LP':
-        return 'bg-purple-100 text-purple-900';
+        return 'bg-purple-100 text-purple-900 ring-1 ring-inset ring-purple-200';
       case 'LM':
-        return 'bg-red-100 text-red-900';
+        return 'bg-red-100 text-red-900 ring-1 ring-inset ring-red-200';
       case 'LG':
-        return 'bg-pink-100 text-pink-900';
+        return 'bg-pink-100 text-pink-900 ring-1 ring-inset ring-pink-200';
       case 'AS':
-        return 'bg-orange-100 text-orange-900';
+        return 'bg-orange-100 text-orange-900 ring-1 ring-inset ring-orange-200';
       case 'SN':
-        return 'bg-indigo-100 text-indigo-900';
+        return 'bg-indigo-100 text-indigo-900 ring-1 ring-inset ring-indigo-200';
       case 'SD':
-        return 'bg-blue-50 text-blue-900';
+        return 'bg-sky-100 text-sky-900 ring-1 ring-inset ring-sky-200';
       case 'M':
-        return 'bg-green-50 text-green-900';
+        return 'bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-200';
+      case 'M2':
+        return 'bg-lime-100 text-lime-900 ring-1 ring-inset ring-lime-200';
       case 'T':
-        return 'bg-amber-50 text-amber-900';
+        return 'bg-amber-100 text-amber-900 ring-1 ring-inset ring-amber-200';
       case 'MT':
-        return 'bg-teal-50 text-teal-900';
+        return 'bg-teal-100 text-teal-900 ring-1 ring-inset ring-teal-200';
       case '24':
-        return 'bg-blue-50 text-blue-900';
+        return 'bg-blue-100 text-blue-900 ring-1 ring-inset ring-blue-200';
       default:
-        return 'bg-blue-50 text-blue-900';
+        return 'bg-blue-50 text-blue-900 ring-1 ring-inset ring-blue-200';
     }
   };
+
+  // Standardized badge classes — all shift codes use the same dimensions
+  const SHIFT_BADGE_CLASS =
+    'inline-flex items-center justify-center min-w-[40px] h-6 px-2 rounded-md text-xs font-semibold tracking-wide';
 
   const handleCellClick = (profId: string, day: number, event: React.MouseEvent) => {
     if (!editMode) return;
@@ -1241,35 +1249,42 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
           <Calendar className="w-8 h-8 text-blue-600" />
           <h1 className="text-2xl font-bold text-gray-900">Escala Consolidada</h1>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           {!editMode ? (
             <>
               <button
                 onClick={() => setShowCreateScheduleModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4" aria-hidden="true" />
                 Nova Escala
               </button>
               <button
                 onClick={() => setShowAddProfessionalModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                <UserPlus className="w-4 h-4" />
+                <UserPlus className="w-4 h-4" aria-hidden="true" />
                 Adicionar Profissional
               </button>
               <button
                 onClick={copyPreviousMonth}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                <Copy className="w-4 h-4" />
+                <Copy className="w-4 h-4" aria-hidden="true" />
                 Copiar Mês Anterior
               </button>
               <button
-                onClick={() => setEditMode(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handleExportPDF}
+                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                <Edit3 className="w-4 h-4" />
+                <Download className="w-4 h-4" aria-hidden="true" />
+                Exportar PDF
+              </button>
+              <button
+                onClick={() => setEditMode(true)}
+                className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <Edit3 className="w-4 h-4" aria-hidden="true" />
                 Modo Edição
               </button>
             </>
@@ -1277,17 +1292,24 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             <>
               <button
                 onClick={() => setShowAutoFillModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-4 h-4" aria-hidden="true" />
                 Preenchimento Automático
               </button>
               <button
                 onClick={() => setShowAddProfessionalModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                <UserPlus className="w-4 h-4" />
+                <UserPlus className="w-4 h-4" aria-hidden="true" />
                 Adicionar Profissional
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <Download className="w-4 h-4" aria-hidden="true" />
+                Exportar PDF
               </button>
               <button
                 onClick={() => {
@@ -1298,20 +1320,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                     setHasChanges(false);
                   }
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
               >
-                <Save className="w-4 h-4" />
+                <Save className="w-4 h-4" aria-hidden="true" />
                 Salvar e Sair
               </button>
             </>
           )}
-          <button
-            onClick={handleExportPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Exportar PDF
-          </button>
         </div>
       </div>
 
@@ -1512,12 +1527,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               </div>
             </div>
 
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-3">Legenda:</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-3">Legenda</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
                 {SHIFT_TYPES.map(type => (
-                  <div key={type.code} className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded font-semibold text-xs border ${getCellColorClass(type.code)} border-current`}>
+                  <div key={type.code} className="flex items-center gap-2.5">
+                    <span className={`${SHIFT_BADGE_CLASS} flex-shrink-0 ${getCellColorClass(type.code)}`}>
                       {type.code}
                     </span>
                     <span className="text-sm text-gray-700">{type.name}</span>
@@ -1603,7 +1618,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       onClick={() => handleShiftSelect(type)}
                       className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left transition"
                     >
-                      <span className={`px-2 py-1 rounded font-semibold text-xs min-w-[40px] text-center ${getCellColorClass(type.code)}`}>
+                      <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
                         {type.code}
                       </span>
                       <span className="text-sm text-gray-700 flex-1">{type.name}</span>
@@ -1635,7 +1650,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       onClick={() => handleShiftSelect(type)}
                       className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left transition"
                     >
-                      <span className={`px-2 py-1 rounded font-semibold text-xs min-w-[40px] text-center ${getCellColorClass(type.code)}`}>
+                      <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
                         {type.code}
                       </span>
                       <span className="text-sm text-gray-700 flex-1">{type.name}</span>
@@ -1704,7 +1719,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       onClick={() => handleFillAllDays(showActionsMenu!, type)}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-blue-50 rounded text-left transition text-sm"
                     >
-                      <span className={`px-2 py-0.5 rounded font-semibold text-xs ${getCellColorClass(type.code)}`}>
+                      <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
                         {type.code}
                       </span>
                       <span className="text-gray-700">{type.name}</span>
@@ -1735,7 +1750,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       onClick={() => handleFillOddDays(showActionsMenu!, type)}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-green-50 rounded text-left transition text-sm"
                     >
-                      <span className={`px-2 py-0.5 rounded font-semibold text-xs ${getCellColorClass(type.code)}`}>
+                      <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
                         {type.code}
                       </span>
                       <span className="text-gray-700">{type.name}</span>
@@ -1766,7 +1781,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       onClick={() => handleFillEvenDays(showActionsMenu!, type)}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-orange-50 rounded text-left transition text-sm"
                     >
-                      <span className={`px-2 py-0.5 rounded font-semibold text-xs ${getCellColorClass(type.code)}`}>
+                      <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
                         {type.code}
                       </span>
                       <span className="text-gray-700">{type.name}</span>
