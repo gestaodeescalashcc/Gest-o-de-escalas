@@ -761,7 +761,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         }
       }
 
-      await loadData();
+      await loadData(true);
       setShowActionsMenu(null);
     } catch (err) {
       console.error('Erro ao preencher dias ímpares:', err);
@@ -843,7 +843,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         }
       }
 
-      await loadData();
+      await loadData(true);
       setShowActionsMenu(null);
     } catch (err) {
       console.error('Erro ao preencher dias pares:', err);
@@ -925,7 +925,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         }
       }
 
-      await loadData();
+      await loadData(true);
       setShowActionsMenu(null);
     } catch (err) {
       console.error('Erro ao preencher todos os dias:', err);
@@ -1336,7 +1336,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             }
 
             toast.success('Escala copiada com sucesso!');
-            await loadData();
+            await loadData(true);
           } else {
             toast.info('Nenhum turno encontrado no mês anterior.');
           }
