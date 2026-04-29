@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import CreateScheduleModal from './CreateScheduleModal';
 import AutoFillModal, { ScaleConfig } from './AutoFillModal';
-import { exportToPDF, createPrintableSchedule } from '../../utils/pdfExport';
+import { exportScheduleToExcel } from '../../utils/excelExport';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import ToastContainer from '../Common/ToastContainer';
 import EmptyState from '../Common/EmptyState';
@@ -1377,28 +1377,43 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     }
   };
 
-  const handleExportPDF = () => {
-    const currentSchedule = schedules.find(s => s.id === selectedSchedule);
-    if (!currentSchedule) return;
+  const handleExportExcel = async () => {
+    const cs = schedules.find(s => s.id === selectedSchedule);
+    if (!cs) return;
 
     const dept = departments.find(d => d.id === selectedDepartment);
+    const daysInMonth = getDaysInMonth();
 
-    const getShiftForDay = (profName: string, day: number) => {
-      const prof = professionals.find(p => p.full_name === profName);
-      if (!prof) return '';
-      return getShiftCode(prof.id, day);
-    };
+    // Construir o map professional_id -> day -> code
+    const shiftsByProf = new Map<string, Map<number, string>>();
+    professionals.forEach(p => {
+      const m = new Map<number, string>();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const code = getShiftCode(p.id, day);
+        if (code) m.set(day, code);
+      }
+      shiftsByProf.set(p.id, m);
+    });
 
-    const printable = createPrintableSchedule(
-      currentSchedule.name,
-      dept?.name || '',
-      selectedMonth,
-      professionals,
-      getDaysInMonth(),
-      getShiftForDay
-    );
-
-    exportToPDF(printable, `${currentSchedule.name.replace(/\s+/g, '_')}.pdf`, (msg) => toast.error(msg));
+    try {
+      await exportScheduleToExcel({
+        scheduleName: cs.name,
+        departmentName: dept?.name || '',
+        month: selectedMonth,
+        professionals: professionals.map(p => ({
+          id: p.id,
+          full_name: p.full_name,
+          registration_number: p.registration_number,
+          category_name: p.category?.name,
+          contracted_hours: p.contracted_hours_per_month,
+        })),
+        shiftsByProf,
+      });
+      toast.success('Escala exportada com sucesso.');
+    } catch (err: any) {
+      console.error('Erro ao exportar Excel:', err);
+      toast.error('Erro ao exportar: ' + (err?.message ?? 'desconhecido'));
+    }
   };
 
   const daysInMonth = getDaysInMonth();
@@ -1473,11 +1488,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 </button>
               )}
               <button
-                onClick={handleExportPDF}
+                onClick={handleExportExcel}
                 className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 <Download className="w-4 h-4" aria-hidden="true" />
-                Exportar PDF
+                Exportar Excel
               </button>
               {/* Status transitions */}
               {currentSchedule && scheduleStatus === 'Rascunho' && (
@@ -1544,11 +1559,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 Adicionar Profissional
               </button>
               <button
-                onClick={handleExportPDF}
+                onClick={handleExportExcel}
                 className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 <Download className="w-4 h-4" aria-hidden="true" />
-                Exportar PDF
+                Exportar Excel
               </button>
               <button
                 onClick={() => {
