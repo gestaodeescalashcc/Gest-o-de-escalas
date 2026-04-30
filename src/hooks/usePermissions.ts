@@ -49,6 +49,12 @@ interface Permissions {
     update: boolean;
     delete: boolean;
   };
+  absences: {
+    create: boolean;
+    read: boolean;
+    update: boolean;
+    delete: boolean;
+  };
 }
 
 interface UserData {
@@ -68,6 +74,7 @@ const defaultPermissions: Permissions = {
   companies: { create: false, read: false, update: false, delete: false },
   reports: { read: false, export: false },
   users: { create: false, read: false, update: false, delete: false },
+  absences: { create: false, read: false, update: false, delete: false },
 };
 
 export function usePermissions() {

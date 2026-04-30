@@ -14,6 +14,7 @@ import ProfessionalsView from './components/Professionals/ProfessionalsView';
 
 // Lazy load heavier / less-frequent views
 const SwapsView = lazy(() => import('./components/Swaps/SwapsView'));
+const AbsenteeismView = lazy(() => import('./components/Absenteeism/AbsenteeismView'));
 const DepartmentsView = lazy(() => import('./components/Departments/DepartmentsView'));
 const CategoriesView = lazy(() => import('./components/Tables/CategoriesView'));
 const CompaniesView = lazy(() => import('./components/Tables/CompaniesView'));
@@ -75,6 +76,11 @@ function AppContent() {
       {currentView === 'swaps' && (
         <ViewSuspense>
           <SwapsView />
+        </ViewSuspense>
+      )}
+      {currentView === 'absenteeism' && (
+        <ViewSuspense>
+          <AbsenteeismView />
         </ViewSuspense>
       )}
       {currentView === 'timesheet-clock' && (

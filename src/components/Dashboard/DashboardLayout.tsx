@@ -23,6 +23,7 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
+  CalendarX,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -41,7 +42,8 @@ type Module =
   | 'departments'
   | 'professional_categories'
   | 'companies'
-  | 'users';
+  | 'users'
+  | 'absences';
 
 interface MenuItem {
   id: string;
@@ -66,6 +68,7 @@ const MENU_ITEMS: MenuItem[] = [
   { id: 'daily', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule' },
   { id: 'professionals', label: 'Profissionais', icon: Users, module: 'professionals', group: 'schedule' },
   { id: 'swaps', label: 'Trocas de Plantões', icon: ArrowLeftRight, module: 'swaps', group: 'schedule', keywords: 'plantoes plantões' },
+  { id: 'absenteeism', label: 'Absenteísmo', icon: CalendarX, module: 'absences', group: 'schedule', keywords: 'absenteismo faltas atestados' },
   // REP-P group
   { id: 'timesheet-clock', label: 'Registro de Ponto', icon: Fingerprint, module: 'schedules', group: 'rep-p' },
   { id: 'punch-mirror', label: 'Espelho de Ponto', icon: FileText, module: 'reports', group: 'rep-p' },
