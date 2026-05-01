@@ -8,6 +8,15 @@ import Modal from '../Common/Modal';
 import SearchableSelect from '../Common/SearchableSelect';
 import { AbsenceReason, Absence } from './AbsenteeismView';
 
+export interface AbsenceInitialData {
+  professional_id?: string;
+  department_id?: string;
+  schedule_id?: string;
+  start_date?: string;
+  end_date?: string;
+  shift_type?: string;
+}
+
 interface DeptOption { id: string; name: string }
 interface ProfOption { id: string; full_name: string; department_id: string }
 
@@ -16,6 +25,10 @@ interface Props {
   reasons: AbsenceReason[];
   departments: DeptOption[];
   professionals: ProfOption[];
+  /** Pré-preenche campos quando o modal é aberto a partir de uma escala */
+  initialData?: AbsenceInitialData;
+  /** Quando true, esconde campo de setor (já está fixo pelo contexto) */
+  lockDepartment?: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -23,20 +36,23 @@ interface Props {
 const SHIFT_TYPES = ['SD', 'SN', 'M', 'M2', 'T', 'MT', 'P'];
 
 export default function CreateAbsenceModal({
-  absence, reasons, departments, professionals, onClose, onSuccess,
+  absence, reasons, departments, professionals,
+  initialData, lockDepartment, onClose, onSuccess,
 }: Props) {
   const { user } = useAuth();
   const { toasts, toast, removeToast } = useToast();
   const [loading, setLoading] = useState(false);
 
+  const today = new Date().toISOString().slice(0, 10);
+
   const [form, setForm] = useState({
-    professional_id: absence?.professional_id ?? '',
-    department_id: absence?.department_id ?? '',
-    schedule_id: (absence as any)?.schedule_id ?? '',
+    professional_id: absence?.professional_id ?? initialData?.professional_id ?? '',
+    department_id: absence?.department_id ?? initialData?.department_id ?? '',
+    schedule_id: (absence as any)?.schedule_id ?? initialData?.schedule_id ?? '',
     reason_id: absence?.reason_id ?? '',
-    start_date: absence?.start_date ?? new Date().toISOString().slice(0, 10),
-    end_date: absence?.end_date ?? new Date().toISOString().slice(0, 10),
-    shift_type: absence?.shift_type ?? 'SD',
+    start_date: absence?.start_date ?? initialData?.start_date ?? today,
+    end_date: absence?.end_date ?? initialData?.end_date ?? initialData?.start_date ?? today,
+    shift_type: absence?.shift_type ?? initialData?.shift_type ?? 'SD',
     hours_per_day: absence?.hours_per_day ?? 12,
     is_justified: absence?.is_justified ?? false,
     has_coverage: absence?.has_coverage ?? false,
@@ -206,18 +222,20 @@ export default function CreateAbsenceModal({
               />
             </div>
 
-            <div>
-              <label htmlFor="abs-dept" className={labelClass}>Setor</label>
-              <select
-                id="abs-dept"
-                value={form.department_id}
-                onChange={e => setForm({ ...form, department_id: e.target.value })}
-                className={inputClass}
-              >
-                <option value="">—</option>
-                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </div>
+            {!lockDepartment && (
+              <div>
+                <label htmlFor="abs-dept" className={labelClass}>Setor</label>
+                <select
+                  id="abs-dept"
+                  value={form.department_id}
+                  onChange={e => setForm({ ...form, department_id: e.target.value })}
+                  className={inputClass}
+                >
+                  <option value="">—</option>
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+            )}
 
             <div>
               <label htmlFor="abs-reason" className={labelClass}>

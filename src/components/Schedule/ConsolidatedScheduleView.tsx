@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -9,6 +9,8 @@ import { exportScheduleToExcel } from '../../utils/excelExport';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import ToastContainer from '../Common/ToastContainer';
 import EmptyState from '../Common/EmptyState';
+import CreateAbsenceModal, { AbsenceInitialData } from '../Absenteeism/CreateAbsenceModal';
+import type { AbsenceReason } from '../Absenteeism/AbsenteeismView';
 import { useToast } from '../../hooks/useToast';
 
 interface Professional {
@@ -107,6 +109,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   const [actionsMenuPosition, setActionsMenuPosition] = useState({ x: 0, y: 0 });
   const [showAutoFillModal, setShowAutoFillModal] = useState(false);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
+  // Absenteísmo
+  const [showAbsenceModal, setShowAbsenceModal] = useState(false);
+  const [absenceInitialData, setAbsenceInitialData] = useState<AbsenceInitialData | undefined>(undefined);
+  const [absenceReasons, setAbsenceReasons] = useState<AbsenceReason[]>([]);
   const [expandedSections, setExpandedSections] = useState({
     allDays: false,
     oddDays: false,
@@ -192,6 +198,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   useEffect(() => {
     loadDepartments();
     loadSchedules();
+    loadAbsenceReasons();
   }, []);
 
   useEffect(() => {
@@ -199,6 +206,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       loadHolidays();
     }
   }, [selectedMonth]);
+
+  const loadAbsenceReasons = async () => {
+    const { data } = await supabase
+      .from('absence_reasons')
+      .select('*')
+      .eq('active', true)
+      .order('name');
+    if (data) setAbsenceReasons(data);
+  };
 
   useEffect(() => {
     if (initialScheduleId && schedules.length > 0) {
@@ -1478,6 +1494,22 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                   Adicionar Profissional
                 </button>
               )}
+              {currentSchedule && (
+                <button
+                  onClick={() => {
+                    setAbsenceInitialData({
+                      department_id: selectedDepartment,
+                      schedule_id: currentSchedule.id,
+                      start_date: new Date().toISOString().slice(0, 10),
+                    });
+                    setShowAbsenceModal(true);
+                  }}
+                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-red-700 border border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                >
+                  <CalendarX className="w-4 h-4" aria-hidden="true" />
+                  Registrar Ausência
+                </button>
+              )}
               {!isLocked && (
                 <button
                   onClick={copyPreviousMonth}
@@ -2173,6 +2205,26 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
 
               <hr className="my-3 border-gray-300" />
 
+              {currentSchedule && (
+                <button
+                  onClick={() => {
+                    const profId = showActionsMenu!;
+                    setAbsenceInitialData({
+                      professional_id: profId,
+                      department_id: selectedDepartment,
+                      schedule_id: currentSchedule.id,
+                      start_date: new Date().toISOString().slice(0, 10),
+                    });
+                    setShowAbsenceModal(true);
+                    setShowActionsMenu(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-700"
+                >
+                  <CalendarX className="w-4 h-4" />
+                  <span className="text-sm font-medium">Registrar Ausência</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   handleRemoveProfessional(showActionsMenu!);
@@ -2305,6 +2357,33 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         }
         onApply={applyAutoFillPatterns}
       />
+
+      {showAbsenceModal && (
+        <CreateAbsenceModal
+          absence={null}
+          reasons={absenceReasons}
+          departments={departments}
+          professionals={
+            // Profissionais do setor (ativos) — para o select do absence
+            allProfessionals.map(p => ({
+              id: p.id,
+              full_name: p.full_name,
+              department_id: selectedDepartment,
+            }))
+          }
+          initialData={absenceInitialData}
+          lockDepartment
+          onClose={() => {
+            setShowAbsenceModal(false);
+            setAbsenceInitialData(undefined);
+          }}
+          onSuccess={() => {
+            setShowAbsenceModal(false);
+            setAbsenceInitialData(undefined);
+            toast.success('Ausência registrada com sucesso.');
+          }}
+        />
+      )}
 
       <ConfirmDialog
         isOpen={pendingConfirm !== null}
