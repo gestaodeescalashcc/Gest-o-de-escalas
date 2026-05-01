@@ -2,6 +2,8 @@
 -- IMPORTAR REGISTROS DA PLANILHA DE ABSENTEISMO (CSV original)
 --
 -- Pré-requisito: rodar antes o create_absenteeism_tables.sql
+--
+-- IMPORTANTE: registros antes de 2026 foram filtrados (eram erros de digitação)
 -- =============================================================================
 
 DO $$
@@ -90,7 +92,6 @@ BEGIN
       ('Ana Maria', 'ana', 'maria', false, 'Técnicos de Enfermagem', 'SD', 12.0, 'Falta injustificada', '2026-04-21'::date, '2026-04-21'::date, false, false, '', '', false, ''),
       ('Thaina Santana', 'thaina', 'santana', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-21'::date, '2026-04-21'::date, false, false, '', '', false, ''),
       ('Emerson Silva Filho', 'emerson', 'filho', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-21'::date, '2026-04-21'::date, false, false, '', '', false, ''),
-      ('Taina B de Jesus Trigueiros Sá', 'taina', 'sa', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2016-04-21'::date, '2016-04-21'::date, false, false, '', '', false, ''),
       ('Bruno Cerqueira e Silva', 'bruno', 'silva', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-22'::date, '2026-04-22'::date, false, false, '', '', false, ''),
       ('Rosilene Lage de Almeida', 'rosilene', 'almeida', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-22'::date, '2026-04-22'::date, false, false, '', '', false, ''),
       ('Tatiane Santos', 'tatiane', 'santos', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-22'::date, '2026-04-22'::date, false, false, '', '', false, ''),
@@ -112,21 +113,18 @@ BEGIN
            data_inicio, data_fim, justificada, cobertura,
            cov_first, cov_last, cov_single, observacao)
   ) LOOP
-    -- Profissional principal: se tem 2 palavras, match exato; se 1 só, match ILIKE
-    IF rec.single THEN
+    IF rec.single_word THEN
       SELECT id INTO v_prof_id
       FROM professionals
       WHERE department_id IN (SELECT id FROM departments WHERE name LIKE '%Enfermagem%' OR name LIKE '%Enfermeiros%')
         AND unaccent(lower(split_part(full_name, ' ', 1))) = rec.first_word
-      ORDER BY active DESC, created_at
-      LIMIT 1;
+      ORDER BY active DESC, created_at LIMIT 1;
     ELSE
       SELECT id INTO v_prof_id
       FROM professionals
       WHERE unaccent(lower(split_part(full_name, ' ', 1))) = rec.first_word
         AND unaccent(lower(reverse(split_part(reverse(full_name), ' ', 1)))) = rec.last_word
-      ORDER BY active DESC, created_at
-      LIMIT 1;
+      ORDER BY active DESC, created_at LIMIT 1;
     END IF;
 
     IF v_prof_id IS NULL THEN
@@ -135,31 +133,26 @@ BEGIN
       CONTINUE;
     END IF;
 
-    -- Cobertura
     v_cov_prof_id := NULL;
     IF rec.cov_first IS NOT NULL AND rec.cov_first <> '' THEN
       IF rec.cov_single THEN
-        SELECT id INTO v_cov_prof_id
-        FROM professionals
+        SELECT id INTO v_cov_prof_id FROM professionals
         WHERE active = true
           AND department_id IN (SELECT id FROM departments WHERE name LIKE '%Enfermagem%' OR name LIKE '%Enfermeiros%')
           AND unaccent(lower(split_part(full_name, ' ', 1))) = rec.cov_first
-        ORDER BY created_at
-        LIMIT 1;
+        ORDER BY created_at LIMIT 1;
       ELSE
-        SELECT id INTO v_cov_prof_id
-        FROM professionals
+        SELECT id INTO v_cov_prof_id FROM professionals
         WHERE active = true
           AND unaccent(lower(split_part(full_name, ' ', 1))) = rec.cov_first
           AND unaccent(lower(reverse(split_part(reverse(full_name), ' ', 1)))) = rec.cov_last
-        ORDER BY created_at
-        LIMIT 1;
+        ORDER BY created_at LIMIT 1;
       END IF;
     END IF;
 
     SELECT id INTO v_reason_id FROM absence_reasons WHERE name = rec.motivo LIMIT 1;
     IF v_reason_id IS NULL THEN
-      RAISE NOTICE 'Motivo não cadastrado: % (registro de %)', rec.motivo, rec.sheet_name;
+      RAISE NOTICE 'Motivo não cadastrado: %', rec.motivo;
       CONTINUE;
     END IF;
 
