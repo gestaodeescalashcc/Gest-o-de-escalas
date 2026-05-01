@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import ToastContainer from '../Common/ToastContainer';
 import Modal from '../Common/Modal';
+import SearchableSelect from '../Common/SearchableSelect';
 import { AbsenceReason, Absence } from './AbsenteeismView';
 
 interface DeptOption { id: string; name: string }
@@ -161,18 +162,17 @@ export default function CreateAbsenceModal({
               <label htmlFor="abs-prof" className={labelClass}>
                 Profissional <span className="text-red-500">*</span>
               </label>
-              <select
+              <SearchableSelect
                 id="abs-prof"
                 required
                 value={form.professional_id}
-                onChange={e => setForm({ ...form, professional_id: e.target.value })}
-                className={inputClass}
-              >
-                <option value="">Selecione um profissional</option>
-                {filteredProfs.map(p => (
-                  <option key={p.id} value={p.id}>{p.full_name}</option>
-                ))}
-              </select>
+                onChange={v => setForm({ ...form, professional_id: v })}
+                placeholder="Selecione ou busque um profissional"
+                options={filteredProfs.map(p => ({
+                  value: p.id,
+                  label: p.full_name,
+                }))}
+              />
             </div>
 
             <div>
@@ -299,17 +299,16 @@ export default function CreateAbsenceModal({
             {form.has_coverage && (
               <div className="md:col-span-2">
                 <label htmlFor="abs-cov" className={labelClass}>Quem cobriu?</label>
-                <select
+                <SearchableSelect
                   id="abs-cov"
                   value={form.coverage_professional_id ?? ''}
-                  onChange={e => setForm({ ...form, coverage_professional_id: e.target.value })}
-                  className={inputClass}
-                >
-                  <option value="">—</option>
-                  {filteredCoverageProfs.map(p => (
-                    <option key={p.id} value={p.id}>{p.full_name}</option>
-                  ))}
-                </select>
+                  onChange={v => setForm({ ...form, coverage_professional_id: v })}
+                  placeholder="Selecione ou busque o profissional que cobriu"
+                  options={filteredCoverageProfs.map(p => ({
+                    value: p.id,
+                    label: p.full_name,
+                  }))}
+                />
               </div>
             )}
 
