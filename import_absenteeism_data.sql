@@ -157,12 +157,18 @@ BEGIN
     END IF;
 
     INSERT INTO absences (
-      professional_id, department_id, reason_id,
+      professional_id, department_id, schedule_id, reason_id,
       start_date, end_date, shift_type, hours_per_day,
       is_justified, has_coverage, coverage_professional_id,
       observation, created_by
     ) VALUES (
-      v_prof_id, v_dept_tec, v_reason_id,
+      v_prof_id, v_dept_tec,
+      -- Vincular à escala mensal correspondente (mesmo setor + mesmo mês)
+      (SELECT id FROM monthly_schedules
+        WHERE department_id = v_dept_tec
+        AND date_trunc('month', month) = date_trunc('month', rec.data_inicio)
+        LIMIT 1),
+      v_reason_id,
       rec.data_inicio, rec.data_fim, rec.turno, rec.horas,
       rec.justificada, rec.cobertura, v_cov_prof_id,
       NULLIF(rec.observacao, ''), v_admin_id

@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS absences (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   professional_id uuid NOT NULL REFERENCES professionals(id) ON DELETE CASCADE,
   department_id uuid REFERENCES departments(id),
+  schedule_id uuid REFERENCES monthly_schedules(id) ON DELETE SET NULL,
   reason_id uuid NOT NULL REFERENCES absence_reasons(id),
   start_date date NOT NULL,
   end_date date NOT NULL,
@@ -70,6 +71,7 @@ CREATE INDEX IF NOT EXISTS idx_absences_prof_dates
 CREATE INDEX IF NOT EXISTS idx_absences_dept ON absences(department_id);
 CREATE INDEX IF NOT EXISTS idx_absences_reason ON absences(reason_id);
 CREATE INDEX IF NOT EXISTS idx_absences_start_date ON absences(start_date);
+CREATE INDEX IF NOT EXISTS idx_absences_schedule ON absences(schedule_id);
 
 -- Trigger updated_at
 CREATE TRIGGER trg_absences_updated_at

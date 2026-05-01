@@ -32,6 +32,7 @@ export default function CreateAbsenceModal({
   const [form, setForm] = useState({
     professional_id: absence?.professional_id ?? '',
     department_id: absence?.department_id ?? '',
+    schedule_id: (absence as any)?.schedule_id ?? '',
     reason_id: absence?.reason_id ?? '',
     start_date: absence?.start_date ?? new Date().toISOString().slice(0, 10),
     end_date: absence?.end_date ?? new Date().toISOString().slice(0, 10),
@@ -42,6 +43,7 @@ export default function CreateAbsenceModal({
     coverage_professional_id: absence?.coverage_professional_id ?? '',
     observation: absence?.observation ?? '',
   });
+  const [matchedSchedule, setMatchedSchedule] = useState<{ id: string; name: string } | null>(null);
 
   const isEdit = absence !== null;
 
@@ -64,6 +66,34 @@ export default function CreateAbsenceModal({
       }
     }
   }, [form.reason_id]);
+
+  // Quando muda setor ou data, buscar escala mensal correspondente
+  useEffect(() => {
+    if (!form.department_id || !form.start_date) {
+      setMatchedSchedule(null);
+      setForm(f => ({ ...f, schedule_id: '' }));
+      return;
+    }
+    let cancel = false;
+    (async () => {
+      const monthStart = form.start_date.slice(0, 7) + '-01';
+      const { data, error } = await supabase
+        .from('monthly_schedules')
+        .select('id, name')
+        .eq('department_id', form.department_id)
+        .eq('month', monthStart)
+        .maybeSingle();
+      if (cancel) return;
+      if (!error && data) {
+        setMatchedSchedule(data);
+        setForm(f => ({ ...f, schedule_id: data.id }));
+      } else {
+        setMatchedSchedule(null);
+        setForm(f => ({ ...f, schedule_id: '' }));
+      }
+    })();
+    return () => { cancel = true; };
+  }, [form.department_id, form.start_date]);
 
   // Filtrar profissionais pelo setor selecionado (se houver)
   const filteredProfs = useMemo(() => {
@@ -100,6 +130,7 @@ export default function CreateAbsenceModal({
       const payload = {
         professional_id: form.professional_id,
         department_id: form.department_id || null,
+        schedule_id: form.schedule_id || null,
         reason_id: form.reason_id,
         start_date: form.start_date,
         end_date: form.end_date,
@@ -325,11 +356,46 @@ export default function CreateAbsenceModal({
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex gap-2">
-            <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-            <p className="text-sm text-blue-900">
-              Este registro será aplicado sobre a escala planejada na visualização da escala realizada.
-            </p>
+          <div
+            className={`rounded-lg p-3 flex gap-2 border ${
+              matchedSchedule
+                ? 'bg-emerald-50 border-emerald-200'
+                : form.department_id && form.start_date
+                ? 'bg-amber-50 border-amber-200'
+                : 'bg-blue-50 border-blue-200'
+            }`}
+          >
+            <Info
+              className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                matchedSchedule
+                  ? 'text-emerald-600'
+                  : form.department_id && form.start_date
+                  ? 'text-amber-600'
+                  : 'text-blue-600'
+              }`}
+              aria-hidden="true"
+            />
+            <div className="flex-1 text-sm">
+              {matchedSchedule ? (
+                <>
+                  <p className="font-medium text-emerald-900">
+                    Vinculado à escala: {matchedSchedule.name}
+                  </p>
+                  <p className="text-emerald-800 mt-0.5">
+                    Esta ausência será aplicada sobre essa escala ao gerar a versão realizada.
+                  </p>
+                </>
+              ) : form.department_id && form.start_date ? (
+                <p className="text-amber-900">
+                  Não há escala mensal cadastrada para este setor neste mês. O registro será criado
+                  sem vínculo — você pode vincular depois.
+                </p>
+              ) : (
+                <p className="text-blue-900">
+                  Selecione o setor e a data início para identificar a escala.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200">
