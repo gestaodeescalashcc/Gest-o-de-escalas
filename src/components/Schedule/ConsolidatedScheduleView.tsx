@@ -73,7 +73,7 @@ interface ConsolidatedScheduleViewProps {
 
 export default function ConsolidatedScheduleView({ initialScheduleId }: ConsolidatedScheduleViewProps) {
   const { user } = useAuth();
-  const { isAdmin, canUpdate, allowedDepartments } = usePermissions();
+  const { isAdmin, canUpdate, canCreate, allowedDepartments } = usePermissions();
   const { toasts, toast, removeToast } = useToast();
   const [pendingConfirm, setPendingConfirm] = useState<{ title: string; message: string; action: () => void } | null>(null);
   const [statusChangeDialog, setStatusChangeDialog] = useState<{
@@ -545,12 +545,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     });
 
   const handleCellClick = (profId: string, day: number, event: React.MouseEvent) => {
-    if (!editMode) return;
-    if (isLocked) {
-      toast.warning('Esta escala está bloqueada. Reabra-a para editar.');
-      return;
-    }
-
+    // O menu sempre abre — as opções dentro dele variam por permissão e estado
+    // (modo edição: turnos+remover; modo visualização ou escala bloqueada:
+    // apenas Trocar e Registrar Ausência).
     const rect = (event.target as HTMLElement).getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const spaceBelow = viewportHeight - rect.bottom;
@@ -1922,7 +1919,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                                 className={`border border-gray-300 px-1 py-2 text-center font-semibold ${
                                   code ? getCellColorClass(code) : ''
                                 } ${isWeekend && !code ? 'bg-gray-100' : ''} ${
-                                  editMode ? 'cursor-pointer hover:ring-2 hover:ring-blue-400' : ''
+                                  'cursor-pointer hover:ring-2 hover:ring-blue-400'
                                 }`}
                                 style={{ minWidth: '32px', maxWidth: '32px' }}
                               >
@@ -2059,73 +2056,87 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             }}
           >
             <div className="py-2 space-y-1 overflow-y-auto flex-1">
-              <button
-                onClick={() => setQuickMenuExpanded(prev => ({ ...prev, shifts: !prev.shifts }))}
-                className="w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 rounded transition"
-              >
-                <div className="flex items-center gap-2">
-                  {quickMenuExpanded.shifts ? (
-                    <ChevronDown className="w-4 h-4 text-blue-600" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-blue-600" />
-                  )}
-                  <span className="text-sm font-semibold text-gray-900">Turnos</span>
-                </div>
-              </button>
-
-              {quickMenuExpanded.shifts && (
-                <div className="space-y-1 px-2">
-                  {SHIFT_TYPES.filter(type => ['SN', 'SD', 'M', 'T', 'MT', 'P'].includes(type.code)).map(type => (
-                    <button
-                      key={type.code}
-                      onClick={() => handleShiftSelect(type)}
-                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left transition"
-                    >
-                      <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
-                        {type.code}
-                      </span>
-                      <span className="text-sm text-gray-700 flex-1">{type.name}</span>
-                      <span className="text-xs text-gray-500">{type.hours}h</span>
-                    </button>
-                  ))}
+              {/* Header informativo quando em modo visualização ou escala bloqueada */}
+              {(!editMode || isLocked) && (
+                <div className="px-3 py-1.5 mx-2 mb-1 bg-gray-50 rounded text-xs text-gray-600">
+                  {isLocked
+                    ? 'Escala publicada — somente registrar ausência ou trocar é permitido.'
+                    : 'Modo visualização — entre em edição para alterar turnos.'}
                 </div>
               )}
 
-              <button
-                onClick={() => setQuickMenuExpanded(prev => ({ ...prev, absences: !prev.absences }))}
-                className="w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 rounded transition"
-              >
-                <div className="flex items-center gap-2">
-                  {quickMenuExpanded.absences ? (
-                    <ChevronDown className="w-4 h-4 text-blue-600" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-blue-600" />
-                  )}
-                  <span className="text-sm font-semibold text-gray-900">Ausências Justificadas</span>
-                </div>
-              </button>
+              {/* TURNOS / AUSÊNCIAS BUILT-IN — só em modo edição com escala não bloqueada */}
+              {editMode && !isLocked && (
+                <>
+                  <button
+                    onClick={() => setQuickMenuExpanded(prev => ({ ...prev, shifts: !prev.shifts }))}
+                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 rounded transition"
+                  >
+                    <div className="flex items-center gap-2">
+                      {quickMenuExpanded.shifts ? (
+                        <ChevronDown className="w-4 h-4 text-blue-600" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-blue-600" />
+                      )}
+                      <span className="text-sm font-semibold text-gray-900">Turnos</span>
+                    </div>
+                  </button>
 
-              {quickMenuExpanded.absences && (
-                <div className="space-y-1 px-2">
-                  {SHIFT_TYPES.filter(type => ['FG', 'FR', 'FE', 'FA', 'LP', 'LM', 'LG', 'AS'].includes(type.code)).map(type => (
-                    <button
-                      key={type.code}
-                      onClick={() => handleShiftSelect(type)}
-                      className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left transition"
-                    >
-                      <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
-                        {type.code}
-                      </span>
-                      <span className="text-sm text-gray-700 flex-1">{type.name}</span>
-                      <span className="text-xs text-gray-500">{type.hours}h</span>
-                    </button>
-                  ))}
-                </div>
+                  {quickMenuExpanded.shifts && (
+                    <div className="space-y-1 px-2">
+                      {SHIFT_TYPES.filter(type => ['SN', 'SD', 'M', 'T', 'MT', 'P'].includes(type.code)).map(type => (
+                        <button
+                          key={type.code}
+                          onClick={() => handleShiftSelect(type)}
+                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left transition"
+                        >
+                          <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
+                            {type.code}
+                          </span>
+                          <span className="text-sm text-gray-700 flex-1">{type.name}</span>
+                          <span className="text-xs text-gray-500">{type.hours}h</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setQuickMenuExpanded(prev => ({ ...prev, absences: !prev.absences }))}
+                    className="w-full flex items-center justify-between px-3 py-2 hover:bg-blue-50 rounded transition"
+                  >
+                    <div className="flex items-center gap-2">
+                      {quickMenuExpanded.absences ? (
+                        <ChevronDown className="w-4 h-4 text-blue-600" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-blue-600" />
+                      )}
+                      <span className="text-sm font-semibold text-gray-900">Ausências Justificadas</span>
+                    </div>
+                  </button>
+
+                  {quickMenuExpanded.absences && (
+                    <div className="space-y-1 px-2">
+                      {SHIFT_TYPES.filter(type => ['FG', 'FR', 'FE', 'FA', 'LP', 'LM', 'LG', 'AS'].includes(type.code)).map(type => (
+                        <button
+                          key={type.code}
+                          onClick={() => handleShiftSelect(type)}
+                          className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded text-left transition"
+                        >
+                          <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
+                            {type.code}
+                          </span>
+                          <span className="text-sm text-gray-700 flex-1">{type.name}</span>
+                          <span className="text-xs text-gray-500">{type.hours}h</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <hr className="my-2 mx-2" />
+                </>
               )}
 
-              <hr className="my-2 mx-2" />
-
-              {/* Trocar/Reatribuir — só aparece se a célula tem turno planejado */}
+              {/* Trocar/Reatribuir — sempre disponível se a célula tem turno e usuário tem permissão */}
               {selectedCell && (() => {
                 const dateStr = (() => {
                   const [year, month] = selectedMonth.split('-');
@@ -2135,6 +2146,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                   s => s.professional_id === selectedCell.profId && s.shift_date === dateStr
                 );
                 if (!existingShift) return null;
+                if (!canCreate('swaps' as any)) return null;
                 return (
                   <button
                     onClick={() => {
@@ -2151,7 +2163,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 );
               })()}
 
-              {selectedCell && currentSchedule && (
+              {/* Registrar Ausência — sempre disponível se usuário tem permissão de absences */}
+              {selectedCell && currentSchedule && canCreate('absences' as any) && (
                 <button
                   onClick={() => {
                     const [year, month] = selectedMonth.split('-');
@@ -2176,13 +2189,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 </button>
               )}
 
-              <button
-                onClick={handleDeleteShift}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-600"
-              >
-                <X className="w-4 h-4" />
-                <span className="text-sm">Remover</span>
-              </button>
+              {/* Remover turno — só em modo edição */}
+              {editMode && !isLocked && (
+                <button
+                  onClick={handleDeleteShift}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-600"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="text-sm">Remover</span>
+                </button>
+              )}
             </div>
           </div>
         </>
