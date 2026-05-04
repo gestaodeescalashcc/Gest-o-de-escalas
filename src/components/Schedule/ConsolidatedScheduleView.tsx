@@ -396,7 +396,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     try {
       const [year, month] = selectedMonth.split('-');
       const startDate = `${year}-${month}-01`;
-      const endDate = `${year}-${month}-31`;
+      // Último dia real do mês (evita 30/31 inválidos)
+      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+      const endDate = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
       const { data, error } = await supabase
         .from('holidays')
