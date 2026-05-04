@@ -2051,7 +2051,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '120px', left: '250px' }}>
                           FUNÇÃO
                         </th>
-                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold whitespace-nowrap" style={{ minWidth: '60px' }}>
+                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '60px', left: '370px' }}>
                           DIAS<br/>TRAB.
                         </th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
@@ -2069,7 +2069,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         )}
                       </tr>
                       <tr className="bg-gray-50">
-                        <th colSpan={4} className="border border-gray-300 px-2 py-1"></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky left-0 bg-gray-50 z-20" style={{ minWidth: '70px' }}></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '180px', left: '70px' }}></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '120px', left: '250px' }}></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '60px', left: '370px' }}></th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
                           <th key={day} className="border border-gray-300 px-1 py-1 text-center font-medium text-gray-600" style={{ fontSize: '9px' }}>
                             {getDayOfWeek(day)}
@@ -2093,7 +2096,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                           <td className={`border border-gray-300 px-2 py-2 sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '250px' }}>
                             {prof.category?.name}
                           </td>
-                          <td className="border border-gray-300 px-2 py-2 text-center font-semibold">
+                          <td className={`border border-gray-300 px-2 py-2 text-center font-semibold sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '370px' }}>
                             {calculateWorkDays(prof.id)}
                           </td>
                           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
