@@ -72,7 +72,7 @@ interface ConsolidatedScheduleViewProps {
 
 export default function ConsolidatedScheduleView({ initialScheduleId }: ConsolidatedScheduleViewProps) {
   const { user } = useAuth();
-  const { isAdmin, canUpdate } = usePermissions();
+  const { isAdmin, canUpdate, allowedDepartments } = usePermissions();
   const { toasts, toast, removeToast } = useToast();
   const [pendingConfirm, setPendingConfirm] = useState<{ title: string; message: string; action: () => void } | null>(null);
   const [statusChangeDialog, setStatusChangeDialog] = useState<{
@@ -198,9 +198,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
 
   useEffect(() => {
     loadDepartments();
-    loadSchedules();
     loadAbsenceReasons();
   }, []);
+
+  // Recarregar escalas quando o filtro por allowedDepartments mudar
+  useEffect(() => {
+    loadSchedules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedDepartments]);
 
   useEffect(() => {
     if (selectedMonth) {
@@ -237,10 +242,18 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
 
   const loadSchedules = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('monthly_schedules')
         .select('*')
         .order('month', { ascending: false });
+
+      // Filtrar pelos setores permitidos quando o usuário não é admin
+      // e tem allowed_departments definido (não NULL = sem restrição)
+      if (!isAdmin() && allowedDepartments && allowedDepartments.length > 0) {
+        query = query.in('department_id', allowedDepartments);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Erro ao carregar escalas:', error);
@@ -254,6 +267,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
           setSelectedDepartment(data[0].department_id);
           setSelectedMonth(data[0].month.slice(0, 7));
         }
+      } else {
+        setSchedules([]);
       }
     } catch (err) {
       console.error('Erro inesperado ao carregar escalas:', err);
@@ -2105,6 +2120,32 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               )}
 
               <hr className="my-2 mx-2" />
+
+              {selectedCell && currentSchedule && (
+                <button
+                  onClick={() => {
+                    const [year, month] = selectedMonth.split('-');
+                    const dateStr = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
+                    const existingCode = getShiftCode(selectedCell.profId, selectedCell.day);
+                    setAbsenceInitialData({
+                      professional_id: selectedCell.profId,
+                      department_id: selectedDepartment,
+                      schedule_id: currentSchedule.id,
+                      start_date: dateStr,
+                      end_date: dateStr,
+                      shift_type: existingCode || 'SD',
+                    });
+                    setShowAbsenceModal(true);
+                    setShowQuickMenu(false);
+                    setSelectedCell(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-700"
+                >
+                  <CalendarX className="w-4 h-4" />
+                  <span className="text-sm font-medium">Registrar Ausência</span>
+                </button>
+              )}
+
               <button
                 onClick={handleDeleteShift}
                 className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-600"

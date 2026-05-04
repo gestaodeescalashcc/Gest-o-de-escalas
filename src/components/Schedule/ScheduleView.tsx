@@ -7,6 +7,7 @@ import CreateScheduleModal from './CreateScheduleModal';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import ToastContainer from '../Common/ToastContainer';
 import { useToast } from '../../hooks/useToast';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface Shift {
   id: string;
@@ -59,6 +60,7 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const { toasts, toast, removeToast } = useToast();
+  const { isAdmin, allowedDepartments } = usePermissions();
 
   useEffect(() => {
     loadDepartments();
@@ -70,7 +72,8 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
     } else {
       loadShifts();
     }
-  }, [viewMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, allowedDepartments]);
 
   const loadDepartments = async () => {
     try {
@@ -88,7 +91,7 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
   const loadSchedules = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('monthly_schedules')
         .select(`
           *,
@@ -96,6 +99,13 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
         `)
         .order('month', { ascending: false })
         .order('created_at', { ascending: false });
+
+      // Filtrar pelos setores permitidos quando usuário não é admin
+      if (!isAdmin() && allowedDepartments && allowedDepartments.length > 0) {
+        query = query.in('department_id', allowedDepartments);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       if (data) setSchedules(data as any);
