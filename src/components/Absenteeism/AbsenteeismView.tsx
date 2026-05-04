@@ -91,18 +91,9 @@ export default function AbsenteeismView() {
   const [filterJustified, setFilterJustified] = useState<'all' | 'yes' | 'no'>('all');
   const [filterCoverage, setFilterCoverage] = useState<'all' | 'yes' | 'no'>('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [groupByPerson, setGroupByPerson] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem('medscale.absenteeism.groupByPerson');
-      // padrão: true (visão por pessoa). Só fica false se o usuário desligou explicitamente.
-      return stored === null ? true : stored === '1';
-    } catch { return true; }
-  });
+  // Visão "Por pessoa" sempre ativa (não há mais alternância).
+  const groupByPerson = true;
   const [expandedPersons, setExpandedPersons] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    try { localStorage.setItem('medscale.absenteeism.groupByPerson', groupByPerson ? '1' : '0'); } catch {}
-  }, [groupByPerson]);
 
   function togglePerson(id: string) {
     setExpandedPersons(prev => {
@@ -334,20 +325,6 @@ export default function AbsenteeismView() {
                 className="w-full min-h-[44px] pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <button
-              type="button"
-              onClick={() => setGroupByPerson(g => !g)}
-              aria-pressed={groupByPerson}
-              title="Agrupar registros pelo profissional"
-              className={`inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-lg font-medium transition ${
-                groupByPerson
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <UsersIcon className="w-4 h-4" aria-hidden="true" />
-              Por pessoa
-            </button>
             <button
               type="button"
               onClick={() => setShowFilters(s => !s)}
