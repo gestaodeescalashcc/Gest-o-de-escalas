@@ -273,14 +273,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     (data ?? []).forEach((s: any) => {
       const originalDate = s.original_shift?.shift_date;
       const offeredDate = s.offered_shift?.shift_date;
-      // Original: estava com o solicitante, agora está com o destinatário (e vice-versa)
-      if (originalDate && originalDate >= monthStart && originalDate <= monthEnd) {
-        if (s.target_professional_id) set.add(`${s.target_professional_id}|${originalDate}`);
-        if (s.requesting_professional_id) set.add(`${s.requesting_professional_id}|${originalDate}`);
+      // Marca apenas a célula onde o turno está AGORA (o novo dono):
+      //  - Plantão original passou para o destinatário
+      //  - Plantão oferecido passou para o solicitante
+      if (originalDate && originalDate >= monthStart && originalDate <= monthEnd && s.target_professional_id) {
+        set.add(`${s.target_professional_id}|${originalDate}`);
       }
-      if (offeredDate && offeredDate >= monthStart && offeredDate <= monthEnd) {
-        if (s.requesting_professional_id) set.add(`${s.requesting_professional_id}|${offeredDate}`);
-        if (s.target_professional_id) set.add(`${s.target_professional_id}|${offeredDate}`);
+      if (offeredDate && offeredDate >= monthStart && offeredDate <= monthEnd && s.requesting_professional_id) {
+        set.add(`${s.requesting_professional_id}|${offeredDate}`);
       }
     });
     setSwappedCells(set);
