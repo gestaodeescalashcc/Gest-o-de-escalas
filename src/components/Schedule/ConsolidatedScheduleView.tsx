@@ -253,29 +253,47 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     const lastDay = new Date(year, month, 0).getDate();
     const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    const { data, error } = await supabase
+    // 1) Pega os swaps aprovados (sem JOIN para evitar surpresas no shape)
+    const { data: swaps, error: swapsErr } = await supabase
       .from('shift_swaps')
-      .select(`
-        requesting_professional_id,
-        target_professional_id,
-        original_shift:shifts!shift_swaps_original_shift_id_fkey ( shift_date ),
-        offered_shift:shifts!shift_swaps_offered_shift_id_fkey ( shift_date )
-      `)
+      .select('requesting_professional_id, target_professional_id, original_shift_id, offered_shift_id')
       .eq('status', 'Aprovado');
 
-    if (error) {
-      console.error('Erro ao carregar trocas:', error);
+    if (swapsErr) {
+      console.error('Erro ao carregar trocas:', swapsErr);
       setSwappedCells(new Set());
       return;
     }
 
+    // 2) Coleta todos os shift_ids envolvidos e busca as datas em uma query
+    const shiftIds = new Set<string>();
+    (swaps ?? []).forEach((s: any) => {
+      if (s.original_shift_id) shiftIds.add(s.original_shift_id);
+      if (s.offered_shift_id) shiftIds.add(s.offered_shift_id);
+    });
+    if (shiftIds.size === 0) {
+      console.log('[swaps] mês:', monthStr, '| nenhuma troca aprovada');
+      setSwappedCells(new Set());
+      return;
+    }
+    const { data: shiftsData, error: shiftsErr } = await supabase
+      .from('shifts')
+      .select('id, shift_date')
+      .in('id', Array.from(shiftIds));
+
+    if (shiftsErr) {
+      console.error('Erro ao carregar shifts das trocas:', shiftsErr);
+      setSwappedCells(new Set());
+      return;
+    }
+    const dateById = new Map<string, string>();
+    (shiftsData ?? []).forEach((sh: any) => dateById.set(sh.id, sh.shift_date));
+
+    // 3) Para cada swap, marca a célula do NOVO dono em cada um dos 2 dias
     const set = new Set<string>();
-    (data ?? []).forEach((s: any) => {
-      const originalDate = s.original_shift?.shift_date;
-      const offeredDate = s.offered_shift?.shift_date;
-      // Marca apenas a célula onde o turno está AGORA (o novo dono):
-      //  - Plantão original passou para o destinatário
-      //  - Plantão oferecido passou para o solicitante
+    (swaps ?? []).forEach((s: any) => {
+      const originalDate = s.original_shift_id ? dateById.get(s.original_shift_id) : undefined;
+      const offeredDate = s.offered_shift_id ? dateById.get(s.offered_shift_id) : undefined;
       if (originalDate && originalDate >= monthStart && originalDate <= monthEnd && s.target_professional_id) {
         set.add(`${s.target_professional_id}|${originalDate}`);
       }
@@ -283,6 +301,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         set.add(`${s.requesting_professional_id}|${offeredDate}`);
       }
     });
+    console.log('[swaps] mês:', monthStr, '| trocas aprovadas:', swaps?.length ?? 0, '| células marcadas:', set.size, [...set]);
     setSwappedCells(set);
   };
 
