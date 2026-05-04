@@ -92,7 +92,11 @@ export default function AbsenteeismView() {
   const [filterCoverage, setFilterCoverage] = useState<'all' | 'yes' | 'no'>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [groupByPerson, setGroupByPerson] = useState<boolean>(() => {
-    try { return localStorage.getItem('medscale.absenteeism.groupByPerson') === '1'; } catch { return false; }
+    try {
+      const stored = localStorage.getItem('medscale.absenteeism.groupByPerson');
+      // padrão: true (visão por pessoa). Só fica false se o usuário desligou explicitamente.
+      return stored === null ? true : stored === '1';
+    } catch { return true; }
   });
   const [expandedPersons, setExpandedPersons] = useState<Set<string>>(new Set());
 
