@@ -466,6 +466,37 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                   </div>
 
                   <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {/* Cessão simples — primeira opção (amarelo, com aviso) */}
+                    <button
+                      onClick={() => setFormData({ ...formData, offered_shift_id: '' })}
+                      className={`w-full text-left p-4 rounded-lg border-2 transition ${
+                        !formData.offered_shift_id
+                          ? 'border-amber-400 bg-amber-50'
+                          : 'border-gray-200 hover:border-amber-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${!formData.offered_shift_id ? 'text-amber-600' : 'text-gray-400'}`} />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-gray-900">Não oferecer plantão (cessão simples)</span>
+                            {!formData.offered_shift_id && <CheckCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />}
+                          </div>
+                          <p className="text-xs text-gray-600 mt-1">
+                            <strong>Atenção:</strong> {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'Destinatário'} ganhará 1 plantão a mais
+                            e {getSelectedShift()?.professional.full_name?.split(' ')[0] ?? 'solicitante'} perderá 1 plantão.
+                            Use só quando há acordo de hora extra ou compensação.
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+
+                    <div className="flex items-center gap-3 my-2">
+                      <hr className="flex-1 border-gray-300" />
+                      <span className="text-xs text-gray-500 font-medium">OU FAÇA UMA TROCA RECÍPROCA</span>
+                      <hr className="flex-1 border-gray-300" />
+                    </div>
+
                     {getAvailableShiftsForOffer().map((shift) => (
                       <button
                         key={shift.id}
@@ -498,35 +529,9 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                       <div className="text-center py-8 px-4 text-gray-600 bg-gray-50 rounded-lg border border-gray-200">
                         <AlertCircle className="w-10 h-10 mx-auto mb-2 text-gray-400" />
                         <p className="font-medium">{getTargetProfessional()?.full_name ?? 'O destinatário'} não tem outros plantões agendados.</p>
-                        <p className="text-xs mt-1">Você só pode fazer cessão simples (abaixo).</p>
+                        <p className="text-xs mt-1">Só é possível cessão simples (acima).</p>
                       </div>
                     )}
-
-                    <hr className="my-3 border-gray-300" />
-
-                    <button
-                      onClick={() => setFormData({ ...formData, offered_shift_id: '' })}
-                      className={`w-full text-left p-4 rounded-lg border-2 transition ${
-                        !formData.offered_shift_id
-                          ? 'border-amber-400 bg-amber-50'
-                          : 'border-gray-200 hover:border-amber-300'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${!formData.offered_shift_id ? 'text-amber-600' : 'text-gray-400'}`} />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-gray-900">Não oferecer plantão (cessão simples)</span>
-                            {!formData.offered_shift_id && <CheckCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />}
-                          </div>
-                          <p className="text-xs text-gray-600 mt-1">
-                            <strong>Atenção:</strong> {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'Destinatário'} ganhará 1 plantão a mais
-                            e {getSelectedShift()?.professional.full_name?.split(' ')[0] ?? 'solicitante'} perderá 1 plantão.
-                            Use só quando há acordo de hora extra ou compensação.
-                          </p>
-                        </div>
-                      </div>
-                    </button>
                   </div>
                 </div>
               )}
