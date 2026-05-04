@@ -231,31 +231,46 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
 
     try {
       // 1. Inserir a troca já como Aprovada (registro de auditoria)
-      const { error: insertError } = await supabase.from('shift_swaps').insert({
-        original_shift_id: formData.original_shift_id,
-        requesting_professional_id: requestingProfId,
-        target_professional_id: formData.target_professional_id,
-        offered_shift_id: formData.offered_shift_id,
-        reason: formData.reason.trim() || 'Troca recíproca aprovada pelo coordenador',
-        status: 'Aprovado',
-        responded_at: now,
-        approved_by: user?.id,
-        approved_at: now,
-      });
+      // Usa .select() para detectar silent RLS failure (insert sem erro mas 0 rows)
+      const { data: inserted, error: insertError } = await supabase
+        .from('shift_swaps')
+        .insert({
+          original_shift_id: formData.original_shift_id,
+          requesting_professional_id: requestingProfId,
+          target_professional_id: formData.target_professional_id,
+          offered_shift_id: formData.offered_shift_id,
+          reason: formData.reason.trim() || 'Troca recíproca aprovada pelo coordenador',
+          status: 'Aprovado',
+          responded_at: now,
+          approved_by: user?.id,
+          approved_at: now,
+        })
+        .select('id');
       if (insertError) throw insertError;
+      if (!inserted || inserted.length === 0) {
+        throw new Error('A troca não foi registrada (RLS bloqueou). Verifique permissões de "schedules.create" para o seu perfil.');
+      }
 
       // 2. Aplicar imediatamente o swap recíproco nos shifts
-      const { error: e1 } = await supabase
+      const { data: u1, error: e1 } = await supabase
         .from('shifts')
         .update({ professional_id: formData.target_professional_id })
-        .eq('id', formData.original_shift_id);
+        .eq('id', formData.original_shift_id)
+        .select('id');
       if (e1) throw e1;
+      if (!u1 || u1.length === 0) {
+        throw new Error('Não foi possível atualizar o plantão original (RLS).');
+      }
 
-      const { error: e2 } = await supabase
+      const { data: u2, error: e2 } = await supabase
         .from('shifts')
         .update({ professional_id: requestingProfId })
-        .eq('id', formData.offered_shift_id);
+        .eq('id', formData.offered_shift_id)
+        .select('id');
       if (e2) throw e2;
+      if (!u2 || u2.length === 0) {
+        throw new Error('Não foi possível atualizar o plantão oferecido (RLS).');
+      }
 
       toast.success('Troca aprovada e plantões atualizados.');
       onSuccess();

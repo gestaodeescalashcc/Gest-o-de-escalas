@@ -2,8 +2,6 @@
 -- IMPORTAR REGISTROS DA PLANILHA DE ABSENTEISMO (CSV original)
 --
 -- Pré-requisito: rodar antes o create_absenteeism_tables.sql
---
--- IMPORTANTE: registros antes de 2026 foram filtrados (eram erros de digitação)
 -- =============================================================================
 
 DO $$
@@ -82,46 +80,20 @@ BEGIN
       ('Emerson', 'emerson', '', true, 'Técnicos de Enfermagem', 'SN', 12.0, 'Atestado médico', '2026-04-14'::date, '2026-04-14'::date, false, false, '', '', false, ''),
       ('Daiane dos Anjos', 'daiane', 'anjos', false, 'Técnicos de Enfermagem', 'SD', 12.0, 'Falta injustificada', '2026-04-15'::date, '2026-04-15'::date, false, false, '', '', false, ''),
       ('Naiara Keli', 'naiara', 'keli', false, 'Técnicos de Enfermagem', 'SD', 12.0, 'Falta injustificada', '2026-04-15'::date, '2026-04-15'::date, false, false, '', '', false, ''),
-      ('Nilma', 'nilma', '', true, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-17'::date, '2026-04-17'::date, false, false, '', '', false, ''),
-      ('Patricia', 'patricia', '', true, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-18'::date, '2026-04-18'::date, false, false, '', '', false, ''),
-      ('Taina B de Jesus Trigueiros Sá', 'taina', 'sa', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-18'::date, '2026-04-18'::date, false, false, '', '', false, ''),
-      ('Andreia Silva de Lima', 'andreia', 'lima', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-19'::date, '2026-04-19'::date, false, false, '', '', false, ''),
-      ('Andreia Silva de Lima', 'andreia', 'lima', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-20'::date, '2026-04-20'::date, false, false, '', '', false, ''),
-      ('Thaina Santana', 'thaina', 'santana', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-20'::date, '2026-04-20'::date, false, false, '', '', false, ''),
-      ('Bruno Cerqueira e Silva', 'bruno', 'silva', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-20'::date, '2026-04-20'::date, false, false, '', '', false, ''),
       ('Ana Maria', 'ana', 'maria', false, 'Técnicos de Enfermagem', 'SD', 12.0, 'Falta injustificada', '2026-04-21'::date, '2026-04-21'::date, false, false, '', '', false, ''),
-      ('Thaina Santana', 'thaina', 'santana', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-21'::date, '2026-04-21'::date, false, false, '', '', false, ''),
-      ('Emerson Silva Filho', 'emerson', 'filho', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-21'::date, '2026-04-21'::date, false, false, '', '', false, ''),
-      ('Bruno Cerqueira e Silva', 'bruno', 'silva', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-22'::date, '2026-04-22'::date, false, false, '', '', false, ''),
-      ('Rosilene Lage de Almeida', 'rosilene', 'almeida', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-22'::date, '2026-04-22'::date, false, false, '', '', false, ''),
-      ('Tatiane Santos', 'tatiane', 'santos', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-22'::date, '2026-04-22'::date, false, false, '', '', false, ''),
-      ('Thaina Gomes', 'thaina', 'gomes', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-22'::date, '2026-04-22'::date, false, false, '', '', false, ''),
-      ('Wellington E dos Santos', 'wellington', 'santos', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-24'::date, '2026-04-24'::date, false, false, '', '', false, ''),
-      ('Andreia Silva de Lima', 'andreia', 'lima', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-24'::date, '2026-04-24'::date, false, false, '', '', false, ''),
-      ('Ana Paula Macedo Sa', 'ana', 'sa', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-24'::date, '2026-04-24'::date, false, false, '', '', false, ''),
-      ('Erica Ferreira Mendonça', 'erica', 'mendonca', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-25'::date, '2026-04-25'::date, false, false, '', '', false, ''),
-      ('Aline Cristiane', 'aline', 'cristiane', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-25'::date, '2026-04-25'::date, false, false, '', '', false, ''),
-      ('Andreia Silva de Lima', 'andreia', 'lima', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-25'::date, '2026-04-25'::date, false, false, '', '', false, ''),
-      ('Juliana Freitas Silva', 'juliana', 'silva', false, 'Técnicos de Enfermagem', 'SN', nan, 'Atestado médico', '2026-04-26'::date, '2026-04-26'::date, false, false, '', '', false, ''),
-      ('Juliana Freitas Silva', 'juliana', 'silva', false, 'Técnicos de Enfermagem', 'SD', nan, 'Atestado médico', '2026-04-27'::date, '2026-04-27'::date, false, false, '', '', false, ''),
-      ('Bruno Cerqueira e Silva', 'bruno', 'silva', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-27'::date, '2026-04-27'::date, false, false, '', '', false, ''),
-      ('Nilma dos Santos', 'nilma', 'santos', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-27'::date, '2026-04-27'::date, false, false, '', '', false, ''),
-      ('Taina B de Jesus Trigueiros Sá', 'taina', 'sa', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-28'::date, '2026-04-28'::date, false, false, '', '', false, ''),
-      ('Emerson Silva Filho', 'emerson', 'filho', false, 'Técnicos de Enfermagem', 'SD', nan, 'nan', '2026-04-28'::date, '2026-04-28'::date, false, false, '', '', false, ''),
-      ('Telma Regina de J do Monte', 'telma', 'monte', false, 'Técnicos de Enfermagem', 'SN', nan, 'nan', '2026-04-28'::date, '2026-04-28'::date, false, false, '', '', false, '')
+      ('Juliana Freitas Silva', 'juliana', 'silva', false, 'Técnicos de Enfermagem', 'SN', 12.0, 'Atestado médico', '2026-04-26'::date, '2026-04-26'::date, false, false, '', '', false, ''),
+      ('Juliana Freitas Silva', 'juliana', 'silva', false, 'Técnicos de Enfermagem', 'SD', 12.0, 'Atestado médico', '2026-04-27'::date, '2026-04-27'::date, false, false, '', '', false, '')
     ) AS t(sheet_name, first_word, last_word, single_word, setor, turno, horas, motivo,
            data_inicio, data_fim, justificada, cobertura,
            cov_first, cov_last, cov_single, observacao)
   ) LOOP
     IF rec.single_word THEN
-      SELECT id INTO v_prof_id
-      FROM professionals
+      SELECT id INTO v_prof_id FROM professionals
       WHERE department_id IN (SELECT id FROM departments WHERE name LIKE '%Enfermagem%' OR name LIKE '%Enfermeiros%')
         AND unaccent(lower(split_part(full_name, ' ', 1))) = rec.first_word
       ORDER BY active DESC, created_at LIMIT 1;
     ELSE
-      SELECT id INTO v_prof_id
-      FROM professionals
+      SELECT id INTO v_prof_id FROM professionals
       WHERE unaccent(lower(split_part(full_name, ' ', 1))) = rec.first_word
         AND unaccent(lower(reverse(split_part(reverse(full_name), ' ', 1)))) = rec.last_word
       ORDER BY active DESC, created_at LIMIT 1;
@@ -163,7 +135,6 @@ BEGIN
       observation, created_by
     ) VALUES (
       v_prof_id, v_dept_tec,
-      -- Vincular à escala mensal correspondente (mesmo setor + mesmo mês)
       (SELECT id FROM monthly_schedules
         WHERE department_id = v_dept_tec
         AND date_trunc('month', month) = date_trunc('month', rec.data_inicio)
