@@ -117,6 +117,18 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   // Troca de plantão
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [swapInitialShiftId, setSwapInitialShiftId] = useState<string | null>(null);
+  // Modo de visualização da escala (planejada vs realizada)
+  const [viewMode, setViewMode] = useState<'planejada' | 'realizada'>('planejada');
+  // Lista de absences do mês atual (com reason → shift_code)
+  const [scheduleAbsences, setScheduleAbsences] = useState<
+    Array<{
+      professional_id: string;
+      start_date: string;
+      end_date: string;
+      shift_code: string;
+      reason_name: string;
+    }>
+  >([]);
   const [expandedSections, setExpandedSections] = useState({
     allDays: false,
     oddDays: false,
@@ -226,6 +238,38 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     if (data) setAbsenceReasons(data);
   };
 
+  const loadScheduleAbsences = async (scheduleId: string) => {
+    if (!scheduleId) {
+      setScheduleAbsences([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('absences')
+      .select(`
+        professional_id,
+        start_date,
+        end_date,
+        reason:absence_reasons(name, shift_code)
+      `)
+      .eq('schedule_id', scheduleId);
+
+    if (error) {
+      console.error('Erro ao carregar ausências da escala:', error);
+      return;
+    }
+    if (data) {
+      setScheduleAbsences(
+        data.map((a: any) => ({
+          professional_id: a.professional_id,
+          start_date: a.start_date,
+          end_date: a.end_date,
+          shift_code: a.reason?.shift_code ?? 'FA',
+          reason_name: a.reason?.name ?? '',
+        }))
+      );
+    }
+  };
+
   useEffect(() => {
     if (initialScheduleId && schedules.length > 0) {
       const schedule = schedules.find(s => s.id === initialScheduleId);
@@ -240,6 +284,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   useEffect(() => {
     if (selectedSchedule && selectedMonth) {
       loadData();
+      loadScheduleAbsences(selectedSchedule);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSchedule, selectedMonth]);
@@ -405,6 +450,48 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
 
     const shiftType = SHIFT_TYPES.find(st => st.name === shift.shift_type);
     return shiftType?.code || '';
+  };
+
+  /**
+   * Retorna o código que deve ser exibido na célula considerando o modo
+   * de visualização atual:
+   * - planejada: retorna apenas o código do shift planejado
+   * - realizada: aplica absences sobre o planejado (faltas, atestados, etc.
+   *   sobrescrevem o código original)
+   */
+  const getEffectiveShiftCode = (professionalId: string, day: number): string => {
+    const planned = getShiftCode(professionalId, day);
+    if (viewMode === 'planejada') return planned;
+
+    const [year, month] = selectedMonth.split('-');
+    const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
+
+    // Procurar absence ativa nesse dia
+    const absence = scheduleAbsences.find(
+      a =>
+        a.professional_id === professionalId &&
+        date >= a.start_date &&
+        date <= a.end_date
+    );
+
+    if (absence) {
+      // Códigos válidos do sistema; se não bater, exibe FA como fallback
+      return absence.shift_code || 'FA';
+    }
+    return planned;
+  };
+
+  // Tooltip helper para célula em modo realizada
+  const getAbsenceForCell = (professionalId: string, day: number) => {
+    if (viewMode !== 'realizada') return null;
+    const [year, month] = selectedMonth.split('-');
+    const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
+    return scheduleAbsences.find(
+      a =>
+        a.professional_id === professionalId &&
+        date >= a.start_date &&
+        date <= a.end_date
+    );
   };
 
   const getDayOfWeek = (day: number) => {
@@ -1498,19 +1585,24 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     const daysInMonth = getDaysInMonth();
 
     // Construir o map professional_id -> day -> code
+    // Usa getEffectiveShiftCode: se modo é "realizada", aplica absences;
+    // se "planejada", retorna apenas o turno planejado (igual antes)
     const shiftsByProf = new Map<string, Map<number, string>>();
     professionals.forEach(p => {
       const m = new Map<number, string>();
       for (let day = 1; day <= daysInMonth; day++) {
-        const code = getShiftCode(p.id, day);
+        const code = getEffectiveShiftCode(p.id, day);
         if (code) m.set(day, code);
       }
       shiftsByProf.set(p.id, m);
     });
 
+    // Sufixo no nome para diferenciar versão exportada
+    const suffix = viewMode === 'realizada' ? ' (Realizada)' : '';
+
     try {
       await exportScheduleToExcel({
-        scheduleName: cs.name,
+        scheduleName: cs.name + suffix,
         departmentName: dept?.name || '',
         month: selectedMonth,
         professionals: professionals.map(p => ({
@@ -1522,7 +1614,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         })),
         shiftsByProf,
       });
-      toast.success('Escala exportada com sucesso.');
+      toast.success(
+        viewMode === 'realizada'
+          ? 'Escala REALIZADA exportada com sucesso (ausências aplicadas).'
+          : 'Escala PLANEJADA exportada com sucesso.'
+      );
     } catch (err: any) {
       console.error('Erro ao exportar Excel:', err);
       toast.error('Erro ao exportar: ' + (err?.message ?? 'desconhecido'));
@@ -1571,6 +1667,52 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               {StatusBadge.label}
             </span>
           )}
+          {/* Toggle Planejada / Realizada — só aparece se há escala selecionada */}
+          {currentSchedule && !editMode && (
+            <div
+              role="tablist"
+              aria-label="Modo de visualização da escala"
+              className="inline-flex items-center bg-gray-100 rounded-lg p-0.5 ml-1"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'planejada'}
+                onClick={() => setViewMode('planejada')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${
+                  viewMode === 'planejada'
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Planejada
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'realizada'}
+                onClick={() => setViewMode('realizada')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center gap-1 ${
+                  viewMode === 'realizada'
+                    ? 'bg-white shadow-sm text-red-700'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Realizada
+                {scheduleAbsences.length > 0 && (
+                  <span
+                    className={`text-[10px] px-1 rounded-full ${
+                      viewMode === 'realizada'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {scheduleAbsences.length}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {!editMode ? (
@@ -1618,10 +1760,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               )}
               <button
                 onClick={handleExportExcel}
-                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                title={`Exporta a escala ${viewMode === 'realizada' ? 'REALIZADA (com ausências aplicadas)' : 'PLANEJADA'}`}
+                className={`inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  viewMode === 'realizada'
+                    ? 'bg-red-50 text-red-700 border border-red-300 hover:bg-red-100 focus:ring-red-500'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus:ring-blue-500'
+                }`}
               >
                 <Download className="w-4 h-4" aria-hidden="true" />
                 Exportar Excel
+                {viewMode === 'realizada' && <span className="text-[10px] font-bold">(Realizada)</span>}
               </button>
               {/* Status transitions */}
               {currentSchedule && scheduleStatus === 'Rascunho' && (
@@ -1689,10 +1837,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               </button>
               <button
                 onClick={handleExportExcel}
-                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                title={`Exporta a escala ${viewMode === 'realizada' ? 'REALIZADA (com ausências aplicadas)' : 'PLANEJADA'}`}
+                className={`inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                  viewMode === 'realizada'
+                    ? 'bg-red-50 text-red-700 border border-red-300 hover:bg-red-100 focus:ring-red-500'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus:ring-blue-500'
+                }`}
               >
                 <Download className="w-4 h-4" aria-hidden="true" />
                 Exportar Excel
+                {viewMode === 'realizada' && <span className="text-[10px] font-bold">(Realizada)</span>}
               </button>
               <button
                 onClick={() => {
@@ -1759,6 +1913,24 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                   : 'Apenas Administradores podem reabri-la.'}
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'realizada' && currentSchedule && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-3">
+          <CalendarX className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex-1 text-sm">
+            <p className="font-medium text-red-900">
+              Visualizando ESCALA REALIZADA — com ausências aplicadas
+            </p>
+            <p className="text-red-700 mt-0.5">
+              Faltas, atestados e licenças cadastradas em "Absenteísmo" sobrescrevem o turno
+              planejado. Células com ponto vermelho indicam dias alterados em relação ao plano.
+              {scheduleAbsences.length > 0 && (
+                <> Total de {scheduleAbsences.length} ausência{scheduleAbsences.length !== 1 ? 's' : ''} registrada{scheduleAbsences.length !== 1 ? 's' : ''} nesta escala.</>
+              )}
+            </p>
           </div>
         </div>
       )}
@@ -1912,20 +2084,34 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                             {calculateWorkDays(prof.id)}
                           </td>
                           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-                            const code = getShiftCode(prof.id, day);
+                            const code = getEffectiveShiftCode(prof.id, day);
+                            const plannedCode = getShiftCode(prof.id, day);
+                            const isOverridden =
+                              viewMode === 'realizada' && code !== plannedCode && plannedCode !== '';
+                            const absence = getAbsenceForCell(prof.id, day);
                             const isWeekend = ['SAB', 'DOM'].includes(getDayOfWeek(day));
+                            const tooltip = absence
+                              ? `${absence.reason_name}\nPlanejado: ${plannedCode || '—'}`
+                              : undefined;
                             return (
                               <td
                                 key={day}
                                 onClick={(e) => handleCellClick(prof.id, day, e)}
-                                className={`border border-gray-300 px-1 py-2 text-center font-semibold ${
+                                title={tooltip}
+                                className={`border border-gray-300 px-1 py-2 text-center font-semibold relative ${
                                   code ? getCellColorClass(code) : ''
                                 } ${isWeekend && !code ? 'bg-gray-100' : ''} ${
                                   'cursor-pointer hover:ring-2 hover:ring-blue-400'
-                                }`}
+                                } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''}`}
                                 style={{ minWidth: '32px', maxWidth: '32px' }}
                               >
                                 {code}
+                                {isOverridden && (
+                                  <span
+                                    className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-red-500"
+                                    aria-hidden="true"
+                                  />
+                                )}
                               </td>
                             );
                           })}
