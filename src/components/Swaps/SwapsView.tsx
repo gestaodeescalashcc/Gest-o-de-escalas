@@ -241,7 +241,7 @@ export default function SwapsView() {
         if (unassignError) throw unassignError;
       }
 
-      const { error: updateError } = await supabase
+      const { data: updatedRows, error: updateError } = await supabase
         .from('shift_swaps')
         .update({
           status: 'Aprovado',
@@ -249,9 +249,13 @@ export default function SwapsView() {
           approved_by: user?.id,
           approved_at: new Date().toISOString(),
         })
-        .eq('id', swap.id);
+        .eq('id', swap.id)
+        .select('id');
 
       if (updateError) throw updateError;
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error('Sem permissão para aprovar trocas. Procure um Administrador.');
+      }
 
       toast.success('Troca aprovada e plantões atualizados com sucesso!');
       loadSwaps();
@@ -281,23 +285,27 @@ export default function SwapsView() {
 
     setActionLoading(true);
     try {
-      const { error } = await supabase
+      const { data: updatedRows, error } = await supabase
         .from('shift_swaps')
         .update({
           status: 'Recusado',
           responded_at: new Date().toISOString(),
           admin_notes: adminNotes,
         })
-        .eq('id', selectedSwap.id);
+        .eq('id', selectedSwap.id)
+        .select('id');
 
       if (error) throw error;
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error('Sem permissão para recusar trocas. Procure um Administrador.');
+      }
       toast.success('Troca recusada com sucesso.');
       setShowRejectModal(false);
       setSelectedSwap(null);
       loadSwaps();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error rejecting swap:', err);
-      toast.error('Erro ao recusar troca. Tente novamente.');
+      toast.error('Erro ao recusar troca: ' + (err.message ?? 'Tente novamente.'));
     } finally {
       setActionLoading(false);
     }
