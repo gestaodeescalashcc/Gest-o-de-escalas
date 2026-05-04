@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -11,6 +11,7 @@ import ToastContainer from '../Common/ToastContainer';
 import EmptyState from '../Common/EmptyState';
 import CreateAbsenceModal, { AbsenceInitialData } from '../Absenteeism/CreateAbsenceModal';
 import type { AbsenceReason } from '../Absenteeism/AbsenteeismView';
+import CreateSwapModal from '../Swaps/CreateSwapModal';
 import { useToast } from '../../hooks/useToast';
 
 interface Professional {
@@ -113,6 +114,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   const [showAbsenceModal, setShowAbsenceModal] = useState(false);
   const [absenceInitialData, setAbsenceInitialData] = useState<AbsenceInitialData | undefined>(undefined);
   const [absenceReasons, setAbsenceReasons] = useState<AbsenceReason[]>([]);
+  // Troca de plantão
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [swapInitialShiftId, setSwapInitialShiftId] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState({
     allDays: false,
     oddDays: false,
@@ -2121,6 +2125,32 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
 
               <hr className="my-2 mx-2" />
 
+              {/* Trocar/Reatribuir — só aparece se a célula tem turno planejado */}
+              {selectedCell && (() => {
+                const dateStr = (() => {
+                  const [year, month] = selectedMonth.split('-');
+                  return `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
+                })();
+                const existingShift = shifts.find(
+                  s => s.professional_id === selectedCell.profId && s.shift_date === dateStr
+                );
+                if (!existingShift) return null;
+                return (
+                  <button
+                    onClick={() => {
+                      setSwapInitialShiftId(existingShift.id);
+                      setShowSwapModal(true);
+                      setShowQuickMenu(false);
+                      setSelectedCell(null);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-blue-50 rounded text-left transition text-blue-700"
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                    <span className="text-sm font-medium">Trocar / Reatribuir</span>
+                  </button>
+                );
+              })()}
+
               {selectedCell && currentSchedule && (
                 <button
                   onClick={() => {
@@ -2532,6 +2562,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             setShowAbsenceModal(false);
             setAbsenceInitialData(undefined);
             toast.success('Ausência registrada com sucesso.');
+          }}
+        />
+      )}
+
+      {showSwapModal && (
+        <CreateSwapModal
+          initialShiftId={swapInitialShiftId ?? undefined}
+          onClose={() => {
+            setShowSwapModal(false);
+            setSwapInitialShiftId(null);
+          }}
+          onSuccess={() => {
+            setShowSwapModal(false);
+            setSwapInitialShiftId(null);
+            toast.success('Solicitação de troca criada. Vá em "Trocas de Plantões" para aprovar.');
           }}
         />
       )}

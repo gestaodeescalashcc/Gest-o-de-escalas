@@ -7,6 +7,11 @@ import ToastContainer from '../Common/ToastContainer';
 interface CreateSwapModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  /**
+   * Quando passado, pré-seleciona o plantão original e pula o passo 1.
+   * Útil para abrir a troca a partir de uma célula da escala consolidada.
+   */
+  initialShiftId?: string;
 }
 
 interface Shift {
@@ -31,9 +36,9 @@ interface Professional {
   department: { id: string; name: string };
 }
 
-export default function CreateSwapModal({ onClose, onSuccess }: CreateSwapModalProps) {
+export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: CreateSwapModalProps) {
   const { toasts, toast, removeToast } = useToast();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(initialShiftId ? 2 : 1);
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -44,7 +49,7 @@ export default function CreateSwapModal({ onClose, onSuccess }: CreateSwapModalP
   const [filterDate, setFilterDate] = useState('');
 
   const [formData, setFormData] = useState({
-    original_shift_id: '',
+    original_shift_id: initialShiftId ?? '',
     target_professional_id: '',
     offered_shift_id: '',
     reason: '',
@@ -53,6 +58,15 @@ export default function CreateSwapModal({ onClose, onSuccess }: CreateSwapModalP
   useEffect(() => {
     loadData();
   }, []);
+
+  // Se o initialShiftId chegar depois (ou mudar), atualiza o estado
+  useEffect(() => {
+    if (initialShiftId) {
+      setFormData(prev => ({ ...prev, original_shift_id: initialShiftId }));
+      if (step === 1) setStep(2);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialShiftId]);
 
   const loadData = async () => {
     try {
@@ -110,6 +124,26 @@ export default function CreateSwapModal({ onClose, onSuccess }: CreateSwapModalP
       if (shiftsRes.data) setShifts(shiftsRes.data as any);
       if (profsRes.data) setProfessionals(profsRes.data as any);
       if (deptsRes.data) setDepartments(deptsRes.data);
+
+      // Se foi aberto com initialShiftId, garantir que esse shift está carregado
+      // (pode ser de data passada, e o filtro >= today o exclui)
+      if (initialShiftId && shiftsRes.data && !shiftsRes.data.some((s: any) => s.id === initialShiftId)) {
+        const { data: extraShift } = await supabase
+          .from('shifts')
+          .select(`
+            id, shift_date, start_time, end_time, shift_type,
+            department:departments (id, name),
+            professional:professionals (
+              id, full_name,
+              category:professional_categories (name, color)
+            )
+          `)
+          .eq('id', initialShiftId)
+          .maybeSingle();
+        if (extraShift) {
+          setShifts(prev => [extraShift as any, ...prev]);
+        }
+      }
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
       toast.error('Erro ao carregar dados');
