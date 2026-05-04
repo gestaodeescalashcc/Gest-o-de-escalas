@@ -2198,12 +2198,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                                 onClick={(e) => handleCellClick(prof.id, day, e)}
                                 title={finalTooltip || undefined}
                                 className={`border border-gray-300 px-1 py-2 text-center font-semibold relative ${
+                                  // Quando há troca, o destaque verde tem prioridade visual
+                                  isSwapped ? 'bg-emerald-600 text-white ring-2 ring-inset ring-emerald-800' :
                                   code ? getCellColorClass(code) : ''
-                                } ${isWeekend && !code ? 'bg-gray-100' : ''} ${
+                                } ${!isSwapped && isWeekend && !code ? 'bg-gray-100' : ''} ${
                                   'cursor-pointer hover:ring-2 hover:ring-blue-400'
                                 } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''} ${
                                   hasAbsenceMarkPlanned ? 'ring-2 ring-inset ring-amber-400' : ''
-                                } ${isSwapped ? 'ring-2 ring-inset ring-emerald-700 bg-emerald-100' : ''}`}
+                                }`}
                                 style={{ minWidth: '32px', maxWidth: '32px' }}
                               >
                                 {code}
@@ -2221,12 +2223,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                                     aria-hidden="true"
                                   />
                                 )}
-                                {/* Indicador de troca: triângulo verde escuro no canto superior direito */}
+                                {/* Indicador de troca: marcador "T" no canto superior */}
                                 {isSwapped && (
                                   <span
-                                    className="absolute top-0 right-0 w-0 h-0 border-r-[6px] border-r-transparent border-t-[6px] border-t-emerald-700"
-                                    aria-hidden="true"
-                                  />
+                                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-800 text-white text-[9px] font-bold flex items-center justify-center shadow"
+                                    aria-label="Troca de plantão"
+                                    title="Plantão envolvido em troca"
+                                  >
+                                    T
+                                  </span>
                                 )}
                               </td>
                             );
