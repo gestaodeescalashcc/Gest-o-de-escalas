@@ -192,6 +192,13 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
 
   const filteredProfessionals = professionals
     .filter(p => p.id !== getRequestingProfessionalId())
+    // Mostra apenas profissionais do mesmo setor do plantão original
+    // (não faz sentido trocar plantão entre setores diferentes)
+    .filter(p => {
+      const originalShift = getSelectedShift();
+      if (!originalShift?.department?.id) return true;
+      return p.department?.id === originalShift.department.id;
+    })
     .filter(prof =>
       prof.full_name.toLowerCase().includes(searchProfessional.toLowerCase()) ||
       prof.registration_number.toLowerCase().includes(searchProfessional.toLowerCase())
@@ -366,6 +373,15 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
 
               {step === 2 && (
                 <div className="space-y-4">
+                  {getSelectedShift()?.department?.name && (
+                    <div className="flex items-start gap-2 text-sm bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-900">
+                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <span>
+                        Mostrando apenas profissionais do setor{' '}
+                        <strong>{getSelectedShift()?.department.name}</strong>.
+                      </span>
+                    </div>
+                  )}
                   <input
                     type="text"
                     placeholder="Buscar profissional..."
@@ -408,7 +424,13 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                     {filteredProfessionals.length === 0 && (
                       <div className="text-center py-12 text-gray-500">
                         <AlertCircle className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                        <p>Nenhum profissional encontrado</p>
+                        <p className="font-medium">Nenhum profissional encontrado</p>
+                        <p className="text-xs mt-1">
+                          A lista mostra apenas profissionais do mesmo setor do plantão original
+                          {getSelectedShift()?.department?.name && (
+                            <> ({getSelectedShift()?.department.name})</>
+                          )}.
+                        </p>
                       </div>
                     )}
                   </div>
