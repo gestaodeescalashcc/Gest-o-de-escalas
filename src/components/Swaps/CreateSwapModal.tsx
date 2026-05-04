@@ -235,8 +235,8 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
         original_shift_id: formData.original_shift_id,
         requesting_professional_id: requestingProfId,
         target_professional_id: formData.target_professional_id,
-        offered_shift_id: formData.offered_shift_id || null,
-        reason: formData.reason.trim() || 'Reatribuição direta pelo coordenador',
+        offered_shift_id: formData.offered_shift_id,
+        reason: formData.reason.trim() || 'Troca recíproca aprovada pelo coordenador',
         status: 'Aprovado',
         responded_at: now,
         approved_by: user?.id,
@@ -244,28 +244,18 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
       });
       if (insertError) throw insertError;
 
-      // 2. Aplicar imediatamente o UPDATE nos shifts (mesma lógica de handleApprove)
-      if (formData.offered_shift_id) {
-        // Swap recíproco
-        const { error: e1 } = await supabase
-          .from('shifts')
-          .update({ professional_id: formData.target_professional_id })
-          .eq('id', formData.original_shift_id);
-        if (e1) throw e1;
+      // 2. Aplicar imediatamente o swap recíproco nos shifts
+      const { error: e1 } = await supabase
+        .from('shifts')
+        .update({ professional_id: formData.target_professional_id })
+        .eq('id', formData.original_shift_id);
+      if (e1) throw e1;
 
-        const { error: e2 } = await supabase
-          .from('shifts')
-          .update({ professional_id: requestingProfId })
-          .eq('id', formData.offered_shift_id);
-        if (e2) throw e2;
-      } else {
-        // Cessão simples
-        const { error: e1 } = await supabase
-          .from('shifts')
-          .update({ professional_id: formData.target_professional_id })
-          .eq('id', formData.original_shift_id);
-        if (e1) throw e1;
-      }
+      const { error: e2 } = await supabase
+        .from('shifts')
+        .update({ professional_id: requestingProfId })
+        .eq('id', formData.offered_shift_id);
+      if (e2) throw e2;
 
       toast.success('Troca aprovada e plantões atualizados.');
       onSuccess();
@@ -279,7 +269,8 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
 
   const canProceedToStep2 = formData.original_shift_id !== '';
   const canProceedToStep3 = formData.target_professional_id !== '';
-  // Motivo agora é opcional — sempre pode submeter no último passo
+  const canProceedToStep4 = formData.offered_shift_id !== '';
+  // Motivo é opcional — sempre pode submeter no último passo
   const canSubmit = true;
 
   const selectedShift = getSelectedShift();
@@ -327,7 +318,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
           <div className="mt-4 text-sm font-medium bg-blue-500 rounded-lg px-4 py-2">
             {step === 1 && 'Selecione o plantão que deseja trocar'}
             {step === 2 && 'Escolha com quem deseja trocar'}
-            {step === 3 && 'Ofereça um plantão em troca (opcional)'}
+            {step === 3 && 'Selecione o plantão que será trocado'}
             {step === 4 && 'Informe o motivo da solicitação'}
           </div>
         </div>
@@ -488,45 +479,14 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
               {step === 3 && (
                 <div className="space-y-4">
                   <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-900">
-                    <p className="font-semibold mb-1">Em troca, qual plantão de {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'destinatário'} será assumido por {getSelectedShift()?.professional.full_name?.split(' ')[0] ?? 'solicitante'}?</p>
+                    <p className="font-semibold mb-1">Qual plantão de {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'destinatário'} será assumido por {getSelectedShift()?.professional.full_name?.split(' ')[0] ?? 'solicitante'}?</p>
                     <p className="text-xs">
-                      Selecione um plantão do destinatário para fazer uma troca <strong>recíproca</strong>:
-                      cada um troca de dia, escala fica equilibrada.
+                      A troca é sempre <strong>recíproca</strong>: cada um troca de dia,
+                      todos mantêm o mesmo número de plantões.
                     </p>
                   </div>
 
                   <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {/* Cessão simples — primeira opção (amarelo, com aviso) */}
-                    <button
-                      onClick={() => setFormData({ ...formData, offered_shift_id: '' })}
-                      className={`w-full text-left p-4 rounded-lg border-2 transition ${
-                        !formData.offered_shift_id
-                          ? 'border-amber-400 bg-amber-50'
-                          : 'border-gray-200 hover:border-amber-300'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${!formData.offered_shift_id ? 'text-amber-600' : 'text-gray-400'}`} />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-gray-900">Não oferecer plantão (cessão simples)</span>
-                            {!formData.offered_shift_id && <CheckCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />}
-                          </div>
-                          <p className="text-xs text-gray-600 mt-1">
-                            <strong>Atenção:</strong> {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'Destinatário'} ganhará 1 plantão a mais
-                            e {getSelectedShift()?.professional.full_name?.split(' ')[0] ?? 'solicitante'} perderá 1 plantão.
-                            Use só quando há acordo de hora extra ou compensação.
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-
-                    <div className="flex items-center gap-3 my-2">
-                      <hr className="flex-1 border-gray-300" />
-                      <span className="text-xs text-gray-500 font-medium">OU FAÇA UMA TROCA RECÍPROCA</span>
-                      <hr className="flex-1 border-gray-300" />
-                    </div>
-
                     {getAvailableShiftsForOffer().map((shift) => (
                       <button
                         key={shift.id}
@@ -559,7 +519,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                       <div className="text-center py-8 px-4 text-gray-600 bg-gray-50 rounded-lg border border-gray-200">
                         <AlertCircle className="w-10 h-10 mx-auto mb-2 text-gray-400" />
                         <p className="font-medium">{getTargetProfessional()?.full_name ?? 'O destinatário'} não tem outros plantões agendados.</p>
-                        <p className="text-xs mt-1">Só é possível cessão simples (acima).</p>
+                        <p className="text-xs mt-1">Volte e escolha outro profissional para fazer a troca recíproca.</p>
                       </div>
                     )}
                   </div>
@@ -696,21 +656,6 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                   </>
                 )}
 
-                {/* Cessão simples: mostra alerta */}
-                {!offeredShift && targetProf && selectedShift && step >= 3 && (
-                  <div className="mt-2 bg-amber-50 rounded-lg p-3 border border-amber-300">
-                    <p className="text-xs font-semibold text-amber-800 mb-2 flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      CESSÃO SIMPLES
-                    </p>
-                    <div className="text-xs text-amber-900 space-y-1">
-                      <p>Após aprovação:</p>
-                      <p>• <strong>{targetProf.full_name.split(' ')[0]}</strong> ganhará 1 plantão a mais</p>
-                      <p>• <strong>{selectedShift.professional.full_name.split(' ')[0]}</strong> perderá 1 plantão</p>
-                    </div>
-                  </div>
-                )}
-
                 {formData.reason && (
                   <div className="mt-3 bg-white rounded-lg p-3 border border-blue-200">
                     <p className="text-xs text-blue-600 font-semibold mb-1">MOTIVO</p>
@@ -746,7 +691,8 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                 onClick={() => setStep(step + 1)}
                 disabled={
                   (step === 1 && !canProceedToStep2) ||
-                  (step === 2 && !canProceedToStep3)
+                  (step === 2 && !canProceedToStep3) ||
+                  (step === 3 && !canProceedToStep4)
                 }
                 className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
