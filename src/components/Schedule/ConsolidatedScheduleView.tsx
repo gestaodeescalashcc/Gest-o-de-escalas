@@ -481,9 +481,22 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     return planned;
   };
 
-  // Tooltip helper para célula em modo realizada
+  // Tooltip helper para célula em modo realizada (override)
   const getAbsenceForCell = (professionalId: string, day: number) => {
     if (viewMode !== 'realizada') return null;
+    const [year, month] = selectedMonth.split('-');
+    const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
+    return scheduleAbsences.find(
+      a =>
+        a.professional_id === professionalId &&
+        date >= a.start_date &&
+        date <= a.end_date
+    );
+  };
+
+  // Retorna a absence registrada nesse dia (independente do modo)
+  // Usado para destacar visualmente células com ausências mesmo em modo Planejada
+  const findAbsenceForCell = (professionalId: string, day: number) => {
     const [year, month] = selectedMonth.split('-');
     const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
     return scheduleAbsences.find(
@@ -2086,13 +2099,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                             const code = getEffectiveShiftCode(prof.id, day);
                             const plannedCode = getShiftCode(prof.id, day);
+                            const cellAbsence = findAbsenceForCell(prof.id, day);
                             const isOverridden =
                               viewMode === 'realizada' && code !== plannedCode && plannedCode !== '';
-                            const absence = getAbsenceForCell(prof.id, day);
                             const isWeekend = ['SAB', 'DOM'].includes(getDayOfWeek(day));
-                            const tooltip = absence
-                              ? `${absence.reason_name}\nPlanejado: ${plannedCode || '—'}`
+                            // Tooltip: mostra info de ausência sempre que houver
+                            const tooltip = cellAbsence
+                              ? viewMode === 'realizada'
+                                ? `${cellAbsence.reason_name}\nPlanejado: ${plannedCode || '—'}`
+                                : `${cellAbsence.reason_name} registrada\nTurno planejado: ${plannedCode || '—'}`
                               : undefined;
+                            // Em modo planejada, destaca célula com absence registrada
+                            const hasAbsenceMarkPlanned =
+                              viewMode === 'planejada' && cellAbsence !== undefined && cellAbsence !== null;
                             return (
                               <td
                                 key={day}
@@ -2102,13 +2121,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                                   code ? getCellColorClass(code) : ''
                                 } ${isWeekend && !code ? 'bg-gray-100' : ''} ${
                                   'cursor-pointer hover:ring-2 hover:ring-blue-400'
-                                } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''}`}
+                                } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''} ${
+                                  hasAbsenceMarkPlanned ? 'ring-2 ring-inset ring-amber-400' : ''
+                                }`}
                                 style={{ minWidth: '32px', maxWidth: '32px' }}
                               >
                                 {code}
+                                {/* Indicador em modo Realizada: ponto vermelho quando célula foi sobrescrita */}
                                 {isOverridden && (
                                   <span
                                     className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-red-500"
+                                    aria-hidden="true"
+                                  />
+                                )}
+                                {/* Indicador em modo Planejada: triângulo âmbar quando há absence registrada */}
+                                {hasAbsenceMarkPlanned && (
+                                  <span
+                                    className="absolute bottom-0 left-0 w-0 h-0 border-l-[6px] border-l-transparent border-b-[6px] border-b-amber-500"
                                     aria-hidden="true"
                                   />
                                 )}
