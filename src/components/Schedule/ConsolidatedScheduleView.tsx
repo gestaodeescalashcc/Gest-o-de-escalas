@@ -129,6 +129,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       reason_name: string;
     }>
   >([]);
+  // Conjunto de células que tiveram troca aprovada: chave = `${professional_id}|${YYYY-MM-DD}`
+  const [swappedCells, setSwappedCells] = useState<Set<string>>(new Set());
   const [expandedSections, setExpandedSections] = useState({
     allDays: false,
     oddDays: false,
@@ -238,6 +240,52 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     if (data) setAbsenceReasons(data);
   };
 
+  // Marca as células (profissional + data) onde houve troca aprovada.
+  // Para cada swap aprovado: marca a célula do plantão original (com seu novo dono)
+  // e a célula do plantão oferecido (com seu novo dono). Também marca os "donos antigos".
+  const loadScheduleSwaps = async (monthStr: string) => {
+    if (!monthStr) {
+      setSwappedCells(new Set());
+      return;
+    }
+    const [year, month] = monthStr.split('-').map(Number);
+    const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const { data, error } = await supabase
+      .from('shift_swaps')
+      .select(`
+        requesting_professional_id,
+        target_professional_id,
+        original_shift:shifts!shift_swaps_original_shift_id_fkey ( shift_date ),
+        offered_shift:shifts!shift_swaps_offered_shift_id_fkey ( shift_date )
+      `)
+      .eq('status', 'Aprovado');
+
+    if (error) {
+      console.error('Erro ao carregar trocas:', error);
+      setSwappedCells(new Set());
+      return;
+    }
+
+    const set = new Set<string>();
+    (data ?? []).forEach((s: any) => {
+      const originalDate = s.original_shift?.shift_date;
+      const offeredDate = s.offered_shift?.shift_date;
+      // Original: estava com o solicitante, agora está com o destinatário (e vice-versa)
+      if (originalDate && originalDate >= monthStart && originalDate <= monthEnd) {
+        if (s.target_professional_id) set.add(`${s.target_professional_id}|${originalDate}`);
+        if (s.requesting_professional_id) set.add(`${s.requesting_professional_id}|${originalDate}`);
+      }
+      if (offeredDate && offeredDate >= monthStart && offeredDate <= monthEnd) {
+        if (s.requesting_professional_id) set.add(`${s.requesting_professional_id}|${offeredDate}`);
+        if (s.target_professional_id) set.add(`${s.target_professional_id}|${offeredDate}`);
+      }
+    });
+    setSwappedCells(set);
+  };
+
   const loadScheduleAbsences = async (scheduleId: string) => {
     if (!scheduleId) {
       setScheduleAbsences([]);
@@ -285,6 +333,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     if (selectedSchedule && selectedMonth) {
       loadData();
       loadScheduleAbsences(selectedSchedule);
+      loadScheduleSwaps(selectedMonth);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSchedule, selectedMonth]);
@@ -428,6 +477,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         });
         // `professionals` é derivado via useMemo — não setamos aqui.
       }
+      // Recarrega marcações de troca para manter a célula verde após swaps
+      loadScheduleSwaps(selectedMonth);
     } catch (err) {
       console.error('Erro inesperado ao carregar dados:', err);
       toast.error('Erro inesperado ao carregar dados. Verifique o console para detalhes.');
@@ -2115,18 +2166,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                             // Em modo planejada, destaca célula com absence registrada
                             const hasAbsenceMarkPlanned =
                               viewMode === 'planejada' && cellAbsence !== undefined && cellAbsence !== null;
+                            // Célula que sofreu troca de plantão aprovada
+                            const cellDateStr = `${selectedMonth}-${String(day).padStart(2, '0')}`;
+                            const isSwapped = swappedCells.has(`${prof.id}|${cellDateStr}`);
+                            const swapTooltip = isSwapped ? 'Plantão envolvido em troca aprovada' : '';
+                            const finalTooltip = [tooltip, swapTooltip].filter(Boolean).join('\n');
                             return (
                               <td
                                 key={day}
                                 onClick={(e) => handleCellClick(prof.id, day, e)}
-                                title={tooltip}
+                                title={finalTooltip || undefined}
                                 className={`border border-gray-300 px-1 py-2 text-center font-semibold relative ${
                                   code ? getCellColorClass(code) : ''
                                 } ${isWeekend && !code ? 'bg-gray-100' : ''} ${
                                   'cursor-pointer hover:ring-2 hover:ring-blue-400'
                                 } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''} ${
                                   hasAbsenceMarkPlanned ? 'ring-2 ring-inset ring-amber-400' : ''
-                                }`}
+                                } ${isSwapped ? 'ring-2 ring-inset ring-emerald-700 bg-emerald-100' : ''}`}
                                 style={{ minWidth: '32px', maxWidth: '32px' }}
                               >
                                 {code}
@@ -2141,6 +2197,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                                 {hasAbsenceMarkPlanned && (
                                   <span
                                     className="absolute bottom-0 left-0 w-0 h-0 border-l-[6px] border-l-transparent border-b-[6px] border-b-amber-500"
+                                    aria-hidden="true"
+                                  />
+                                )}
+                                {/* Indicador de troca: triângulo verde escuro no canto superior direito */}
+                                {isSwapped && (
+                                  <span
+                                    className="absolute top-0 right-0 w-0 h-0 border-r-[6px] border-r-transparent border-t-[6px] border-t-emerald-700"
                                     aria-hidden="true"
                                   />
                                 )}

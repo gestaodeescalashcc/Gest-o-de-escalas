@@ -56,10 +56,8 @@ export default function SwapsView() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
+  // Filtro de mês — vazio = todos os meses (padrão)
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [selectedSwap, setSelectedSwap] = useState<ShiftSwap | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -144,9 +142,12 @@ export default function SwapsView() {
       swap.target_professional.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       swap.reason.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const shiftDate = new Date(swap.original_shift.shift_date + 'T12:00:00');
-    const matchesMonth = shiftDate.getFullYear() === year && shiftDate.getMonth() + 1 === month;
+    let matchesMonth = true;
+    if (selectedMonth) {
+      const [year, month] = selectedMonth.split('-').map(Number);
+      const shiftDate = new Date(swap.original_shift.shift_date + 'T12:00:00');
+      matchesMonth = shiftDate.getFullYear() === year && shiftDate.getMonth() + 1 === month;
+    }
 
     return matchesStatus && matchesDepartment && matchesSearch && matchesMonth;
   });
@@ -165,7 +166,12 @@ export default function SwapsView() {
   };
 
   const changeMonth = (delta: number) => {
-    const [year, month] = selectedMonth.split('-').map(Number);
+    // Se não há mês selecionado, parte do mês atual
+    const base = selectedMonth || (() => {
+      const n = new Date();
+      return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`;
+    })();
+    const [year, month] = base.split('-').map(Number);
     const newDate = new Date(year, month - 1 + delta, 1);
     setSelectedMonth(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`);
   };
@@ -390,25 +396,50 @@ export default function SwapsView() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => changeMonth(-1)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            <span className="text-lg font-semibold text-gray-900 capitalize">
-              {formatMonthYear(selectedMonth)}
-            </span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            {selectedMonth && (
+              <button
+                onClick={() => changeMonth(-1)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                aria-label="Mês anterior"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
+            <div className="flex items-center gap-3">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              <span className="text-lg font-semibold text-gray-900 capitalize">
+                {selectedMonth ? formatMonthYear(selectedMonth) : 'Todos os meses'}
+              </span>
+            </div>
+            {selectedMonth && (
+              <button
+                onClick={() => changeMonth(1)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                aria-label="Próximo mês"
+              >
+                <ChevronRight className="w-5 h-5 text-gray-600" />
+              </button>
+            )}
           </div>
-          <button
-            onClick={() => changeMonth(1)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-          >
-            <ChevronRight className="w-5 h-5 text-gray-600" />
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            {selectedMonth && (
+              <button
+                type="button"
+                onClick={() => setSelectedMonth('')}
+                className="px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition"
+              >
+                Todos os meses
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -626,8 +657,10 @@ export default function SwapsView() {
         {filteredSwaps.length > 0 && (
           <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
             <p className="text-sm text-gray-600">
-              Exibindo <span className="font-semibold">{filteredSwaps.length}</span> solicitacao(oes) em{' '}
-              <span className="font-semibold capitalize">{formatMonthYear(selectedMonth)}</span>
+              Exibindo <span className="font-semibold">{filteredSwaps.length}</span> solicitacao(oes){' '}
+              <span className="font-semibold capitalize">
+                {selectedMonth ? `em ${formatMonthYear(selectedMonth)}` : 'no total'}
+              </span>
             </p>
           </div>
         )}
