@@ -551,7 +551,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     const rect = (event.target as HTMLElement).getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const spaceBelow = viewportHeight - rect.bottom;
-    const popupHeight = 420; // approximate full popup height
+    // Altura aproximada do popup: ~180px em modo visualização (só 2 botões),
+    // ~420px em modo edição (tem turnos, ausências, etc.)
+    const popupHeight = editMode && !isLocked ? 420 : 180;
     const margin = 8;
 
     let x = rect.left;
