@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, ArrowRight, CheckCircle, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import ToastContainer from '../Common/ToastContainer';
 
@@ -37,6 +38,7 @@ interface Professional {
 }
 
 export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: CreateSwapModalProps) {
+  const { user } = useAuth();
   const { toasts, toast, removeToast } = useToast();
   const [step, setStep] = useState(initialShiftId ? 2 : 1);
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -223,34 +225,62 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
     );
 
   const handleSubmit = async () => {
-    if (!formData.reason.trim() || formData.reason.trim().length < 10) {
-      toast.error('Por favor, informe o motivo da troca (mínimo 10 caracteres)');
-      return;
-    }
-
     setLoading(true);
     const requestingProfId = getRequestingProfessionalId();
+    const now = new Date().toISOString();
 
-    const { error } = await supabase.from('shift_swaps').insert({
-      original_shift_id: formData.original_shift_id,
-      requesting_professional_id: requestingProfId,
-      target_professional_id: formData.target_professional_id,
-      offered_shift_id: formData.offered_shift_id || null,
-      reason: formData.reason,
-      status: 'Pendente',
-    });
+    try {
+      // 1. Inserir a troca já como Aprovada (registro de auditoria)
+      const { error: insertError } = await supabase.from('shift_swaps').insert({
+        original_shift_id: formData.original_shift_id,
+        requesting_professional_id: requestingProfId,
+        target_professional_id: formData.target_professional_id,
+        offered_shift_id: formData.offered_shift_id || null,
+        reason: formData.reason.trim() || 'Reatribuição direta pelo coordenador',
+        status: 'Aprovado',
+        responded_at: now,
+        approved_by: user?.id,
+        approved_at: now,
+      });
+      if (insertError) throw insertError;
 
-    if (!error) {
+      // 2. Aplicar imediatamente o UPDATE nos shifts (mesma lógica de handleApprove)
+      if (formData.offered_shift_id) {
+        // Swap recíproco
+        const { error: e1 } = await supabase
+          .from('shifts')
+          .update({ professional_id: formData.target_professional_id })
+          .eq('id', formData.original_shift_id);
+        if (e1) throw e1;
+
+        const { error: e2 } = await supabase
+          .from('shifts')
+          .update({ professional_id: requestingProfId })
+          .eq('id', formData.offered_shift_id);
+        if (e2) throw e2;
+      } else {
+        // Cessão simples
+        const { error: e1 } = await supabase
+          .from('shifts')
+          .update({ professional_id: formData.target_professional_id })
+          .eq('id', formData.original_shift_id);
+        if (e1) throw e1;
+      }
+
+      toast.success('Troca aprovada e plantões atualizados.');
       onSuccess();
-    } else {
-      toast.error('Erro ao criar solicitação. Tente novamente.');
+    } catch (err: any) {
+      console.error('Erro ao criar troca:', err);
+      toast.error('Erro ao criar troca: ' + (err.message ?? 'tente novamente'));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const canProceedToStep2 = formData.original_shift_id !== '';
   const canProceedToStep3 = formData.target_professional_id !== '';
-  const canSubmit = formData.reason.trim().length >= 10;
+  // Motivo agora é opcional — sempre pode submeter no último passo
+  const canSubmit = true;
 
   const selectedShift = getSelectedShift();
   const targetProf = getTargetProfessional();
@@ -538,25 +568,29 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
 
               {step === 4 && (
                 <div className="space-y-4">
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-900">
+                    <p className="font-semibold flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" /> Pronto para confirmar
+                    </p>
+                    <p className="text-xs mt-1">
+                      Ao confirmar, a troca será aplicada imediatamente nos plantões.
+                      Use o campo abaixo para registrar o motivo (opcional).
+                    </p>
+                  </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-900 mb-2">
-                      Explique o motivo da troca *
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Motivo da troca <span className="text-gray-400 font-normal">(opcional)</span>
                     </label>
                     <textarea
-                      rows={10}
+                      rows={6}
                       value={formData.reason}
                       onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                      placeholder="Seja claro e objetivo sobre o motivo da solicitação..."
+                      placeholder="Ex: Acordo entre profissionais, cobertura de feriado, etc."
                     />
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-gray-500">
-                        {formData.reason.length}/10 caracteres (mínimo)
-                      </p>
-                      {formData.reason.length >= 10 && (
-                        <span className="text-xs text-green-600 font-semibold">✓ Pronto</span>
-                      )}
-                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      O motivo fica registrado no histórico da troca para auditoria.
+                    </p>
                   </div>
                 </div>
               )}
@@ -723,12 +757,12 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
               <button
                 onClick={handleSubmit}
                 disabled={loading || !canSubmit}
-                className="flex-1 px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? 'Enviando...' : (
+                {loading ? 'Aplicando...' : (
                   <>
                     <CheckCircle className="w-5 h-5" />
-                    Enviar Solicitação
+                    Confirmar Troca
                   </>
                 )}
               </button>

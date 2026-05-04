@@ -2809,7 +2809,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
           onSuccess={() => {
             setShowSwapModal(false);
             setSwapInitialShiftId(null);
-            toast.success('Solicitação de troca criada. Vá em "Trocas de Plantões" para aprovar.');
+            // Recarrega os dados para refletir o swap aplicado
+            loadData(true);
           }}
         />
       )}
