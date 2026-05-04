@@ -117,6 +117,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     allDays: false,
     oddDays: false,
     evenDays: false,
+    weekDays: false,
     removeDays: false
   });
   const [quickMenuExpanded, setQuickMenuExpanded] = useState({
@@ -864,6 +865,84 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     } catch (err) {
       console.error('Erro ao preencher dias pares:', err);
       toast.error('Erro ao preencher dias. Verifique o console.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFillWeekDays = async (professionalId: string, shiftType: typeof SHIFT_TYPES[0]) => {
+    try {
+      setLoading(true);
+      const [year, month] = selectedMonth.split('-');
+      const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
+
+      const shiftsToUpdate: any[] = [];
+      const shiftsToInsert: any[] = [];
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
+        // Pular finais de semana (Sábado=6, Domingo=0)
+        const dow = new Date(parseInt(year), parseInt(month) - 1, day).getDay();
+        if (dow === 0 || dow === 6) continue;
+
+        const existingShift = shifts.find(
+          s => s.professional_id === professionalId && s.shift_date === date
+        );
+
+        if (existingShift) {
+          shiftsToUpdate.push({
+            id: existingShift.id,
+            shift_type: shiftType.name,
+            start_time: shiftType.start,
+            end_time: shiftType.end,
+          });
+        } else {
+          shiftsToInsert.push({
+            professional_id: professionalId,
+            department_id: selectedDepartment,
+            schedule_id: selectedSchedule,
+            shift_date: date,
+            shift_type: shiftType.name,
+            start_time: shiftType.start,
+            end_time: shiftType.end,
+            status: 'Agendado',
+            created_by: user?.id,
+          });
+        }
+      }
+
+      let updateErrors = 0;
+      for (const shift of shiftsToUpdate) {
+        const { error } = await supabase
+          .from('shifts')
+          .update({
+            shift_type: shift.shift_type,
+            start_time: shift.start_time,
+            end_time: shift.end_time,
+          })
+          .eq('id', shift.id);
+        if (error) updateErrors++;
+      }
+      if (updateErrors > 0) {
+        toast.warning(`${updateErrors} turno(s) não puderam ser atualizados.`);
+      }
+
+      if (shiftsToInsert.length > 0) {
+        const { error } = await supabase.from('shifts').insert(shiftsToInsert);
+        if (error) {
+          if (error.message?.includes('duplicate') || error.code === '23505') {
+            toast.warning('Alguns turnos já existem e foram ignorados.');
+          } else {
+            toast.error('Erro ao inserir turnos: ' + error.message);
+          }
+        }
+      }
+
+      await loadData(true);
+      setShowActionsMenu(null);
+    } catch (err) {
+      console.error('Erro ao preencher dias úteis:', err);
+      toast.error('Erro ao preencher dias úteis. Verifique o console.');
     } finally {
       setLoading(false);
     }
@@ -1873,7 +1952,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                                   }
 
                                   setActionsMenuPosition({ x, y });
-                                  setExpandedSections({ allDays: false, oddDays: false, evenDays: false, removeDays: false });
+                                  setExpandedSections({ allDays: false, oddDays: false, evenDays: false, weekDays: false, removeDays: false });
                                   setShowActionsMenu(prof.id);
                                 }}
                                 className="p-1 text-gray-600 hover:bg-gray-100 rounded transition-colors"
@@ -2145,6 +2224,37 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       key={`even-${type.code}`}
                       onClick={() => handleFillEvenDays(showActionsMenu!, type)}
                       className="w-full flex items-center gap-2 px-3 py-2 hover:bg-orange-50 rounded text-left transition text-sm"
+                    >
+                      <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
+                        {type.code}
+                      </span>
+                      <span className="text-gray-700">{type.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button
+                onClick={() => setExpandedSections(prev => ({ ...prev, weekDays: !prev.weekDays }))}
+                className="w-full flex items-center justify-between px-3 py-2 hover:bg-purple-50 rounded transition text-sm"
+              >
+                <div className="flex items-center gap-2">
+                  {expandedSections.weekDays ? (
+                    <ChevronDown className="w-4 h-4 text-purple-600" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-purple-600" />
+                  )}
+                  <span className="text-xs font-semibold text-purple-600 uppercase">Dias Úteis (Seg-Sex)</span>
+                </div>
+              </button>
+
+              {expandedSections.weekDays && (
+                <div className="pl-4 space-y-1">
+                  {SHIFT_TYPES.filter(t => ['M', 'M2', 'T', 'MT', 'SD', 'FG'].includes(t.code)).map(type => (
+                    <button
+                      key={`week-${type.code}`}
+                      onClick={() => handleFillWeekDays(showActionsMenu!, type)}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-purple-50 rounded text-left transition text-sm"
                     >
                       <span className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(type.code)}`}>
                         {type.code}
