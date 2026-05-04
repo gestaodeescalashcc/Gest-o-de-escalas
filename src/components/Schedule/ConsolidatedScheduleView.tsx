@@ -2042,13 +2042,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                   <table className="border-collapse" style={{ fontSize: '11px', width: 'max-content' }}>
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky left-0 bg-gray-100 z-10 whitespace-nowrap" style={{ minWidth: '70px' }}>
+                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky left-0 bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '70px' }}>
                           MATRÍCULA
                         </th>
-                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold sticky bg-gray-100 z-10 whitespace-nowrap" style={{ minWidth: '180px', left: '70px' }}>
+                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '180px', left: '70px' }}>
                           NOME
                         </th>
-                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky bg-gray-100 z-10 whitespace-nowrap" style={{ minWidth: '120px', left: '250px' }}>
+                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '120px', left: '250px' }}>
                           FUNÇÃO
                         </th>
                         <th className="border border-gray-300 px-2 py-2 text-center font-semibold whitespace-nowrap" style={{ minWidth: '60px' }}>
@@ -2084,13 +2084,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                     <tbody>
                       {professionals.map((prof) => (
                         <tr key={prof.id} className={`hover:bg-gray-50 ${isOverWorkload(prof.id) ? 'bg-red-50' : ''}`}>
-                          <td className={`border border-gray-300 px-2 py-2 text-center sticky left-0 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}>
+                          <td className={`border border-gray-300 px-2 py-2 text-center sticky left-0 z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}>
                             {prof.registration_number || '-'}
                           </td>
-                          <td className={`border border-gray-300 px-3 py-2 font-medium sticky whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '70px' }}>
+                          <td className={`border border-gray-300 px-3 py-2 font-medium sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '70px' }}>
                             {prof.full_name}
                           </td>
-                          <td className={`border border-gray-300 px-2 py-2 sticky whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '250px' }}>
+                          <td className={`border border-gray-300 px-2 py-2 sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '250px' }}>
                             {prof.category?.name}
                           </td>
                           <td className="border border-gray-300 px-2 py-2 text-center font-semibold">
