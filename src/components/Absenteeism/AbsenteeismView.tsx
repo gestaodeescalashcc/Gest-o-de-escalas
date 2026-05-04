@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, Fragment } from 'react';
 import {
   Plus, Search, Filter, Edit2, Trash2, AlertCircle, CalendarX,
   CheckCircle, XCircle, UserCheck, X, FileSpreadsheet, Calendar,
-  Users as UsersIcon,
+  Users as UsersIcon, ChevronRight, ChevronDown,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../hooks/useToast';
@@ -94,10 +94,19 @@ export default function AbsenteeismView() {
   const [groupByPerson, setGroupByPerson] = useState<boolean>(() => {
     try { return localStorage.getItem('medscale.absenteeism.groupByPerson') === '1'; } catch { return false; }
   });
+  const [expandedPersons, setExpandedPersons] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     try { localStorage.setItem('medscale.absenteeism.groupByPerson', groupByPerson ? '1' : '0'); } catch {}
   }, [groupByPerson]);
+
+  function togglePerson(id: string) {
+    setExpandedPersons(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -174,32 +183,51 @@ export default function AbsenteeismView() {
       if (filterCoverage !== 'all' && a.has_coverage !== (filterCoverage === 'yes')) return false;
       return true;
     });
-    if (groupByPerson) {
-      // Ordena por nome do profissional (e depois por data desc dentro do mesmo)
-      return [...list].sort((a, b) => {
-        const an = a.professional?.full_name ?? '';
-        const bn = b.professional?.full_name ?? '';
-        const cmp = an.localeCompare(bn, 'pt-BR');
-        if (cmp !== 0) return cmp;
-        return b.start_date.localeCompare(a.start_date);
-      });
-    }
     return list;
-  }, [absences, search, filterDept, filterReason, filterMonth, filterJustified, filterCoverage, groupByPerson]);
+  }, [absences, search, filterDept, filterReason, filterMonth, filterJustified, filterCoverage]);
 
-  // Estatísticas por pessoa (para os cabeçalhos de grupo)
-  const personStats = useMemo(() => {
-    const map = new Map<string, { count: number; days: number; hours: number }>();
+  // Agrupado por pessoa: 1 linha por profissional, com lista de faltas dentro
+  const byPerson = useMemo(() => {
+    const map = new Map<string, {
+      professional_id: string;
+      name: string;
+      department: string;
+      count: number;
+      days: number;
+      hours: number;
+      justified: number;
+      withCoverage: number;
+      items: Absence[];
+    }>();
     filtered.forEach(a => {
       const key = a.professional_id;
       const days = daysBetween(a.start_date, a.end_date);
-      const cur = map.get(key) ?? { count: 0, days: 0, hours: 0 };
+      const cur = map.get(key) ?? {
+        professional_id: key,
+        name: a.professional?.full_name ?? '—',
+        department: a.department?.name ?? '—',
+        count: 0,
+        days: 0,
+        hours: 0,
+        justified: 0,
+        withCoverage: 0,
+        items: [],
+      };
       cur.count += 1;
       cur.days += days;
       cur.hours += days * Number(a.hours_per_day || 0);
+      if (a.is_justified) cur.justified += 1;
+      if (a.has_coverage) cur.withCoverage += 1;
+      cur.items.push(a);
       map.set(key, cur);
     });
-    return map;
+    // ordena cada lista interna por data desc
+    map.forEach(g => g.items.sort((x, y) => y.start_date.localeCompare(x.start_date)));
+    // ordena o array de pessoas por quantidade de faltas (desc), depois nome
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.name.localeCompare(b.name, 'pt-BR');
+    });
   }, [filtered]);
 
   const paginated = useMemo(() => {
@@ -314,7 +342,7 @@ export default function AbsenteeismView() {
               }`}
             >
               <UsersIcon className="w-4 h-4" aria-hidden="true" />
-              Agrupar por pessoa
+              Por pessoa
             </button>
             <button
               type="button"
@@ -406,6 +434,123 @@ export default function AbsenteeismView() {
               action={activeFilters > 0 || search ? { label: 'Limpar filtros', onClick: clearFilters } : undefined}
             />
           )
+        ) : groupByPerson ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-y border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600 uppercase text-xs tracking-wider">Profissional</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-600 uppercase text-xs tracking-wider hidden md:table-cell">Setor</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600 uppercase text-xs tracking-wider">Faltas</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600 uppercase text-xs tracking-wider hidden sm:table-cell">Dias</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600 uppercase text-xs tracking-wider hidden md:table-cell">Horas</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600 uppercase text-xs tracking-wider hidden lg:table-cell">Justif.</th>
+                  <th className="px-4 py-3 text-center font-semibold text-gray-600 uppercase text-xs tracking-wider hidden xl:table-cell">Cobertura</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {byPerson.map(g => {
+                  const isOpen = expandedPersons.has(g.professional_id);
+                  return (
+                    <Fragment key={g.professional_id}>
+                      <tr
+                        onClick={() => togglePerson(g.professional_id)}
+                        className="hover:bg-gray-50 transition cursor-pointer"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            {isOpen ? (
+                              <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" aria-hidden="true" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" aria-hidden="true" />
+                            )}
+                            <span className="font-medium text-gray-900">{g.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 hidden md:table-cell text-gray-700">{g.department}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-red-100 text-red-800 ring-1 ring-inset ring-red-200 text-xs font-bold">
+                            {g.count}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center hidden sm:table-cell text-gray-700">{g.days}</td>
+                        <td className="px-4 py-3 text-center hidden md:table-cell text-gray-700">{g.hours}h</td>
+                        <td className="px-4 py-3 text-center hidden lg:table-cell text-gray-700 text-xs">
+                          {g.justified}/{g.count}
+                        </td>
+                        <td className="px-4 py-3 text-center hidden xl:table-cell text-gray-700 text-xs">
+                          {g.withCoverage}/{g.count}
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="bg-gray-50/60">
+                          <td colSpan={7} className="px-4 py-3">
+                            <div className="space-y-2">
+                              {g.items.map(a => {
+                                const days = daysBetween(a.start_date, a.end_date);
+                                const code = a.reason?.shift_code ?? '?';
+                                return (
+                                  <div key={a.id} className="flex flex-wrap items-center gap-3 bg-white rounded-lg border border-gray-200 px-3 py-2">
+                                    <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset ${REASON_BADGE[code] ?? 'bg-gray-100 text-gray-800 ring-gray-200'}`}>
+                                      <span className="font-bold">{code}</span>
+                                      <span>{a.reason?.name ?? '—'}</span>
+                                    </span>
+                                    <span className="text-sm text-gray-700">{formatDateRange(a.start_date, a.end_date)}</span>
+                                    <span className="text-xs text-gray-500">{days} dia{days > 1 ? 's' : ''} · {(days * Number(a.hours_per_day || 0))}h</span>
+                                    {a.shift_type && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-200">
+                                        {a.shift_type}
+                                      </span>
+                                    )}
+                                    {a.is_justified ? (
+                                      <span className="inline-flex items-center gap-1 text-xs text-emerald-700"><CheckCircle className="w-3.5 h-3.5" /> Justificada</span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-xs text-red-600"><XCircle className="w-3.5 h-3.5" /> Não justificada</span>
+                                    )}
+                                    {a.has_coverage && a.coverage_professional && (
+                                      <span className="inline-flex items-center gap-1 text-xs text-gray-700">
+                                        <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                        {a.coverage_professional.full_name}
+                                      </span>
+                                    )}
+                                    {a.observation && (
+                                      <span className="text-xs text-gray-500 italic">"{a.observation}"</span>
+                                    )}
+                                    <div className="ml-auto inline-flex items-center gap-1">
+                                      {canUpdate('absences' as any) && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); setEditingAbsence(a); }}
+                                          aria-label="Editar"
+                                          className="w-8 h-8 inline-flex items-center justify-center text-blue-700 hover:bg-blue-50 rounded-lg transition"
+                                        >
+                                          <Edit2 className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                      {canDelete('absences' as any) && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); setConfirmDelete(a); }}
+                                          aria-label="Remover"
+                                          className="w-8 h-8 inline-flex items-center justify-center text-red-700 hover:bg-red-50 rounded-lg transition"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -423,33 +568,11 @@ export default function AbsenteeismView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {paginated.map((a, idx) => {
+                  {paginated.map((a) => {
                     const days = daysBetween(a.start_date, a.end_date);
                     const code = a.reason?.shift_code ?? '?';
-                    const prev = idx > 0 ? paginated[idx - 1] : null;
-                    const showGroupHeader =
-                      groupByPerson && (!prev || prev.professional_id !== a.professional_id);
-                    const ps = personStats.get(a.professional_id);
                     return (
-                      <Fragment key={a.id}>
-                        {showGroupHeader && (
-                          <tr className="bg-emerald-50/60 border-t-2 border-emerald-200">
-                            <td colSpan={8} className="px-4 py-2">
-                              <div className="flex flex-wrap items-center gap-2 text-sm">
-                                <UsersIcon className="w-4 h-4 text-emerald-700" aria-hidden="true" />
-                                <span className="font-semibold text-emerald-900">
-                                  {a.professional?.full_name ?? '—'}
-                                </span>
-                                {ps && (
-                                  <span className="text-xs text-emerald-800/80">
-                                    · {ps.count} registro{ps.count > 1 ? 's' : ''} · {ps.days} dia{ps.days > 1 ? 's' : ''} · {ps.hours}h
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      <tr className="hover:bg-gray-50 transition">
+                      <tr key={a.id} className="hover:bg-gray-50 transition">
                         <td className="px-4 py-3">
                           <div className="font-medium text-gray-900">{a.professional?.full_name ?? '—'}</div>
                           {a.observation && (
@@ -522,7 +645,6 @@ export default function AbsenteeismView() {
                           </div>
                         </td>
                       </tr>
-                      </Fragment>
                     );
                   })}
                 </tbody>
