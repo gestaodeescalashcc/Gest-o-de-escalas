@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import {
   Plus, Search, Filter, Edit2, Trash2, AlertCircle, CalendarX,
   CheckCircle, XCircle, UserCheck, X, FileSpreadsheet, Calendar,
+  Users as UsersIcon,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../hooks/useToast';
@@ -90,6 +91,13 @@ export default function AbsenteeismView() {
   const [filterJustified, setFilterJustified] = useState<'all' | 'yes' | 'no'>('all');
   const [filterCoverage, setFilterCoverage] = useState<'all' | 'yes' | 'no'>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [groupByPerson, setGroupByPerson] = useState<boolean>(() => {
+    try { return localStorage.getItem('medscale.absenteeism.groupByPerson') === '1'; } catch { return false; }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('medscale.absenteeism.groupByPerson', groupByPerson ? '1' : '0'); } catch {}
+  }, [groupByPerson]);
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -149,7 +157,7 @@ export default function AbsenteeismView() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return absences.filter(a => {
+    const list = absences.filter(a => {
       if (q) {
         const hay = [
           a.professional?.full_name ?? '',
@@ -166,7 +174,33 @@ export default function AbsenteeismView() {
       if (filterCoverage !== 'all' && a.has_coverage !== (filterCoverage === 'yes')) return false;
       return true;
     });
-  }, [absences, search, filterDept, filterReason, filterMonth, filterJustified, filterCoverage]);
+    if (groupByPerson) {
+      // Ordena por nome do profissional (e depois por data desc dentro do mesmo)
+      return [...list].sort((a, b) => {
+        const an = a.professional?.full_name ?? '';
+        const bn = b.professional?.full_name ?? '';
+        const cmp = an.localeCompare(bn, 'pt-BR');
+        if (cmp !== 0) return cmp;
+        return b.start_date.localeCompare(a.start_date);
+      });
+    }
+    return list;
+  }, [absences, search, filterDept, filterReason, filterMonth, filterJustified, filterCoverage, groupByPerson]);
+
+  // Estatísticas por pessoa (para os cabeçalhos de grupo)
+  const personStats = useMemo(() => {
+    const map = new Map<string, { count: number; days: number; hours: number }>();
+    filtered.forEach(a => {
+      const key = a.professional_id;
+      const days = daysBetween(a.start_date, a.end_date);
+      const cur = map.get(key) ?? { count: 0, days: 0, hours: 0 };
+      cur.count += 1;
+      cur.days += days;
+      cur.hours += days * Number(a.hours_per_day || 0);
+      map.set(key, cur);
+    });
+    return map;
+  }, [filtered]);
 
   const paginated = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -268,6 +302,20 @@ export default function AbsenteeismView() {
                 className="w-full min-h-[44px] pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setGroupByPerson(g => !g)}
+              aria-pressed={groupByPerson}
+              title="Agrupar registros pelo profissional"
+              className={`inline-flex items-center gap-2 min-h-[44px] px-4 py-2 rounded-lg font-medium transition ${
+                groupByPerson
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <UsersIcon className="w-4 h-4" aria-hidden="true" />
+              Agrupar por pessoa
+            </button>
             <button
               type="button"
               onClick={() => setShowFilters(s => !s)}
@@ -375,11 +423,33 @@ export default function AbsenteeismView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {paginated.map(a => {
+                  {paginated.map((a, idx) => {
                     const days = daysBetween(a.start_date, a.end_date);
                     const code = a.reason?.shift_code ?? '?';
+                    const prev = idx > 0 ? paginated[idx - 1] : null;
+                    const showGroupHeader =
+                      groupByPerson && (!prev || prev.professional_id !== a.professional_id);
+                    const ps = personStats.get(a.professional_id);
                     return (
-                      <tr key={a.id} className="hover:bg-gray-50 transition">
+                      <Fragment key={a.id}>
+                        {showGroupHeader && (
+                          <tr className="bg-emerald-50/60 border-t-2 border-emerald-200">
+                            <td colSpan={8} className="px-4 py-2">
+                              <div className="flex flex-wrap items-center gap-2 text-sm">
+                                <UsersIcon className="w-4 h-4 text-emerald-700" aria-hidden="true" />
+                                <span className="font-semibold text-emerald-900">
+                                  {a.professional?.full_name ?? '—'}
+                                </span>
+                                {ps && (
+                                  <span className="text-xs text-emerald-800/80">
+                                    · {ps.count} registro{ps.count > 1 ? 's' : ''} · {ps.days} dia{ps.days > 1 ? 's' : ''} · {ps.hours}h
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      <tr className="hover:bg-gray-50 transition">
                         <td className="px-4 py-3">
                           <div className="font-medium text-gray-900">{a.professional?.full_name ?? '—'}</div>
                           {a.observation && (
@@ -452,6 +522,7 @@ export default function AbsenteeismView() {
                           </div>
                         </td>
                       </tr>
+                      </Fragment>
                     );
                   })}
                 </tbody>
