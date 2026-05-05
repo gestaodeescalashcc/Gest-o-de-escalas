@@ -2166,6 +2166,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                             {day}
                           </th>
                         ))}
+                        {/* Uma coluna por sigla com o total daquele profissional */}
+                        {uniqueShiftCodes.map(code => (
+                          <th
+                            key={`hcol-${code}`}
+                            className={`border border-gray-300 px-1 py-2 text-center text-[10px] font-bold whitespace-nowrap ${getCellColorClass(code)}`}
+                            style={{ minWidth: '36px' }}
+                            title={`Total de ${code} no mês`}
+                          >
+                            {code}
+                          </th>
+                        ))}
                         <th className="border border-gray-300 px-2 py-2 text-center font-semibold whitespace-nowrap" style={{ minWidth: '70px' }}>
                           TOTAL<br/>HORAS
                         </th>
@@ -2185,6 +2196,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                           <th key={day} className="border border-gray-300 px-1 py-1 text-center font-medium text-gray-600" style={{ fontSize: '9px' }}>
                             {getDayOfWeek(day)}
                           </th>
+                        ))}
+                        {uniqueShiftCodes.map(code => (
+                          <th key={`hcol2-${code}`} className="border border-gray-300 bg-gray-50"></th>
                         ))}
                         <th className="border border-gray-300 px-2 py-1"></th>
                         {editMode && (
@@ -2272,6 +2286,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                                     T
                                   </span>
                                 )}
+                              </td>
+                            );
+                          })}
+                          {/* Total por sigla, na linha do profissional */}
+                          {uniqueShiftCodes.map(code => {
+                            // Conta quantos dias esse profissional tem essa sigla
+                            let count = 0;
+                            for (let d = 1; d <= daysInMonth; d++) {
+                              if (getEffectiveShiftCode(prof.id, d) === code) count++;
+                            }
+                            return (
+                              <td
+                                key={`pcol-${prof.id}-${code}`}
+                                className={`border border-gray-300 px-1 py-2 text-center text-xs font-bold ${count > 0 ? 'text-gray-900 bg-gray-50' : 'text-gray-300 bg-gray-50'}`}
+                                style={{ minWidth: '36px' }}
+                              >
+                                {count > 0 ? count : '·'}
                               </td>
                             );
                           })}
@@ -2367,7 +2398,18 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                                   </td>
                                 );
                               })}
-                              {/* Soma do mês — em destaque */}
+                              {/* Intersecção com cada coluna "TOTAL <SIGLA>" da direita */}
+                              {uniqueShiftCodes.map(colCode => (
+                                <td
+                                  key={`tfoot-x-${code}-${colCode}`}
+                                  className={`border border-gray-300 px-1 py-1.5 text-center text-xs font-bold ${
+                                    code === colCode ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-300'
+                                  }`}
+                                >
+                                  {code === colCode ? monthTotal : '·'}
+                                </td>
+                              ))}
+                              {/* Total geral (mesmo monthTotal) — colorido para destaque */}
                               <td className="border border-gray-300 px-2 py-1.5 text-center text-sm font-extrabold bg-gray-800 text-white">
                                 {monthTotal}
                               </td>
