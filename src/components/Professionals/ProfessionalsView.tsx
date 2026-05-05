@@ -5,6 +5,7 @@ import {
   UserCheck,
   UserX,
   Edit2,
+  Trash2,
   Phone,
   Mail,
   FileText,
@@ -19,6 +20,9 @@ import EditProfessionalModal from './EditProfessionalModal';
 import { TableSkeleton } from '../Common/Skeleton';
 import EmptyState from '../Common/EmptyState';
 import Pagination from '../Common/Pagination';
+import ConfirmDialog from '../Common/ConfirmDialog';
+import { useToast } from '../../hooks/useToast';
+import ToastContainer from '../Common/ToastContainer';
 
 interface Professional {
   id: string;
@@ -88,6 +92,9 @@ export default function ProfessionalsView() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingProfessional, setEditingProfessional] = useState<Professional | null>(null);
+  const [deletingProf, setDeletingProf] = useState<Professional | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const { toasts, toast, removeToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('');
@@ -137,6 +144,36 @@ export default function ProfessionalsView() {
       setError(err.message || 'Erro ao carregar dados');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingProf) return;
+    setDeleteLoading(true);
+    try {
+      // Tenta DELETE definitivo primeiro
+      const { error } = await supabase
+        .from('professionals')
+        .delete()
+        .eq('id', deletingProf.id);
+      if (error) {
+        // Se falhar (ex: FK de shifts/swaps), faz soft delete (active=false)
+        const { error: softErr } = await supabase
+          .from('professionals')
+          .update({ active: false, updated_at: new Date().toISOString() })
+          .eq('id', deletingProf.id);
+        if (softErr) throw softErr;
+        toast.success(`${deletingProf.full_name} foi desativado (tinha histórico vinculado).`);
+      } else {
+        toast.success(`${deletingProf.full_name} foi removido.`);
+      }
+      setDeletingProf(null);
+      await loadProfessionals();
+    } catch (err: any) {
+      console.error('Erro ao excluir profissional:', err);
+      toast.error('Erro ao excluir: ' + (err.message ?? 'tente novamente'));
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -589,15 +626,27 @@ export default function ProfessionalsView() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button
-                          type="button"
-                          onClick={() => setEditingProfessional(prof)}
-                          aria-label={`Editar ${prof.full_name}`}
-                          className="inline-flex items-center gap-1 min-h-[36px] px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <Edit2 className="w-4 h-4" aria-hidden="true" />
-                          <span className="hidden sm:inline">Editar</span>
-                        </button>
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingProfessional(prof)}
+                            aria-label={`Editar ${prof.full_name}`}
+                            title="Editar"
+                            className="inline-flex items-center gap-1 min-h-[36px] px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <Edit2 className="w-4 h-4" aria-hidden="true" />
+                            <span className="hidden sm:inline">Editar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingProf(prof)}
+                            aria-label={`Excluir ${prof.full_name}`}
+                            title="Excluir"
+                            className="inline-flex items-center justify-center min-h-[36px] w-9 text-red-700 rounded-lg hover:bg-red-50 transition focus:outline-none focus:ring-2 focus:ring-red-500"
+                          >
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -637,6 +686,19 @@ export default function ProfessionalsView() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={deletingProf !== null}
+        title="Excluir profissional?"
+        message={`Tem certeza que deseja excluir ${deletingProf?.full_name ?? ''}? Caso ele tenha plantões registrados, será apenas desativado (preservando o histórico). Caso contrário, será removido definitivamente.`}
+        confirmLabel="Excluir"
+        variant="danger"
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeletingProf(null)}
+      />
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
