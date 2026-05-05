@@ -1678,15 +1678,47 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
 
   // Limpa TODOS os plantões da escala atual (mantém a escala e os profissionais vinculados)
   const handleClearAllShifts = async () => {
-    if (!selectedSchedule || clearAllConfirmText !== 'LIMPAR') return;
+    if (!selectedSchedule || clearAllConfirmText.trim().toUpperCase() !== 'LIMPAR') return;
     setClearingAll(true);
     try {
-      const { error, count } = await supabase
+      // 1) Pega os IDs dos shifts da escala — necessário pra apagar referências em outras tabelas
+      const { data: shiftsToDelete, error: listErr } = await supabase
         .from('shifts')
-        .delete({ count: 'exact' })
+        .select('id')
         .eq('schedule_id', selectedSchedule);
-      if (error) throw error;
-      toast.success(`${count ?? 0} plantão(ões) removido(s) da escala.`);
+      if (listErr) throw listErr;
+
+      const shiftIds = (shiftsToDelete ?? []).map(s => s.id);
+
+      if (shiftIds.length === 0) {
+        toast.info?.('Esta escala já está vazia.') ?? toast.success('Esta escala já está vazia.');
+        setShowClearAllModal(false);
+        setClearAllConfirmText('');
+        return;
+      }
+
+      // 2) Apaga shift_swaps que referenciam esses shifts (via original ou offered)
+      //    Faz em dois deletes: um pra cada coluna FK
+      const { error: swapsErr1 } = await supabase
+        .from('shift_swaps')
+        .delete()
+        .in('original_shift_id', shiftIds);
+      if (swapsErr1) throw swapsErr1;
+
+      const { error: swapsErr2 } = await supabase
+        .from('shift_swaps')
+        .delete()
+        .in('offered_shift_id', shiftIds);
+      if (swapsErr2) throw swapsErr2;
+
+      // 3) Agora os shifts podem ser apagados
+      const { error: shiftsErr } = await supabase
+        .from('shifts')
+        .delete()
+        .in('id', shiftIds);
+      if (shiftsErr) throw shiftsErr;
+
+      toast.success(`${shiftIds.length} plantão(ões) removido(s) da escala.`);
       setShowClearAllModal(false);
       setClearAllConfirmText('');
       await loadData(true);
@@ -3088,7 +3120,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               </button>
               <button
                 onClick={handleClearAllShifts}
-                disabled={clearAllConfirmText !== 'LIMPAR' || clearingAll}
+                disabled={clearAllConfirmText.trim().toUpperCase() !== 'LIMPAR' || clearingAll}
                 className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
