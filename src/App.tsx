@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import LoginForm from './components/Auth/LoginForm';
@@ -50,10 +50,30 @@ function ViewSuspense({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageSkeleton variant="table" />}>{children}</Suspense>;
 }
 
+const STORAGE_KEY_VIEW = 'medscale.currentView';
+const STORAGE_KEY_SCHEDULE_ID = 'medscale.selectedScheduleId';
+
 function AppContent() {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('schedule');
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(null);
+  const [currentView, setCurrentView] = useState<string>(() => {
+    try { return localStorage.getItem(STORAGE_KEY_VIEW) || 'schedule'; }
+    catch { return 'schedule'; }
+  });
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(() => {
+    try { return localStorage.getItem(STORAGE_KEY_SCHEDULE_ID); }
+    catch { return null; }
+  });
+
+  // Persistência da página atual (sobrevive a F5)
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY_VIEW, currentView); } catch {}
+  }, [currentView]);
+  useEffect(() => {
+    try {
+      if (selectedScheduleId) localStorage.setItem(STORAGE_KEY_SCHEDULE_ID, selectedScheduleId);
+      else localStorage.removeItem(STORAGE_KEY_SCHEDULE_ID);
+    } catch {}
+  }, [selectedScheduleId]);
 
   if (loading) return <AppLoadingScreen />;
   if (!user) return <LoginForm />;
