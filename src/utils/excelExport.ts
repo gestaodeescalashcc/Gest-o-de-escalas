@@ -365,7 +365,17 @@ function fillData(
     // Preencher dados básicos
     if (layout.matriculaCol)
       targetRow.getCell(layout.matriculaCol).value = prof.registration_number ?? '';
-    if (layout.nameCol) targetRow.getCell(layout.nameCol).value = prof.full_name;
+    if (layout.nameCol) {
+      const nameCell = targetRow.getCell(layout.nameCol);
+      // Inclui COREN como segunda linha dentro da mesma célula (mantém layout do template)
+      nameCell.value = prof.coren
+        ? { richText: [
+            { text: prof.full_name, font: { name: 'Arial', size: 9, bold: true } },
+            { text: `\nCOREN: ${prof.coren}`, font: { name: 'Arial', size: 8, color: { argb: 'FF065F46' }, italic: true } },
+          ] }
+        : prof.full_name;
+      nameCell.alignment = { ...(nameCell.alignment ?? {}), wrapText: true, vertical: 'middle' };
+    }
     if (layout.funcaoCol) targetRow.getCell(layout.funcaoCol).value = prof.category_name ?? '';
 
     // Preencher turnos
@@ -506,7 +516,17 @@ async function exportGeneric(data: ExportData) {
     row.height = 22;
 
     row.getCell(1).value = prof.registration_number ?? '';
-    row.getCell(2).value = prof.full_name;
+    if (prof.coren) {
+      row.getCell(2).value = {
+        richText: [
+          { text: prof.full_name, font: { name: 'Arial', size: 9, bold: true } },
+          { text: `\nCOREN: ${prof.coren}`, font: { name: 'Arial', size: 8, color: { argb: 'FF065F46' }, italic: true } },
+        ],
+      };
+    } else {
+      row.getCell(2).value = prof.full_name;
+    }
+    row.getCell(2).alignment = { wrapText: true, vertical: 'middle' };
     row.getCell(3).value = prof.category_name ?? '';
 
     let workDays = 0;

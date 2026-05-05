@@ -150,9 +150,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   // Single source of truth: quem está na escala = quem está em professionalIdsInSchedule.
   // O conjunto é atualizado explicitamente em loadData (a partir de shifts) e nos handlers
   // de Adicionar/Remover Profissional.
-  // Visíveis na grade principal (afastados aparecem na grade com marcador)
+  // Visíveis na grade principal (exclui afastados — eles vão pro rodapé)
   const professionals = useMemo(
-    () => allProfessionals.filter(p => professionalIdsInSchedule.has(p.id)),
+    () => allProfessionals.filter(p => professionalIdsInSchedule.has(p.id) && !p.on_leave),
+    [allProfessionals, professionalIdsInSchedule]
+  );
+  // Afastados desta escala (só os que foram adicionados a ela)
+  const onLeaveProfessionals = useMemo(
+    () => allProfessionals.filter(p => professionalIdsInSchedule.has(p.id) && p.on_leave),
     [allProfessionals, professionalIdsInSchedule]
   );
 
@@ -2211,38 +2216,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       </tr>
                     </thead>
                     <tbody>
-                      {professionals.map((prof) => {
-                        // Cor de fundo: afastado tem prioridade sobre overworkload
-                        const stickyBg = prof.on_leave ? 'bg-amber-50' : isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white';
-                        const rowBg = prof.on_leave ? 'bg-amber-50' : isOverWorkload(prof.id) ? 'bg-red-50' : '';
-                        return (
-                        <tr key={prof.id} className={`hover:bg-gray-50 ${rowBg}`}>
-                          <td className={`border border-gray-300 px-2 py-2 text-center sticky left-0 z-10 whitespace-nowrap ${stickyBg}`}>
+                      {professionals.map((prof) => (
+                        <tr key={prof.id} className={`hover:bg-gray-50 ${isOverWorkload(prof.id) ? 'bg-red-50' : ''}`}>
+                          <td className={`border border-gray-300 px-2 py-2 text-center sticky left-0 z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}>
                             {prof.registration_number || '-'}
                           </td>
-                          <td className={`border border-gray-300 px-3 py-2 font-medium sticky z-10 whitespace-nowrap ${stickyBg}`} style={{ left: '70px' }}>
-                            <div className="flex items-center gap-2">
-                              <span className={prof.on_leave ? 'text-amber-900' : ''}>{prof.full_name}</span>
-                              {prof.on_leave && (
-                                <span
-                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 ring-1 ring-inset ring-amber-400 uppercase tracking-wide"
-                                  title={prof.leave_reason || 'Afastado'}
-                                >
-                                  Afastado
-                                </span>
-                              )}
-                            </div>
-                            {prof.on_leave && prof.leave_reason && (
-                              <div className="text-[10px] text-amber-700 italic mt-0.5">{prof.leave_reason}</div>
-                            )}
+                          <td className={`border border-gray-300 px-3 py-2 font-medium sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '70px' }}>
+                            {prof.full_name}
                           </td>
-                          <td className={`border border-gray-300 px-2 py-2 sticky z-10 whitespace-nowrap ${stickyBg}`} style={{ left: '250px' }}>
+                          <td className={`border border-gray-300 px-2 py-2 sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '250px' }}>
                             {prof.category?.name}
                           </td>
-                          <td className={`border border-gray-300 px-2 py-2 text-center sticky z-10 whitespace-nowrap text-xs ${stickyBg} ${prof.coren ? 'text-emerald-700 font-semibold' : 'text-gray-300'}`} style={{ left: '370px' }}>
+                          <td className={`border border-gray-300 px-2 py-2 text-center sticky z-10 whitespace-nowrap text-xs ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'} ${prof.coren ? 'text-emerald-700 font-semibold' : 'text-gray-300'}`} style={{ left: '370px' }}>
                             {prof.coren || '—'}
                           </td>
-                          <td className={`border border-gray-300 px-2 py-2 text-center font-semibold sticky z-10 whitespace-nowrap ${stickyBg}`} style={{ left: '450px' }}>
+                          <td className={`border border-gray-300 px-2 py-2 text-center font-semibold sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '450px' }}>
                             {calculateWorkDays(prof.id)}
                           </td>
                           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
@@ -2379,8 +2367,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                             </td>
                           )}
                         </tr>
-                        );
-                      })}
+                      ))}
                     </tbody>
                     {uniqueShiftCodes.length > 0 && (
                       <tfoot className="border-t-4 border-double border-gray-400">
@@ -2447,6 +2434,34 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 </div>
               </div>
 
+              {/* Profissionais afastados desta escala — fora da grade */}
+              {onLeaveProfessionals.length > 0 && (
+                <div className="mt-4 border border-amber-200 rounded-lg overflow-hidden">
+                  <div className="bg-amber-50 px-4 py-2 border-b border-amber-200 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-700" aria-hidden="true" />
+                    <h3 className="font-semibold text-amber-900 text-sm">
+                      Profissionais Afastados (Recebendo Salário) · {onLeaveProfessionals.length}
+                    </h3>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {onLeaveProfessionals.map(p => (
+                      <div key={p.id} className="px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm hover:bg-gray-50">
+                        <span className="font-medium text-gray-900 min-w-[180px]">{p.full_name}</span>
+                        <span className="text-gray-600 text-xs">{p.category?.name}</span>
+                        {p.registration_number && (
+                          <span className="text-gray-500 text-xs">Mat: {p.registration_number}</span>
+                        )}
+                        {p.coren && (
+                          <span className="text-emerald-700 text-xs font-semibold">COREN: {p.coren}</span>
+                        )}
+                        <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium ring-1 ring-inset ring-amber-300">
+                          {p.leave_reason || 'Afastado'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             )}
 
