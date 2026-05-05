@@ -1919,6 +1919,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   };
 
   const daysInMonth = getDaysInMonth();
+  // Mostra a coluna COREN só quando há profissionais de enfermagem na escala
+  // (categoria contém "enferm" no nome)
+  const showCorenColumn = useMemo(
+    () => professionals.some(p => /enferm/i.test(p.category?.name ?? '')),
+    [professionals]
+  );
   const [year, month] = selectedMonth.split('-');
   const monthName = new Date(parseInt(year), parseInt(month) - 1, 15).toLocaleDateString('pt-BR', {
     month: 'long',
@@ -2340,10 +2346,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '120px', left: '250px' }}>
                           FUNÇÃO
                         </th>
-                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '80px', left: '370px' }}>
-                          COREN
-                        </th>
-                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '60px', left: '450px' }}>
+                        {showCorenColumn && (
+                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '80px', left: '370px' }}>
+                            COREN
+                          </th>
+                        )}
+                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px' }}>
                           DIAS<br/>TRAB.
                         </th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
@@ -2376,8 +2384,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         <th className="border border-gray-300 px-2 py-1 sticky left-0 bg-gray-50 z-20" style={{ minWidth: '70px' }}></th>
                         <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '180px', left: '70px' }}></th>
                         <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '120px', left: '250px' }}></th>
-                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '80px', left: '370px' }}></th>
-                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '60px', left: '450px' }}></th>
+                        {showCorenColumn && (
+                          <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '80px', left: '370px' }}></th>
+                        )}
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px' }}></th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
                           <th key={day} className="border border-gray-300 px-1 py-1 text-center font-medium text-gray-600" style={{ fontSize: '9px' }}>
                             {getDayOfWeek(day)}
@@ -2404,10 +2414,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                           <td className={`border border-gray-300 px-2 py-2 sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '250px' }}>
                             {prof.category?.name}
                           </td>
-                          <td className={`border border-gray-300 px-2 py-2 text-center sticky z-10 whitespace-nowrap text-xs ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'} ${prof.coren ? 'text-emerald-700 font-semibold' : 'text-gray-300'}`} style={{ left: '370px' }}>
-                            {prof.coren || '—'}
-                          </td>
-                          <td className={`border border-gray-300 px-2 py-2 text-center font-semibold sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '450px' }}>
+                          {showCorenColumn && (
+                            <td className={`border border-gray-300 px-2 py-2 text-center sticky z-10 whitespace-nowrap text-xs ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'} ${prof.coren ? 'text-emerald-700 font-semibold' : 'text-gray-300'}`} style={{ left: '370px' }}>
+                              {prof.coren || '—'}
+                            </td>
+                          )}
+                          <td className={`border border-gray-300 px-2 py-2 text-center font-semibold sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: showCorenColumn ? '450px' : '370px' }}>
                             {calculateWorkDays(prof.id)}
                           </td>
                           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
@@ -2556,11 +2568,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                           const rowBg = colorCls.replace(/text-\S+/g, '').replace(/ring-\S+/g, '').replace(/-100/g, '-50');
                           return (
                             <tr key={`tot-${code}`} className={`${rowBg}`}>
-                              {/* Rótulo "TOTAL <SIGLA>" — 5 colunas sticky mescladas */}
+                              {/* Rótulo "TOTAL <SIGLA>" — colunas sticky mescladas */}
                               <th
-                                colSpan={5}
+                                colSpan={showCorenColumn ? 5 : 4}
                                 className={`border border-gray-300 px-3 py-1.5 sticky left-0 z-10 text-right ${rowBg}`}
-                                style={{ minWidth: '510px' }}
+                                style={{ minWidth: showCorenColumn ? '510px' : '430px' }}
                               >
                                 <div className="inline-flex items-center gap-2">
                                   <span className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold">Total</span>

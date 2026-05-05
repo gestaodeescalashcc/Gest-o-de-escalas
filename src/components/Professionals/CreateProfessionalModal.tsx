@@ -363,21 +363,24 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                COREN <span className="text-gray-400 font-normal">(opcional)</span>
-              </label>
-              <input
-                type="text"
-                value={formData.coren}
-                onChange={(e) => setFormData({ ...formData, coren: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Ex: 596753"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Numero do conselho (Enfermeiros e Tecnicos de Enfermagem).
-              </p>
-            </div>
+            {(() => {
+              const cat = categories.find((c: any) => c.id === formData.category_id);
+              const isNursing = !!cat && /enferm/i.test(cat.name ?? '');
+              return isNursing ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    COREN <span className="text-gray-400 font-normal">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.coren}
+                    onChange={(e) => setFormData({ ...formData, coren: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Ex: 596753"
+                  />
+                </div>
+              ) : null;
+            })()}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
