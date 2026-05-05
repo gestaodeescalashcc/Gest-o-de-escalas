@@ -22,6 +22,8 @@ interface Professional {
   category: { name: string };
   department: { name: string };
   contracted_hours_per_month?: number;
+  on_leave?: boolean;
+  leave_reason?: string | null;
 }
 
 interface Shift {
@@ -148,9 +150,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   // Single source of truth: quem está na escala = quem está em professionalIdsInSchedule.
   // O conjunto é atualizado explicitamente em loadData (a partir de shifts) e nos handlers
   // de Adicionar/Remover Profissional.
+  // Visíveis na grade principal (exclui afastados)
   const professionals = useMemo(
-    () => allProfessionals.filter(p => professionalIdsInSchedule.has(p.id)),
+    () => allProfessionals.filter(p => professionalIdsInSchedule.has(p.id) && !p.on_leave),
     [allProfessionals, professionalIdsInSchedule]
+  );
+  // Profissionais afastados que continuam recebendo (mostrados no rodapé)
+  const onLeaveProfessionals = useMemo(
+    () => allProfessionals.filter(p => p.on_leave),
+    [allProfessionals]
   );
 
   // Current schedule and lock state
@@ -456,7 +464,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       const [allProfsData, shiftsData] = await Promise.all([
         supabase
           .from('professionals')
-          .select('id, full_name, registration_number, coren, contracted_hours_per_month, category:professional_categories(name), department:departments(name)')
+          .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, category:professional_categories(name), department:departments(name)')
           .eq('department_id', selectedDepartment)
           .eq('active', true)
           .order('full_name'),
@@ -2425,6 +2433,35 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                   </table>
                 </div>
               </div>
+
+              {/* Profissionais afastados (recebendo salário) — fora da grade */}
+              {onLeaveProfessionals.length > 0 && (
+                <div className="mt-4 border border-amber-200 rounded-lg overflow-hidden">
+                  <div className="bg-amber-50 px-4 py-2 border-b border-amber-200 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-700" aria-hidden="true" />
+                    <h3 className="font-semibold text-amber-900 text-sm">
+                      Profissionais Afastados (Recebendo Salário) · {onLeaveProfessionals.length}
+                    </h3>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {onLeaveProfessionals.map(p => (
+                      <div key={p.id} className="px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm hover:bg-gray-50">
+                        <span className="font-medium text-gray-900 min-w-[180px]">{p.full_name}</span>
+                        <span className="text-gray-600 text-xs">{p.category?.name}</span>
+                        {p.registration_number && (
+                          <span className="text-gray-500 text-xs">Mat: {p.registration_number}</span>
+                        )}
+                        {p.coren && (
+                          <span className="text-emerald-700 text-xs font-semibold">COREN: {p.coren}</span>
+                        )}
+                        <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-xs font-medium ring-1 ring-inset ring-amber-300">
+                          {p.leave_reason || 'Afastado'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             )}
 

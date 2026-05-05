@@ -28,6 +28,9 @@ interface Professional {
   hire_date: string | null;
   registration_number: string | null;
   coren: string | null;
+  on_leave?: boolean;
+  leave_reason?: string | null;
+  leave_started_at?: string | null;
   phone: string | null;
   email: string | null;
   active: boolean;
@@ -519,6 +522,14 @@ export default function ProfessionalsView() {
                             {prof.coren && (
                               <span className="text-xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium ring-1 ring-inset ring-emerald-200">
                                 COREN: {prof.coren}
+                              </span>
+                            )}
+                            {prof.on_leave && (
+                              <span
+                                className="text-xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium ring-1 ring-inset ring-amber-300"
+                                title={prof.leave_reason || 'Afastado'}
+                              >
+                                AFASTADO{prof.leave_reason ? `: ${prof.leave_reason}` : ''}
                               </span>
                             )}
                           </div>

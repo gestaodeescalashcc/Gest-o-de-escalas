@@ -22,6 +22,9 @@ interface EditProfessionalModalProps {
     phone: string | null;
     email: string | null;
     contracted_hours_per_month?: number;
+    on_leave?: boolean;
+    leave_reason?: string | null;
+    leave_started_at?: string | null;
   };
   onClose: () => void;
   onSuccess: () => void;
@@ -72,6 +75,9 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
     phone: professional.phone || '',
     email: professional.email || '',
     contracted_hours_per_month: professional.contracted_hours_per_month || 180,
+    on_leave: professional.on_leave || false,
+    leave_reason: professional.leave_reason || '',
+    leave_started_at: professional.leave_started_at || '',
   });
 
   useEffect(() => {
@@ -218,6 +224,9 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
           company_id: formData.company_id,
           registration_number: formData.registration_number || null,
           coren: formData.coren?.trim() || null,
+          on_leave: formData.on_leave,
+          leave_reason: formData.on_leave ? (formData.leave_reason?.trim() || null) : null,
+          leave_started_at: formData.on_leave ? (formData.leave_started_at || null) : null,
           phone: formData.phone || null,
           email: formData.email || null,
           contracted_hours_per_month: formData.contracted_hours_per_month,
@@ -579,6 +588,51 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
                 <Camera className="w-5 h-5" />
                 Capturar Biometria Facial
               </button>
+            )}
+          </div>
+
+          {/* Afastamento (mantém recebendo) */}
+          <div className="border-t border-gray-200 pt-4">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={formData.on_leave}
+                onChange={(e) => setFormData({ ...formData, on_leave: e.target.checked })}
+                className="w-4 h-4 mt-0.5 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
+              />
+              <div className="flex-1">
+                <span className="font-medium text-gray-900">Profissional afastado (segue recebendo salário)</span>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Marca o profissional como afastado. Ele não aparece na grade da escala, mas fica listado no rodapé.
+                </p>
+              </div>
+            </label>
+            {formData.on_leave && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 pl-7">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Motivo do afastamento
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.leave_reason}
+                    onChange={(e) => setFormData({ ...formData, leave_reason: e.target.value })}
+                    placeholder="Ex: Auxílio doença, Licença maternidade..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Início do afastamento <span className="text-gray-400 font-normal">(opcional)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.leave_started_at}
+                    onChange={(e) => setFormData({ ...formData, leave_started_at: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-sm"
+                  />
+                </div>
+              </div>
             )}
           </div>
 
