@@ -87,8 +87,15 @@ function AppContent() {
     setCurrentView('consolidated');
   };
 
+  // Ao clicar em qualquer item do menu, limpa a seleção de escala —
+  // assim "Escala do Mês" sempre abre na lista.
+  const handleViewChange = (view: string) => {
+    setSelectedScheduleId(null);
+    setCurrentView(view);
+  };
+
   return (
-    <DashboardLayout currentView={currentView} onViewChange={setCurrentView}>
+    <DashboardLayout currentView={currentView} onViewChange={handleViewChange}>
       {currentView === 'consolidated' && (
         // Sem escala selecionada → mostra a LISTA (cards com visualizar/excluir).
         // Com escala selecionada → mostra a GRADE da escala.
