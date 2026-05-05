@@ -2098,6 +2098,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                   Histórico
                 </button>
               )}
+              {/* Excluir Escala (sempre disponível para admin, fora do modo edição também) */}
+              {isAdmin() && currentSchedule && (
+                <button
+                  onClick={() => setShowDeleteScheduleModal(true)}
+                  title="Exclui esta escala por completo"
+                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                >
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
+                  Excluir Escala
+                </button>
+              )}
               {/* Modo Edição */}
               {canEditSchedule && (
                 <button
@@ -2126,16 +2137,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 <Trash2 className="w-4 h-4" aria-hidden="true" />
                 Limpar Escala
               </button>
-              {isAdmin() && currentSchedule && (
-                <button
-                  onClick={() => setShowDeleteScheduleModal(true)}
-                  title="Exclui esta escala por completo"
-                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                >
-                  <Trash2 className="w-4 h-4" aria-hidden="true" />
-                  Excluir Escala
-                </button>
-              )}
               <button
                 onClick={() => setShowAddProfessionalModal(true)}
                 className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
