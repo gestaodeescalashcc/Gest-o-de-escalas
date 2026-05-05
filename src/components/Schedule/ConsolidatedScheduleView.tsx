@@ -2584,8 +2584,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                       ))}
                     </tbody>
                     {uniqueShiftCodes.length > 0 && (
-                      <tfoot className="border-t-4 border-double border-gray-400">
-                        {uniqueShiftCodes.map((code) => {
+                      <tfoot>
+                        {/* Separador grosso antes dos totais — evita "embolar" com a última linha */}
+                        <tr aria-hidden="true">
+                          <td colSpan={(showCorenColumn ? 5 : 4) + daysInMonth + uniqueShiftCodes.length + 1 + (editMode ? 1 : 0)}
+                              className="bg-gray-800"
+                              style={{ height: '4px', padding: 0, border: 0 }}
+                          ></td>
+                        </tr>
+                        {uniqueShiftCodes.map((code, idx) => {
                           const colorCls = getCellColorClass(code);
                           const monthTotal = Array.from(dailyShiftTotals.values())
                             .reduce((acc, m) => acc + (m.get(code) ?? 0), 0);
@@ -2596,7 +2603,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                               {/* Rótulo "TOTAL <SIGLA>" — colunas sticky mescladas */}
                               <th
                                 colSpan={showCorenColumn ? 5 : 4}
-                                className={`border border-gray-300 px-3 py-1.5 sticky left-0 z-10 text-right ${rowBg}`}
+                                className={`border border-gray-300 px-3 py-1.5 sticky left-0 z-20 text-right ${rowBg}`}
                                 style={{ minWidth: showCorenColumn ? '510px' : '430px' }}
                               >
                                 <div className="inline-flex items-center gap-2">
