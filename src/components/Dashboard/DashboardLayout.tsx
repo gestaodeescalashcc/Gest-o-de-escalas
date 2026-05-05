@@ -64,7 +64,7 @@ const MENU_GROUPS = [
 const MENU_ITEMS: MenuItem[] = [
   // Schedule group
   { id: 'schedule', label: 'Escalas', icon: Calendar, module: 'schedules', group: 'schedule' },
-  { id: 'consolidated', label: 'Escala Consolidada', icon: LayoutGrid, module: 'schedules', group: 'schedule' },
+  { id: 'consolidated', label: 'Escala do Mês', icon: LayoutGrid, module: 'schedules', group: 'schedule' },
   { id: 'daily', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule' },
   { id: 'professionals', label: 'Profissionais', icon: Users, module: 'professionals', group: 'schedule' },
   { id: 'swaps', label: 'Trocas de Plantões', icon: ArrowLeftRight, module: 'swaps', group: 'schedule', keywords: 'plantoes plantões' },

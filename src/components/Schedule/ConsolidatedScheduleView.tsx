@@ -1934,7 +1934,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3 flex-wrap">
           <Calendar className="w-7 h-7 text-blue-600 flex-shrink-0" aria-hidden="true" />
-          <h1 className="text-2xl font-bold text-gray-900">Escala Consolidada</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Escala do Mês</h1>
           {/* Badge de status removido — fluxo simplificado, todas as escalas
               são editáveis. Histórico é registrado em schedule_audit_log. */}
           {/* Toggle Planejada / Realizada — só aparece se há escala selecionada */}
