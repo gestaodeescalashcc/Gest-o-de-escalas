@@ -2002,11 +2002,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                   Reabrir
                 </button>
               )}
-              {/* Edit mode (only when not locked, or admin can override) */}
-              {canEditSchedule && (
+              {/* Modo Edição — só faz sentido quando a escala não está bloqueada.
+                  Para escalas Publicadas/Fechadas o admin precisa clicar em
+                  "Reabrir" antes (botão à esquerda). */}
+              {canEditSchedule && !isLocked && (
                 <button
                   onClick={() => setEditMode(true)}
                   className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <Edit3 className="w-4 h-4" aria-hidden="true" />
+                  Modo Edição
+                </button>
+              )}
+              {canEditSchedule && isLocked && (
+                <button
+                  onClick={() => toast.error('Reabra a escala primeiro para editá-la (botão "Reabrir" à esquerda).')}
+                  title="Reabra a escala antes de editar"
+                  className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed text-sm font-medium"
                 >
                   <Edit3 className="w-4 h-4" aria-hidden="true" />
                   Modo Edição
