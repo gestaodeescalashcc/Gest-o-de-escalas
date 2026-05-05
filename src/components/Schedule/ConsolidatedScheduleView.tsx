@@ -2324,43 +2324,38 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       <tfoot>
                         {uniqueShiftCodes.map((code, idx) => {
                           const colorCls = getCellColorClass(code);
-                          // Linha separadora antes da primeira sigla
                           const isFirst = idx === 0;
+                          const monthTotal = Array.from(dailyShiftTotals.values())
+                            .reduce((acc, m) => acc + (m.get(code) ?? 0), 0);
                           return (
                             <tr key={`tot-${code}`} className={isFirst ? 'border-t-2 border-gray-400' : ''}>
-                              {/* Matrícula vazia */}
-                              <th className="border border-gray-300 px-2 py-1.5 text-xs sticky left-0 bg-gray-50 z-10" style={{ minWidth: '70px' }}>
-                                {isFirst && <span className="text-gray-500 font-semibold uppercase">Total</span>}
-                              </th>
-                              {/* Nome: rótulo da sigla com cor */}
+                              {/* Rótulo "TOTAL <SIGLA>" — ocupa todas as 4 colunas sticky */}
                               <th
-                                className="border border-gray-300 px-3 py-1.5 sticky bg-gray-50 z-10 text-left"
-                                style={{ minWidth: '180px', left: '70px' }}
+                                colSpan={4}
+                                className="border border-gray-300 px-3 py-1 sticky left-0 bg-gray-50 z-10 text-right"
+                                style={{ minWidth: '430px' }}
                               >
-                                <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded text-xs font-bold ${colorCls}`}>
+                                <span className="text-xs text-gray-600 font-semibold mr-2">TOTAL</span>
+                                <span className={`inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 rounded text-xs font-bold ${colorCls}`}>
                                   {code}
                                 </span>
                               </th>
-                              {/* Função vazia */}
-                              <th className="border border-gray-300 sticky bg-gray-50 z-10" style={{ minWidth: '120px', left: '250px' }}></th>
-                              {/* Dias trab vazia */}
-                              <th className="border border-gray-300 sticky bg-gray-50 z-10" style={{ minWidth: '60px', left: '370px' }}></th>
                               {/* Uma célula por dia com a contagem */}
                               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                                 const count = dailyShiftTotals.get(day)?.get(code) ?? 0;
                                 return (
                                   <td
                                     key={day}
-                                    className={`border border-gray-300 px-1 py-1.5 text-center text-xs font-bold ${count > 0 ? 'bg-gray-50 text-gray-900' : 'bg-gray-50 text-gray-300'}`}
+                                    className={`border border-gray-300 px-1 py-1 text-center text-xs font-bold ${count > 0 ? 'bg-gray-50 text-gray-900' : 'bg-gray-50 text-gray-300'}`}
                                     style={{ minWidth: '32px', maxWidth: '32px' }}
                                   >
                                     {count > 0 ? count : ''}
                                   </td>
                                 );
                               })}
-                              {/* TOTAL HORAS coluna: soma diária total dessa sigla no mês */}
-                              <td className="border border-gray-300 px-2 py-1.5 text-center text-xs font-bold bg-gray-50 text-gray-900">
-                                {Array.from(dailyShiftTotals.values()).reduce((acc, m) => acc + (m.get(code) ?? 0), 0)}
+                              {/* Soma do mês */}
+                              <td className="border border-gray-300 px-2 py-1 text-center text-xs font-bold bg-gray-50 text-gray-900">
+                                {monthTotal}
                               </td>
                               {editMode && (
                                 <td className="border border-gray-300 bg-gray-50"></td>
