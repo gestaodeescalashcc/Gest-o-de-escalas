@@ -2424,37 +2424,37 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       </tfoot>
                     )}
                   </table>
+
+                  {/* Profissionais afastados — DENTRO do scale para colar na tabela */}
+                  {onLeaveProfessionals.length > 0 && (
+                    <div className="border-x border-b border-amber-200 bg-amber-50/40">
+                      <div className="bg-amber-50 px-3 py-1.5 border-b border-amber-200 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-700" aria-hidden="true" />
+                        <h3 className="font-semibold text-amber-900 text-xs uppercase tracking-wide">
+                          Profissionais Afastados (Recebendo Salário) · {onLeaveProfessionals.length}
+                        </h3>
+                      </div>
+                      <div className="divide-y divide-amber-100">
+                        {onLeaveProfessionals.map(p => (
+                          <div key={p.id} className="px-3 py-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm hover:bg-amber-100/30">
+                            <span className="font-medium text-gray-900">{p.full_name}</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[11px] font-bold ring-1 ring-inset ring-amber-400 uppercase">
+                              {p.leave_reason || 'Afastado'}
+                            </span>
+                            <span className="text-gray-600 text-xs">{p.category?.name}</span>
+                            {p.registration_number && (
+                              <span className="text-gray-500 text-xs">Mat: {p.registration_number}</span>
+                            )}
+                            {p.coren && (
+                              <span className="text-emerald-700 text-xs font-semibold">COREN: {p.coren}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              {/* Profissionais afastados desta escala — logo após a grade */}
-              {onLeaveProfessionals.length > 0 && (
-                <div className="border-x border-b border-amber-200 rounded-b-lg overflow-hidden bg-amber-50/40">
-                  <div className="bg-amber-50 px-3 py-1.5 border-b border-amber-200 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-700" aria-hidden="true" />
-                    <h3 className="font-semibold text-amber-900 text-xs uppercase tracking-wide">
-                      Profissionais Afastados (Recebendo Salário) · {onLeaveProfessionals.length}
-                    </h3>
-                  </div>
-                  <div className="divide-y divide-amber-100">
-                    {onLeaveProfessionals.map(p => (
-                      <div key={p.id} className="px-3 py-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm hover:bg-amber-100/30">
-                        <span className="font-medium text-gray-900">{p.full_name}</span>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 text-[11px] font-bold ring-1 ring-inset ring-amber-400 uppercase">
-                          {p.leave_reason || 'Afastado'}
-                        </span>
-                        <span className="text-gray-600 text-xs">{p.category?.name}</span>
-                        {p.registration_number && (
-                          <span className="text-gray-500 text-xs">Mat: {p.registration_number}</span>
-                        )}
-                        {p.coren && (
-                          <span className="text-emerald-700 text-xs font-semibold">COREN: {p.coren}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
             )}
 

@@ -212,7 +212,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from('professionals')
         .update({
           full_name: formData.full_name,
@@ -232,9 +232,14 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
           contracted_hours_per_month: formData.contracted_hours_per_month,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', professional.id);
+        .eq('id', professional.id)
+        .select('id, on_leave, leave_reason');
 
       if (error) throw error;
+      if (!updated || updated.length === 0) {
+        throw new Error('UPDATE bloqueado pelo RLS — não foi possível salvar. Contate o administrador.');
+      }
+      console.log('[edit professional] gravado:', updated[0]);
 
       if (facialDescriptor && !hasExistingDescriptor) {
         if (facialDataId) {
