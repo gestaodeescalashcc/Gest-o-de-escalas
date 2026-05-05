@@ -18,6 +18,7 @@ interface Professional {
   id: string;
   full_name: string;
   registration_number: string;
+  coren?: string | null;
   category: { name: string };
   department: { name: string };
   contracted_hours_per_month?: number;
@@ -455,7 +456,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       const [allProfsData, shiftsData] = await Promise.all([
         supabase
           .from('professionals')
-          .select('id, full_name, registration_number, contracted_hours_per_month, category:professional_categories(name), department:departments(name)')
+          .select('id, full_name, registration_number, coren, contracted_hours_per_month, category:professional_categories(name), department:departments(name)')
           .eq('department_id', selectedDepartment)
           .eq('active', true)
           .order('full_name'),
@@ -1694,6 +1695,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
           id: p.id,
           full_name: p.full_name,
           registration_number: p.registration_number,
+          coren: p.coren,
           category_name: p.category?.name,
           contracted_hours: p.contracted_hours_per_month,
         })),
@@ -2153,7 +2155,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '120px', left: '250px' }}>
                           FUNÇÃO
                         </th>
-                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '60px', left: '370px' }}>
+                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '80px', left: '370px' }}>
+                          COREN
+                        </th>
+                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '60px', left: '450px' }}>
                           DIAS<br/>TRAB.
                         </th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
@@ -2174,7 +2179,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         <th className="border border-gray-300 px-2 py-1 sticky left-0 bg-gray-50 z-20" style={{ minWidth: '70px' }}></th>
                         <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '180px', left: '70px' }}></th>
                         <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '120px', left: '250px' }}></th>
-                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '60px', left: '370px' }}></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '80px', left: '370px' }}></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '60px', left: '450px' }}></th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
                           <th key={day} className="border border-gray-300 px-1 py-1 text-center font-medium text-gray-600" style={{ fontSize: '9px' }}>
                             {getDayOfWeek(day)}
@@ -2198,7 +2204,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                           <td className={`border border-gray-300 px-2 py-2 sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '250px' }}>
                             {prof.category?.name}
                           </td>
-                          <td className={`border border-gray-300 px-2 py-2 text-center font-semibold sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '370px' }}>
+                          <td className={`border border-gray-300 px-2 py-2 text-center sticky z-10 whitespace-nowrap text-xs ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'} ${prof.coren ? 'text-emerald-700 font-semibold' : 'text-gray-300'}`} style={{ left: '370px' }}>
+                            {prof.coren || '—'}
+                          </td>
+                          <td className={`border border-gray-300 px-2 py-2 text-center font-semibold sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '450px' }}>
                             {calculateWorkDays(prof.id)}
                           </td>
                           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
@@ -2330,11 +2339,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                           const rowBg = colorCls.replace(/text-\S+/g, '').replace(/ring-\S+/g, '').replace(/-100/g, '-50');
                           return (
                             <tr key={`tot-${code}`} className={`${rowBg}`}>
-                              {/* Rótulo "TOTAL <SIGLA>" — 4 colunas sticky mescladas */}
+                              {/* Rótulo "TOTAL <SIGLA>" — 5 colunas sticky mescladas */}
                               <th
-                                colSpan={4}
+                                colSpan={5}
                                 className={`border border-gray-300 px-3 py-1.5 sticky left-0 z-10 text-right ${rowBg}`}
-                                style={{ minWidth: '430px' }}
+                                style={{ minWidth: '510px' }}
                               >
                                 <div className="inline-flex items-center gap-2">
                                   <span className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold">Total</span>
