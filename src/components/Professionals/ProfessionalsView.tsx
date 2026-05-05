@@ -27,6 +27,7 @@ interface Professional {
   pis_number: string | null;
   hire_date: string | null;
   registration_number: string | null;
+  coren: string | null;
   phone: string | null;
   email: string | null;
   active: boolean;
@@ -198,6 +199,7 @@ export default function ProfessionalsView() {
         normalize(prof.category?.name).includes(q) ||
         normalize(prof.department?.name).includes(q) ||
         normalize(prof.registration_number).includes(q) ||
+        normalize(prof.coren).includes(q) ||
         normalize(prof.phone).includes(q) ||
         normalize(prof.email).includes(q);
 
@@ -507,12 +509,19 @@ export default function ProfessionalsView() {
                       <td className="px-4 py-3">
                         <div>
                           <div className="font-medium text-gray-900">{prof.full_name}</div>
-                          {prof.registration_number && (
-                            <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                              <FileText className="w-3 h-3" aria-hidden="true" />
-                              {prof.registration_number}
-                            </div>
-                          )}
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                            {prof.registration_number && (
+                              <span className="text-xs text-gray-500 inline-flex items-center gap-1">
+                                <FileText className="w-3 h-3" aria-hidden="true" />
+                                {prof.registration_number}
+                              </span>
+                            )}
+                            {prof.coren && (
+                              <span className="text-xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium ring-1 ring-inset ring-emerald-200">
+                                COREN: {prof.coren}
+                              </span>
+                            )}
+                          </div>
                           {/* Mobile-only condensed info */}
                           <div className="md:hidden text-xs text-gray-500 mt-1">
                             {prof.department?.name || 'Sem setor'}

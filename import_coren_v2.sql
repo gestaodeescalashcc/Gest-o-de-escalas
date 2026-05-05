@@ -1,0 +1,353 @@
+-- =============================================================================
+-- Importa COREN — versão 2: cobre duplicatas + variações de nome (fuzzy match)
+--
+-- Estratégia em 3 passes:
+--   Pass 1: nome completo idêntico (sem acentos, sem case)
+--   Pass 2: nome reduzido (primeira + última palavra, sem acentos)
+--   Pass 3: lista o que ainda ficou de fora
+--
+-- Quando há duplicatas no banco com o mesmo nome, AMBAS recebem o mesmo COREN.
+-- =============================================================================
+
+-- Funções auxiliares
+CREATE OR REPLACE FUNCTION norm_name(s text) RETURNS text AS $$
+  SELECT lower(translate(s,
+    'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ',
+    'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC'));
+$$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION first_last(s text) RETURNS text AS $$
+  SELECT CASE
+    WHEN array_length(string_to_array(trim(s), ' '), 1) >= 2
+    THEN (string_to_array(trim(s), ' '))[1] || ' ' ||
+         (string_to_array(trim(s), ' '))[array_length(string_to_array(trim(s), ' '), 1)]
+    ELSE trim(s)
+  END;
+$$ LANGUAGE SQL IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION norm_first_last(s text) RETURNS text AS $$
+  SELECT norm_name(first_last(s));
+$$ LANGUAGE SQL IMMUTABLE;
+
+-- =============================================================================
+-- PASS 1: nome completo (sem acentos / case)
+-- =============================================================================
+WITH import AS (
+  SELECT * FROM (VALUES
+  ('LUCINÉIA DOS SANTOS ANDRADE', '596753'),
+  ('ISIS THAIANE MATTOS ROCHA PITA', '327132'),
+  ('THAIS MENEZES DIAS', '101736'),
+  ('DANIELA PINHEIRO DOS SANTOS', '315781'),
+  ('DANIELLE APARECIDA B. DE SOUZA', '35069'),
+  ('JULIANA RIOS DE ARAUJO E ARAUJO', '317355'),
+  ('CAMILA SANTOS PASCOAL', '441842'),
+  ('MICHELE COSTA SALGUEIRO', '268351'),
+  ('LUCIVALDA FERREIRA LIMA', '90669'),
+  ('VIRGÍNIA MARIA DOS SANTOS', '426254'),
+  ('DANIELA A. M. MONTENEGRO', '329291'),
+  ('GABRIELA SOARES VIANA SILVA', '498766'),
+  ('IONE DOS SANTOS LIMA', '546648'),
+  ('VERA LUCIA FERREIRA', '416667'),
+  ('DAISE VIANA COSTA ANDRADE', '428894'),
+  ('RÍZIA DE MELO MENDES', '265573'),
+  ('CAMILA M. DE JESUS SANTOS', '409575'),
+  ('VIVIAN CRISTINA C. DE ARAUJO', '495941'),
+  ('MILENA MACHADO CERQUEIRA', '319835'),
+  ('RENATA F.DE ALMEIDA FERNANDES', '512999'),
+  ('ELAINE CRISTINA C. M. VILLAS BOAS', '362712'),
+  ('HENDIA SILVA SANTOS', '403800'),
+  ('LEILA SACRAMENTO DE ANDRADE AMORIM', '392053'),
+  ('MAIARA DA SILVA SANTOS', '584357'),
+  ('SILENE MARIA DOS SANTOS', '438793'),
+  ('ANA PAULA MACEDO SA', '484497'),
+  ('FLÁVIO SANTOS SOUZA', '1375395'),
+  ('DAIANE DOS ANJOS RODRIGUES', '443070'),
+  ('SUZANA GUIMARÃES NUNES', '1397883'),
+  ('TATIANE SANTOS DA SILVA', '1286040'),
+  ('TELMA REGINA DE J. DO MONTE', '3346574'),
+  ('NAIARA KELI LIMA DOS SANTOS', '1481030'),
+  ('MILENA ISABEL RIBEIRO', '1040787'),
+  ('ANA CLÁUDIA LAGE FARIAS', '573710'),
+  ('IRAILDES SANTOS ARAÚJO', '937898'),
+  ('ANDREIA SILVA DE LIMA', '1124059'),
+  ('JULIANA FREITAS SILVA', '397879'),
+  ('MONICA DAS VIRGENS DE JESUS', '932790'),
+  ('DEBORA SILVA MENDONÇA', '1802444'),
+  ('SILVIA ROBERTA B DOS SANTOS', '536537'),
+  ('CLAUCIMENE P. CERQUEIRA', '353269'),
+  ('TATIANE CONCEIÇÃO SANTOS', '1220394'),
+  ('THAINA GOMES DOS SANTOS', '1374606'),
+  ('PATRÍCIA DE ARAÚJO', '2043285'),
+  ('MARIA DUKE DE CERQUEIRA', '850191'),
+  ('MARIA CLAÚDIA L. DA SILVA', '943615'),
+  ('MARIA V.S. DOS SANTOS', '611831'),
+  ('BÁRBARA SANTOS DE SOUZA', '1772189'),
+  ('STEFANI LIMA DE SOUZA MAIA', '1817180'),
+  ('REGINA GONZAGA', '942270'),
+  ('GILVAN DE JESUS SILVA', '942256'),
+  ('ANDREIA  C. ROSENDO DOS SANTOS', '1402040'),
+  ('ALINE CRISTIANE S. RODRIGUES', '1420472'),
+  ('NATACHA SANTOS AVELINO', '1288521'),
+  ('JOELMA M. DAS MONTANHAS', '368611'),
+  ('MIUCHA MARA CERQUEIRA SILVA', '1977595'),
+  ('ANA MARIA SANTOS BONFIM', '1857792'),
+  ('JUCIARA DE OLIVEIRA NUNES', '345493'),
+  ('ALEXANDRE DE JESUS NUNES', '1867868'),
+  ('EMERSON SILVA FILHO', '1561553'),
+  ('WELLINGTON E. DOS SANTOS', '1827074'),
+  ('NILMA DOS SANTOS', '475428'),
+  ('ROSILENE LAGE DE ALMEIDA', '866088'),
+  ('GLÉCIA GOMES ROSA', '1256897'),
+  ('RENATA DA COSTA', '1256875'),
+  ('ERICA FERREIRA MENDONÇA BAZILIO', '391098'),
+  ('TATIANA SAID', '464434'),
+  ('IRLENE MARIA DIAS DA CONCEIÇÃO', '555034'),
+  ('ROSANA MARIA DE A NUNES', '850301'),
+  ('LILIAN FLORES ARAÚJO', '494185'),
+  ('BRIANA CARLA JESUS DE LIMA', '2066110'),
+  ('RODRIGO ALMEIDA AQUINO', '2003375'),
+  ('THAINA BARBOSA SANTANA', '1969142'),
+  ('HELIO SANTOS SALES', '1433662'),
+  ('BRUNO CERQUEIRA E SILVA', '505300'),
+  ('NIVALDA SANTOS PEREIRA', '390995'),
+  ('TAINA BARBARA DE JESUS TRIGUEIROS', '1419110'),
+  ('VIVIANE DE JESUS FERREIRA', '868984'),
+  ('ADRIANA SANTOS BARRETO', '374924')
+  ) AS t(nome_excel, coren)
+)
+UPDATE professionals p
+SET coren = i.coren
+FROM import i
+WHERE norm_name(p.full_name) = norm_name(i.nome_excel)
+  AND p.active = true
+  AND (p.coren IS NULL OR p.coren = '');
+
+-- =============================================================================
+-- PASS 2: fuzzy match por (primeira palavra + última palavra)
+-- Só pra quem ainda está sem COREN, e só se houver UM match único pelo
+-- fuzzy (evita conflito Daniela Pinheiro vs Daniela Andrade)
+-- =============================================================================
+WITH import AS (
+  SELECT * FROM (VALUES
+  ('LUCINÉIA DOS SANTOS ANDRADE', '596753'),
+  ('ISIS THAIANE MATTOS ROCHA PITA', '327132'),
+  ('THAIS MENEZES DIAS', '101736'),
+  ('DANIELA PINHEIRO DOS SANTOS', '315781'),
+  ('DANIELLE APARECIDA B. DE SOUZA', '35069'),
+  ('JULIANA RIOS DE ARAUJO E ARAUJO', '317355'),
+  ('CAMILA SANTOS PASCOAL', '441842'),
+  ('MICHELE COSTA SALGUEIRO', '268351'),
+  ('LUCIVALDA FERREIRA LIMA', '90669'),
+  ('VIRGÍNIA MARIA DOS SANTOS', '426254'),
+  ('DANIELA A. M. MONTENEGRO', '329291'),
+  ('GABRIELA SOARES VIANA SILVA', '498766'),
+  ('IONE DOS SANTOS LIMA', '546648'),
+  ('VERA LUCIA FERREIRA', '416667'),
+  ('DAISE VIANA COSTA ANDRADE', '428894'),
+  ('RÍZIA DE MELO MENDES', '265573'),
+  ('CAMILA M. DE JESUS SANTOS', '409575'),
+  ('VIVIAN CRISTINA C. DE ARAUJO', '495941'),
+  ('MILENA MACHADO CERQUEIRA', '319835'),
+  ('RENATA F.DE ALMEIDA FERNANDES', '512999'),
+  ('ELAINE CRISTINA C. M. VILLAS BOAS', '362712'),
+  ('HENDIA SILVA SANTOS', '403800'),
+  ('LEILA SACRAMENTO DE ANDRADE AMORIM', '392053'),
+  ('MAIARA DA SILVA SANTOS', '584357'),
+  ('SILENE MARIA DOS SANTOS', '438793'),
+  ('ANA PAULA MACEDO SA', '484497'),
+  ('FLÁVIO SANTOS SOUZA', '1375395'),
+  ('DAIANE DOS ANJOS RODRIGUES', '443070'),
+  ('SUZANA GUIMARÃES NUNES', '1397883'),
+  ('TATIANE SANTOS DA SILVA', '1286040'),
+  ('TELMA REGINA DE J. DO MONTE', '3346574'),
+  ('NAIARA KELI LIMA DOS SANTOS', '1481030'),
+  ('MILENA ISABEL RIBEIRO', '1040787'),
+  ('ANA CLÁUDIA LAGE FARIAS', '573710'),
+  ('IRAILDES SANTOS ARAÚJO', '937898'),
+  ('ANDREIA SILVA DE LIMA', '1124059'),
+  ('JULIANA FREITAS SILVA', '397879'),
+  ('MONICA DAS VIRGENS DE JESUS', '932790'),
+  ('DEBORA SILVA MENDONÇA', '1802444'),
+  ('SILVIA ROBERTA B DOS SANTOS', '536537'),
+  ('CLAUCIMENE P. CERQUEIRA', '353269'),
+  ('TATIANE CONCEIÇÃO SANTOS', '1220394'),
+  ('THAINA GOMES DOS SANTOS', '1374606'),
+  ('PATRÍCIA DE ARAÚJO', '2043285'),
+  ('MARIA DUKE DE CERQUEIRA', '850191'),
+  ('MARIA CLAÚDIA L. DA SILVA', '943615'),
+  ('MARIA V.S. DOS SANTOS', '611831'),
+  ('BÁRBARA SANTOS DE SOUZA', '1772189'),
+  ('STEFANI LIMA DE SOUZA MAIA', '1817180'),
+  ('REGINA GONZAGA', '942270'),
+  ('GILVAN DE JESUS SILVA', '942256'),
+  ('ANDREIA  C. ROSENDO DOS SANTOS', '1402040'),
+  ('ALINE CRISTIANE S. RODRIGUES', '1420472'),
+  ('NATACHA SANTOS AVELINO', '1288521'),
+  ('JOELMA M. DAS MONTANHAS', '368611'),
+  ('MIUCHA MARA CERQUEIRA SILVA', '1977595'),
+  ('ANA MARIA SANTOS BONFIM', '1857792'),
+  ('JUCIARA DE OLIVEIRA NUNES', '345493'),
+  ('ALEXANDRE DE JESUS NUNES', '1867868'),
+  ('EMERSON SILVA FILHO', '1561553'),
+  ('WELLINGTON E. DOS SANTOS', '1827074'),
+  ('NILMA DOS SANTOS', '475428'),
+  ('ROSILENE LAGE DE ALMEIDA', '866088'),
+  ('GLÉCIA GOMES ROSA', '1256897'),
+  ('RENATA DA COSTA', '1256875'),
+  ('ERICA FERREIRA MENDONÇA BAZILIO', '391098'),
+  ('TATIANA SAID', '464434'),
+  ('IRLENE MARIA DIAS DA CONCEIÇÃO', '555034'),
+  ('ROSANA MARIA DE A NUNES', '850301'),
+  ('LILIAN FLORES ARAÚJO', '494185'),
+  ('BRIANA CARLA JESUS DE LIMA', '2066110'),
+  ('RODRIGO ALMEIDA AQUINO', '2003375'),
+  ('THAINA BARBOSA SANTANA', '1969142'),
+  ('HELIO SANTOS SALES', '1433662'),
+  ('BRUNO CERQUEIRA E SILVA', '505300'),
+  ('NIVALDA SANTOS PEREIRA', '390995'),
+  ('TAINA BARBARA DE JESUS TRIGUEIROS', '1419110'),
+  ('VIVIANE DE JESUS FERREIRA', '868984'),
+  ('ADRIANA SANTOS BARRETO', '374924')
+  ) AS t(nome_excel, coren)
+),
+fuzzy AS (
+  SELECT
+    i.coren,
+    norm_first_last(i.nome_excel) AS chave,
+    COUNT(*) OVER (PARTITION BY norm_first_last(i.nome_excel)) AS qtd_excel
+  FROM import i
+),
+candidates AS (
+  SELECT
+    p.id AS prof_id,
+    f.coren,
+    COUNT(*) OVER (PARTITION BY p.id) AS qtd_corens_para_prof,
+    f.qtd_excel
+  FROM professionals p
+  JOIN fuzzy f ON norm_first_last(p.full_name) = f.chave
+  WHERE p.active = true
+    AND (p.coren IS NULL OR p.coren = '')
+    AND f.qtd_excel = 1   -- não há ambiguidade no Excel para essa chave
+)
+UPDATE professionals p
+SET coren = c.coren
+FROM candidates c
+WHERE p.id = c.prof_id
+  AND c.qtd_corens_para_prof = 1;  -- só 1 candidato no Excel para esse prof
+
+-- =============================================================================
+-- VERIFICAÇÃO
+-- =============================================================================
+SELECT
+  COUNT(*) FILTER (WHERE coren IS NOT NULL AND coren <> '') AS com_coren,
+  COUNT(*) FILTER (WHERE coren IS NULL OR coren = '') AS sem_coren,
+  COUNT(*) AS total
+FROM professionals p
+JOIN professional_categories c ON c.id = p.category_id
+WHERE p.active = true
+  AND c.name ILIKE '%enferm%';
+
+-- Lista quem ainda está sem COREN (pra revisão final)
+SELECT p.full_name, c.name AS categoria, p.registration_number AS matricula
+FROM professionals p
+JOIN professional_categories c ON c.id = p.category_id
+WHERE p.active = true
+  AND (p.coren IS NULL OR p.coren = '')
+  AND c.name ILIKE '%enferm%'
+ORDER BY c.name, p.full_name;
+
+-- Lista os COREN do Excel que NÃO casaram com nenhum profissional
+WITH import AS (
+  SELECT * FROM (VALUES
+  ('LUCINÉIA DOS SANTOS ANDRADE', '596753'),
+  ('ISIS THAIANE MATTOS ROCHA PITA', '327132'),
+  ('THAIS MENEZES DIAS', '101736'),
+  ('DANIELA PINHEIRO DOS SANTOS', '315781'),
+  ('DANIELLE APARECIDA B. DE SOUZA', '35069'),
+  ('JULIANA RIOS DE ARAUJO E ARAUJO', '317355'),
+  ('CAMILA SANTOS PASCOAL', '441842'),
+  ('MICHELE COSTA SALGUEIRO', '268351'),
+  ('LUCIVALDA FERREIRA LIMA', '90669'),
+  ('VIRGÍNIA MARIA DOS SANTOS', '426254'),
+  ('DANIELA A. M. MONTENEGRO', '329291'),
+  ('GABRIELA SOARES VIANA SILVA', '498766'),
+  ('IONE DOS SANTOS LIMA', '546648'),
+  ('VERA LUCIA FERREIRA', '416667'),
+  ('DAISE VIANA COSTA ANDRADE', '428894'),
+  ('RÍZIA DE MELO MENDES', '265573'),
+  ('CAMILA M. DE JESUS SANTOS', '409575'),
+  ('VIVIAN CRISTINA C. DE ARAUJO', '495941'),
+  ('MILENA MACHADO CERQUEIRA', '319835'),
+  ('RENATA F.DE ALMEIDA FERNANDES', '512999'),
+  ('ELAINE CRISTINA C. M. VILLAS BOAS', '362712'),
+  ('HENDIA SILVA SANTOS', '403800'),
+  ('LEILA SACRAMENTO DE ANDRADE AMORIM', '392053'),
+  ('MAIARA DA SILVA SANTOS', '584357'),
+  ('SILENE MARIA DOS SANTOS', '438793'),
+  ('ANA PAULA MACEDO SA', '484497'),
+  ('FLÁVIO SANTOS SOUZA', '1375395'),
+  ('DAIANE DOS ANJOS RODRIGUES', '443070'),
+  ('SUZANA GUIMARÃES NUNES', '1397883'),
+  ('TATIANE SANTOS DA SILVA', '1286040'),
+  ('TELMA REGINA DE J. DO MONTE', '3346574'),
+  ('NAIARA KELI LIMA DOS SANTOS', '1481030'),
+  ('MILENA ISABEL RIBEIRO', '1040787'),
+  ('ANA CLÁUDIA LAGE FARIAS', '573710'),
+  ('IRAILDES SANTOS ARAÚJO', '937898'),
+  ('ANDREIA SILVA DE LIMA', '1124059'),
+  ('JULIANA FREITAS SILVA', '397879'),
+  ('MONICA DAS VIRGENS DE JESUS', '932790'),
+  ('DEBORA SILVA MENDONÇA', '1802444'),
+  ('SILVIA ROBERTA B DOS SANTOS', '536537'),
+  ('CLAUCIMENE P. CERQUEIRA', '353269'),
+  ('TATIANE CONCEIÇÃO SANTOS', '1220394'),
+  ('THAINA GOMES DOS SANTOS', '1374606'),
+  ('PATRÍCIA DE ARAÚJO', '2043285'),
+  ('MARIA DUKE DE CERQUEIRA', '850191'),
+  ('MARIA CLAÚDIA L. DA SILVA', '943615'),
+  ('MARIA V.S. DOS SANTOS', '611831'),
+  ('BÁRBARA SANTOS DE SOUZA', '1772189'),
+  ('STEFANI LIMA DE SOUZA MAIA', '1817180'),
+  ('REGINA GONZAGA', '942270'),
+  ('GILVAN DE JESUS SILVA', '942256'),
+  ('ANDREIA  C. ROSENDO DOS SANTOS', '1402040'),
+  ('ALINE CRISTIANE S. RODRIGUES', '1420472'),
+  ('NATACHA SANTOS AVELINO', '1288521'),
+  ('JOELMA M. DAS MONTANHAS', '368611'),
+  ('MIUCHA MARA CERQUEIRA SILVA', '1977595'),
+  ('ANA MARIA SANTOS BONFIM', '1857792'),
+  ('JUCIARA DE OLIVEIRA NUNES', '345493'),
+  ('ALEXANDRE DE JESUS NUNES', '1867868'),
+  ('EMERSON SILVA FILHO', '1561553'),
+  ('WELLINGTON E. DOS SANTOS', '1827074'),
+  ('NILMA DOS SANTOS', '475428'),
+  ('ROSILENE LAGE DE ALMEIDA', '866088'),
+  ('GLÉCIA GOMES ROSA', '1256897'),
+  ('RENATA DA COSTA', '1256875'),
+  ('ERICA FERREIRA MENDONÇA BAZILIO', '391098'),
+  ('TATIANA SAID', '464434'),
+  ('IRLENE MARIA DIAS DA CONCEIÇÃO', '555034'),
+  ('ROSANA MARIA DE A NUNES', '850301'),
+  ('LILIAN FLORES ARAÚJO', '494185'),
+  ('BRIANA CARLA JESUS DE LIMA', '2066110'),
+  ('RODRIGO ALMEIDA AQUINO', '2003375'),
+  ('THAINA BARBOSA SANTANA', '1969142'),
+  ('HELIO SANTOS SALES', '1433662'),
+  ('BRUNO CERQUEIRA E SILVA', '505300'),
+  ('NIVALDA SANTOS PEREIRA', '390995'),
+  ('TAINA BARBARA DE JESUS TRIGUEIROS', '1419110'),
+  ('VIVIANE DE JESUS FERREIRA', '868984'),
+  ('ADRIANA SANTOS BARRETO', '374924')
+  ) AS t(nome_excel, coren)
+)
+SELECT i.nome_excel, i.coren
+FROM import i
+WHERE NOT EXISTS (
+  SELECT 1 FROM professionals p
+  WHERE p.active = true
+    AND (
+      norm_name(p.full_name) = norm_name(i.nome_excel)
+      OR norm_first_last(p.full_name) = norm_first_last(i.nome_excel)
+    )
+)
+ORDER BY i.nome_excel;
