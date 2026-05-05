@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -1849,15 +1849,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 Nova Escala
               </button>
-              {!isLocked && (
-                <button
-                  onClick={() => setShowAddProfessionalModal(true)}
-                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                >
-                  <UserPlus className="w-4 h-4" aria-hidden="true" />
-                  Adicionar Profissional
-                </button>
-              )}
+              {/* "Adicionar Profissional" só aparece no Modo Edição
+                  (botão equivalente está abaixo, no bloco de editMode) */}
               {currentSchedule && (
                 <button
                   onClick={() => {
