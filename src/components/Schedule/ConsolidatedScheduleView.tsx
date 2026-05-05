@@ -155,10 +155,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     () => allProfessionals.filter(p => professionalIdsInSchedule.has(p.id) && !p.on_leave),
     [allProfessionals, professionalIdsInSchedule]
   );
-  // Afastados desta escala (só os que foram adicionados a ela)
+  // Afastados do setor da escala — mostrados automaticamente no rodapé.
+  // Não dependem de ter shifts, basta estarem ativos no setor e marcados
+  // como afastados na edição do profissional.
   const onLeaveProfessionals = useMemo(
-    () => allProfessionals.filter(p => professionalIdsInSchedule.has(p.id) && p.on_leave),
-    [allProfessionals, professionalIdsInSchedule]
+    () => allProfessionals.filter(p => p.on_leave),
+    [allProfessionals]
   );
 
   // Current schedule and lock state
