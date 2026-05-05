@@ -2600,10 +2600,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                           const rowBg = colorCls.replace(/text-\S+/g, '').replace(/ring-\S+/g, '').replace(/-100/g, '-50');
                           return (
                             <tr key={`tot-${code}`} className={`${rowBg}`}>
-                              {/* Rótulo "TOTAL <SIGLA>" — colunas sticky mescladas */}
+                              {/* Rótulo "TOTAL <SIGLA>" — não sticky, rola junto com a tabela */}
                               <th
                                 colSpan={showCorenColumn ? 5 : 4}
-                                className={`border border-gray-300 px-3 py-1.5 sticky left-0 z-20 text-right ${rowBg}`}
+                                className={`border border-gray-300 px-3 py-1.5 text-right ${rowBg}`}
                                 style={{ minWidth: showCorenColumn ? '510px' : '430px' }}
                               >
                                 <div className="inline-flex items-center gap-2">
