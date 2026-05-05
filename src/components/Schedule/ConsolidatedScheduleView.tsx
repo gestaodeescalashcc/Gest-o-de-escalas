@@ -1681,7 +1681,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     if (!selectedSchedule || clearAllConfirmText.trim().toUpperCase() !== 'LIMPAR') return;
     setClearingAll(true);
     try {
-      // 1) Pega os IDs dos shifts da escala — necessário pra apagar referências em outras tabelas
+      // 1) Pega os IDs dos shifts da escala
       const { data: shiftsToDelete, error: listErr } = await supabase
         .from('shifts')
         .select('id')
@@ -1691,40 +1691,57 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       const shiftIds = (shiftsToDelete ?? []).map(s => s.id);
 
       if (shiftIds.length === 0) {
-        toast.info?.('Esta escala já está vazia.') ?? toast.success('Esta escala já está vazia.');
+        toast.success('Esta escala já está vazia.');
         setShowClearAllModal(false);
         setClearAllConfirmText('');
         return;
       }
 
-      // 2) Apaga shift_swaps que referenciam esses shifts (via original ou offered)
-      //    Faz em dois deletes: um pra cada coluna FK
-      const { error: swapsErr1 } = await supabase
-        .from('shift_swaps')
-        .delete()
-        .in('original_shift_id', shiftIds);
-      if (swapsErr1) throw swapsErr1;
+      // Função auxiliar para batch — evita URL gigante se houver muitos IDs
+      const chunk = <T,>(arr: T[], size: number): T[][] => {
+        const out: T[][] = [];
+        for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+        return out;
+      };
+      const batches = chunk(shiftIds, 50);
 
-      const { error: swapsErr2 } = await supabase
-        .from('shift_swaps')
-        .delete()
-        .in('offered_shift_id', shiftIds);
-      if (swapsErr2) throw swapsErr2;
+      // 2) Apaga shift_swaps que referenciam esses shifts (em batches)
+      for (const batch of batches) {
+        const { error: e1 } = await supabase
+          .from('shift_swaps')
+          .delete()
+          .in('original_shift_id', batch);
+        if (e1) {
+          console.error('Erro shift_swaps original:', e1);
+          throw new Error(`shift_swaps (original): ${e1.message ?? JSON.stringify(e1)}`);
+        }
+        const { error: e2 } = await supabase
+          .from('shift_swaps')
+          .delete()
+          .in('offered_shift_id', batch);
+        if (e2) {
+          console.error('Erro shift_swaps offered:', e2);
+          throw new Error(`shift_swaps (offered): ${e2.message ?? JSON.stringify(e2)}`);
+        }
+      }
 
-      // 3) Agora os shifts podem ser apagados
-      const { error: shiftsErr } = await supabase
+      // 3) Apaga os shifts em batches usando schedule_id direto (evita URL gigante)
+      const { error: shiftsErr, count } = await supabase
         .from('shifts')
-        .delete()
-        .in('id', shiftIds);
-      if (shiftsErr) throw shiftsErr;
+        .delete({ count: 'exact' })
+        .eq('schedule_id', selectedSchedule);
+      if (shiftsErr) {
+        console.error('Erro shifts:', shiftsErr);
+        throw new Error(`shifts: ${shiftsErr.message ?? JSON.stringify(shiftsErr)}`);
+      }
 
-      toast.success(`${shiftIds.length} plantão(ões) removido(s) da escala.`);
+      toast.success(`${count ?? shiftIds.length} plantão(ões) removido(s) da escala.`);
       setShowClearAllModal(false);
       setClearAllConfirmText('');
       await loadData(true);
     } catch (err: any) {
       console.error('Erro ao limpar plantões:', err);
-      toast.error('Erro ao limpar plantões: ' + (err.message ?? 'tente novamente'));
+      toast.error('Erro ao limpar plantões: ' + (err.message ?? JSON.stringify(err)));
     } finally {
       setClearingAll(false);
     }
