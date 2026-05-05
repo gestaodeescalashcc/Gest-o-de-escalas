@@ -34,6 +34,7 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
     department_id: '',
     company_id: '',
     registration_number: '',
+    coren: '',
     phone: '',
     email: '',
     contracted_hours_per_month: 180,
@@ -147,6 +148,7 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
         department_id: formData.department_id,
         company_id: formData.company_id,
         registration_number: formData.registration_number || null,
+        coren: formData.coren?.trim() || null,
         phone: formData.phone || null,
         email: formData.email || null,
         contracted_hours_per_month: formData.contracted_hours_per_month,
@@ -237,11 +239,10 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                PIS/PASEP *
+                PIS/PASEP <span className="text-gray-400 font-normal">(opcional)</span>
               </label>
               <input
                 type="text"
-                required
                 value={formData.pis_number}
                 onChange={(e) => setFormData({ ...formData, pis_number: formatPIS(e.target.value) })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -249,7 +250,7 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
                 maxLength={13}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Obrigatorio para o AFD
+                Necessario para gerar o AFD (Arquivo Fiscal Digital).
               </p>
             </div>
 
@@ -355,6 +356,22 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="12345"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                COREN <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.coren}
+                onChange={(e) => setFormData({ ...formData, coren: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ex: 596753"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Numero do conselho (Enfermeiros e Tecnicos de Enfermagem).
+              </p>
             </div>
 
             <div>

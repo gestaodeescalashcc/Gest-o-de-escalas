@@ -18,6 +18,7 @@ interface EditProfessionalModalProps {
     department_id: string;
     company_id?: string;
     registration_number: string | null;
+    coren?: string | null;
     phone: string | null;
     email: string | null;
     contracted_hours_per_month?: number;
@@ -67,6 +68,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
     department_id: professional.department_id,
     company_id: professional.company_id || '',
     registration_number: professional.registration_number || '',
+    coren: professional.coren || '',
     phone: professional.phone || '',
     email: professional.email || '',
     contracted_hours_per_month: professional.contracted_hours_per_month || 180,
@@ -215,6 +217,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
           department_id: formData.department_id,
           company_id: formData.company_id,
           registration_number: formData.registration_number || null,
+          coren: formData.coren?.trim() || null,
           phone: formData.phone || null,
           email: formData.email || null,
           contracted_hours_per_month: formData.contracted_hours_per_month,
@@ -342,11 +345,10 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                PIS/PASEP *
+                PIS/PASEP <span className="text-gray-400 font-normal">(opcional)</span>
               </label>
               <input
                 type="text"
-                required
                 value={formData.pis_number}
                 onChange={(e) => setFormData({ ...formData, pis_number: formatPIS(e.target.value) })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -354,7 +356,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
                 maxLength={13}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Obrigatorio para o AFD
+                Necessario para gerar o AFD (Arquivo Fiscal Digital).
               </p>
             </div>
 
@@ -459,6 +461,19 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
                 onChange={(e) => setFormData({ ...formData, registration_number: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 placeholder="12345"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                COREN <span className="text-gray-400 font-normal">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.coren}
+                onChange={(e) => setFormData({ ...formData, coren: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                placeholder="Ex: 596753"
               />
             </div>
 
