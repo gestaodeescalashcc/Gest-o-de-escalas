@@ -1717,6 +1717,36 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     year: 'numeric'
   });
 
+  // Totais diários por tipo de turno (rodapé da tabela)
+  // Estrutura: Map<day, Map<code, count>>
+  // Mostra apenas turnos efetivos (já considera ausências quando viewMode === 'realizada')
+  const { dailyShiftTotals, uniqueShiftCodes } = (() => {
+    const totals = new Map<number, Map<string, number>>();
+    const codes = new Set<string>();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayMap = new Map<string, number>();
+      professionals.forEach(p => {
+        const code = getEffectiveShiftCode(p.id, d);
+        if (code) {
+          dayMap.set(code, (dayMap.get(code) ?? 0) + 1);
+          codes.add(code);
+        }
+      });
+      totals.set(d, dayMap);
+    }
+    // Ordenação: turnos de trabalho primeiro (SD, SN, M, T, M2, MT, P), depois ausências
+    const WORK_ORDER = ['SD', 'SN', 'M', 'T', 'M2', 'MT', 'P'];
+    const sorted = Array.from(codes).sort((a, b) => {
+      const ai = WORK_ORDER.indexOf(a);
+      const bi = WORK_ORDER.indexOf(b);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return a.localeCompare(b);
+    });
+    return { dailyShiftTotals: totals, uniqueShiftCodes: sorted };
+  })();
+
   // Status badge styling
   const statusBadgeStyles: Record<string, { container: string; icon: typeof Edit3; label: string }> = {
     Rascunho: {
@@ -2290,6 +2320,56 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         </tr>
                       ))}
                     </tbody>
+                    {uniqueShiftCodes.length > 0 && (
+                      <tfoot>
+                        {uniqueShiftCodes.map((code, idx) => {
+                          const colorCls = getCellColorClass(code);
+                          // Linha separadora antes da primeira sigla
+                          const isFirst = idx === 0;
+                          return (
+                            <tr key={`tot-${code}`} className={isFirst ? 'border-t-2 border-gray-400' : ''}>
+                              {/* Matrícula vazia */}
+                              <th className="border border-gray-300 px-2 py-1.5 text-xs sticky left-0 bg-gray-50 z-10" style={{ minWidth: '70px' }}>
+                                {isFirst && <span className="text-gray-500 font-semibold uppercase">Total</span>}
+                              </th>
+                              {/* Nome: rótulo da sigla com cor */}
+                              <th
+                                className="border border-gray-300 px-3 py-1.5 sticky bg-gray-50 z-10 text-left"
+                                style={{ minWidth: '180px', left: '70px' }}
+                              >
+                                <span className={`inline-flex items-center gap-2 px-2 py-0.5 rounded text-xs font-bold ${colorCls}`}>
+                                  {code}
+                                </span>
+                              </th>
+                              {/* Função vazia */}
+                              <th className="border border-gray-300 sticky bg-gray-50 z-10" style={{ minWidth: '120px', left: '250px' }}></th>
+                              {/* Dias trab vazia */}
+                              <th className="border border-gray-300 sticky bg-gray-50 z-10" style={{ minWidth: '60px', left: '370px' }}></th>
+                              {/* Uma célula por dia com a contagem */}
+                              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+                                const count = dailyShiftTotals.get(day)?.get(code) ?? 0;
+                                return (
+                                  <td
+                                    key={day}
+                                    className={`border border-gray-300 px-1 py-1.5 text-center text-xs font-bold ${count > 0 ? 'bg-gray-50 text-gray-900' : 'bg-gray-50 text-gray-300'}`}
+                                    style={{ minWidth: '32px', maxWidth: '32px' }}
+                                  >
+                                    {count > 0 ? count : ''}
+                                  </td>
+                                );
+                              })}
+                              {/* TOTAL HORAS coluna: soma diária total dessa sigla no mês */}
+                              <td className="border border-gray-300 px-2 py-1.5 text-center text-xs font-bold bg-gray-50 text-gray-900">
+                                {Array.from(dailyShiftTotals.values()).reduce((acc, m) => acc + (m.get(code) ?? 0), 0)}
+                              </td>
+                              {editMode && (
+                                <td className="border border-gray-300 bg-gray-50"></td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               </div>
