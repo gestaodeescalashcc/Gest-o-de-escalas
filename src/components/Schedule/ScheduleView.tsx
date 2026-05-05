@@ -56,7 +56,8 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
   const [viewMode, setViewMode] = useState<'schedules' | 'shifts'>('schedules');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterDepartment, setFilterDepartment] = useState<string>('');
-  const [filterMonth, setFilterMonth] = useState<string>(new Date().toISOString().slice(0, 7));
+  // Filtro de mês opcional — começa vazio (mostra todas as escalas)
+  const [filterMonth, setFilterMonth] = useState<string>('');
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
@@ -277,7 +278,7 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
     return matchesSearch && matchesStatus && matchesDepartment && matchesMonth;
   });
 
-  const activeFiltersCount = [filterStatus, filterDepartment, filterMonth !== new Date().toISOString().slice(0, 7) ? filterMonth : ''].filter(Boolean).length;
+  const activeFiltersCount = [filterStatus, filterDepartment, filterMonth].filter(Boolean).length;
 
   const currentMonthStr = new Date().toISOString().slice(0, 7);
   const isCurrentMonth = filterMonth === currentMonthStr;
@@ -377,75 +378,7 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
 
           {viewMode === 'schedules' && (
             <div className="space-y-4">
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-blue-700 font-medium">Exibindo escalas de</p>
-                      <p className="text-lg font-bold text-blue-900 capitalize">{getMonthLabel(filterMonth)}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => navigateMonth('prev')}
-                      className="p-2 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg transition"
-                      title="Mês anterior"
-                    >
-                      <ChevronLeft className="w-5 h-5 text-blue-600" />
-                    </button>
-
-                    <div className="relative">
-                      <input
-                        type="month"
-                        value={filterMonth}
-                        onChange={(e) => setFilterMonth(e.target.value)}
-                        className="px-4 py-2 bg-white border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium text-blue-900 cursor-pointer min-w-[160px]"
-                      />
-                    </div>
-
-                    <button
-                      onClick={() => navigateMonth('next')}
-                      className="p-2 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg transition"
-                      title="Proximo mês"
-                    >
-                      <ChevronRight className="w-5 h-5 text-blue-600" />
-                    </button>
-
-                    {!isCurrentMonth && (
-                      <button
-                        onClick={goToCurrentMonth}
-                        className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm font-medium whitespace-nowrap"
-                      >
-                        Mês Atual
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-blue-200 flex items-start gap-2">
-                  <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-blue-700">
-                    Para visualizar escalas de outros meses, utilize o seletor de data acima ou as setas de navegacao.
-                  </p>
-                </div>
-              </div>
-
               <div className="flex flex-wrap gap-3">
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                >
-                  <option value="">Todos os status</option>
-                  <option value="Rascunho">Rascunho</option>
-                  <option value="Publicada">Publicada</option>
-                  <option value="Fechada">Fechada</option>
-                </select>
-
                 <select
                   value={filterDepartment}
                   onChange={(e) => setFilterDepartment(e.target.value)}
@@ -458,6 +391,23 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
                     </option>
                   ))}
                 </select>
+
+                <input
+                  type="month"
+                  value={filterMonth}
+                  onChange={(e) => setFilterMonth(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  title="Filtrar por mês (opcional)"
+                />
+                {filterMonth && (
+                  <button
+                    type="button"
+                    onClick={() => setFilterMonth('')}
+                    className="px-3 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                  >
+                    Todos os meses
+                  </button>
+                )}
 
                 {(filterStatus || filterDepartment) && (
                   <button
@@ -487,40 +437,19 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
               <p className="text-gray-600 mb-2">
                 Nenhuma escala encontrada para <span className="font-semibold capitalize">{getMonthLabel(filterMonth)}</span>
               </p>
-              {(searchTerm || filterStatus || filterDepartment) ? (
+              {(searchTerm || filterStatus || filterDepartment || filterMonth) ? (
                 <button
                   onClick={() => {
                     setSearchTerm('');
                     setFilterStatus('');
                     setFilterDepartment('');
+                    setFilterMonth('');
                   }}
                   className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                 >
                   Limpar busca e filtros
                 </button>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-500">
-                    Utilize as setas ou o seletor de mes acima para navegar para outros periodos
-                  </p>
-                  <div className="flex justify-center gap-2">
-                    <button
-                      onClick={() => navigateMonth('prev')}
-                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition text-sm font-medium"
-                    >
-                      Ver mes anterior
-                    </button>
-                    {!isCurrentMonth && (
-                      <button
-                        onClick={goToCurrentMonth}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm font-medium"
-                      >
-                        Ir para mes atual
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+              ) : null}
             </div>
           ) : (
             <div className="overflow-x-auto">
