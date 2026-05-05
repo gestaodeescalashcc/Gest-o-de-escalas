@@ -116,6 +116,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   const [clearAllConfirmText, setClearAllConfirmText] = useState('');
   const [clearingAll, setClearingAll] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
+  const [showDeleteScheduleModal, setShowDeleteScheduleModal] = useState(false);
+  const [deleteScheduleConfirm, setDeleteScheduleConfirm] = useState('');
+  const [deletingSchedule, setDeletingSchedule] = useState(false);
   const [auditEntries, setAuditEntries] = useState<Array<{
     id: string;
     action: string;
@@ -1691,6 +1694,50 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     }
   };
 
+  // Exclui a escala atual completamente (incluindo seus plantões e swaps)
+  const handleDeleteSchedule = async () => {
+    if (!selectedSchedule || deleteScheduleConfirm.trim().toUpperCase() !== 'EXCLUIR') return;
+    setDeletingSchedule(true);
+    try {
+      // 1) Coleta IDs dos shifts pra apagar swaps
+      const { data: shiftsToDelete } = await supabase
+        .from('shifts')
+        .select('id')
+        .eq('schedule_id', selectedSchedule);
+      const shiftIds = (shiftsToDelete ?? []).map(s => s.id);
+
+      const chunk = <T,>(arr: T[], size: number): T[][] => {
+        const out: T[][] = [];
+        for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+        return out;
+      };
+
+      // 2) Apaga swaps que referenciam esses shifts
+      for (const batch of chunk(shiftIds, 50)) {
+        await supabase.from('shift_swaps').delete().in('original_shift_id', batch);
+        await supabase.from('shift_swaps').delete().in('offered_shift_id', batch);
+      }
+
+      // 3) Apaga shifts
+      await supabase.from('shifts').delete().eq('schedule_id', selectedSchedule);
+
+      // 4) Apaga a escala
+      const { error } = await supabase.from('monthly_schedules').delete().eq('id', selectedSchedule);
+      if (error) throw error;
+
+      toast.success('Escala excluída.');
+      setShowDeleteScheduleModal(false);
+      setDeleteScheduleConfirm('');
+      setSelectedSchedule('');
+      await loadSchedules();
+    } catch (err: any) {
+      console.error('Erro ao excluir escala:', err);
+      toast.error('Erro ao excluir escala: ' + (err.message ?? 'tente novamente'));
+    } finally {
+      setDeletingSchedule(false);
+    }
+  };
+
   // Limpa TODOS os plantões da escala atual (mantém a escala e os profissionais vinculados)
   const handleClearAllShifts = async () => {
     if (!selectedSchedule || clearAllConfirmText.trim().toUpperCase() !== 'LIMPAR') return;
@@ -2073,6 +2120,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 <Trash2 className="w-4 h-4" aria-hidden="true" />
                 Limpar Escala
               </button>
+              {isAdmin() && currentSchedule && (
+                <button
+                  onClick={() => setShowDeleteScheduleModal(true)}
+                  title="Exclui esta escala por completo"
+                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                >
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
+                  Excluir Escala
+                </button>
+              )}
               <button
                 onClick={() => setShowAddProfessionalModal(true)}
                 className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -3209,6 +3266,56 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             <div className="p-3 border-t border-gray-200 text-xs text-gray-500 flex items-center gap-2">
               <Lock className="w-3.5 h-3.5" />
               Os registros não podem ser editados ou apagados.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de exclusão da escala inteira */}
+      {showDeleteScheduleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-gray-900">Excluir esta escala?</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  A escala
+                  {currentSchedule ? <> <strong>"{currentSchedule.name}"</strong></> : null}
+                  {' '}será apagada junto com <strong>todos os plantões e trocas associados</strong>.
+                  O histórico de alterações é mantido para auditoria.
+                </p>
+              </div>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Para confirmar, digite <strong>EXCLUIR</strong>:
+            </label>
+            <input
+              type="text"
+              value={deleteScheduleConfirm}
+              onChange={(e) => setDeleteScheduleConfirm(e.target.value)}
+              placeholder="EXCLUIR"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm font-mono uppercase"
+              autoFocus
+            />
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setShowDeleteScheduleModal(false); setDeleteScheduleConfirm(''); }}
+                disabled={deletingSchedule}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteSchedule}
+                disabled={deleteScheduleConfirm.trim().toUpperCase() !== 'EXCLUIR' || deletingSchedule}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deletingSchedule ? 'Excluindo...' : 'Excluir Escala'}
+              </button>
             </div>
           </div>
         </div>

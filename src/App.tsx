@@ -56,8 +56,12 @@ const STORAGE_KEY_SCHEDULE_ID = 'medscale.selectedScheduleId';
 function AppContent() {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<string>(() => {
-    try { return localStorage.getItem(STORAGE_KEY_VIEW) || 'schedule'; }
-    catch { return 'schedule'; }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_VIEW);
+      // 'schedule' (lista antiga) foi unificado em 'consolidated' (Escala do Mês)
+      if (!saved || saved === 'schedule') return 'consolidated';
+      return saved;
+    } catch { return 'consolidated'; }
   });
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(() => {
     try { return localStorage.getItem(STORAGE_KEY_SCHEDULE_ID); }
