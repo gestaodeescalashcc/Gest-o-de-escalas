@@ -938,7 +938,7 @@ INSERT INTO _tmp_imported_shifts (sector, name_excel, day, code) VALUES
 --    Se a sigla não tem horário fixo (ex: ausências FA, FE), usa 00:00.
 INSERT INTO shifts (
   professional_id, schedule_id, department_id,
-  shift_date, shift_type, start_time, end_time, hours
+  shift_date, shift_type, start_time, end_time
 )
 SELECT
   p.id AS professional_id,
@@ -965,17 +965,7 @@ SELECT
     WHEN 'T'  THEN '18:00'::time
     WHEN 'MT' THEN '17:00'::time
     ELSE '00:00'::time
-  END AS end_time,
-  CASE t.code
-    WHEN 'P'  THEN 24
-    WHEN 'SD' THEN 12
-    WHEN 'SN' THEN 12
-    WHEN 'M'  THEN 6
-    WHEN 'M2' THEN 4
-    WHEN 'T'  THEN 6
-    WHEN 'MT' THEN 8
-    ELSE 0
-  END AS hours
+  END AS end_time
 FROM _tmp_imported_shifts t
 JOIN departments d ON d.name = t.sector
 JOIN monthly_schedules ms ON ms.department_id = d.id AND ms.month = '2026-05-01'::date
