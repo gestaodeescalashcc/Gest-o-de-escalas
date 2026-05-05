@@ -112,6 +112,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   const [showActionsMenu, setShowActionsMenu] = useState<string | null>(null);
   const [actionsMenuPosition, setActionsMenuPosition] = useState({ x: 0, y: 0 });
   const [showAutoFillModal, setShowAutoFillModal] = useState(false);
+  const [showClearAllModal, setShowClearAllModal] = useState(false);
+  const [clearAllConfirmText, setClearAllConfirmText] = useState('');
+  const [clearingAll, setClearingAll] = useState(false);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   // Absenteísmo
   const [showAbsenceModal, setShowAbsenceModal] = useState(false);
@@ -1673,6 +1676,28 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     }
   };
 
+  // Limpa TODOS os plantões da escala atual (mantém a escala e os profissionais vinculados)
+  const handleClearAllShifts = async () => {
+    if (!selectedSchedule || clearAllConfirmText !== 'LIMPAR') return;
+    setClearingAll(true);
+    try {
+      const { error, count } = await supabase
+        .from('shifts')
+        .delete({ count: 'exact' })
+        .eq('schedule_id', selectedSchedule);
+      if (error) throw error;
+      toast.success(`${count ?? 0} plantão(ões) removido(s) da escala.`);
+      setShowClearAllModal(false);
+      setClearAllConfirmText('');
+      await loadData(true);
+    } catch (err: any) {
+      console.error('Erro ao limpar plantões:', err);
+      toast.error('Erro ao limpar plantões: ' + (err.message ?? 'tente novamente'));
+    } finally {
+      setClearingAll(false);
+    }
+  };
+
   const handleExportExcel = async () => {
     const cs = schedules.find(s => s.id === selectedSchedule);
     if (!cs) return;
@@ -1947,6 +1972,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
               >
                 <Sparkles className="w-4 h-4" aria-hidden="true" />
                 Preenchimento Automático
+              </button>
+              <button
+                onClick={() => setShowClearAllModal(true)}
+                title="Apaga todos os plantões desta escala (mantém os profissionais)"
+                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
+                Limpar Escala
               </button>
               <button
                 onClick={() => setShowAddProfessionalModal(true)}
@@ -3012,6 +3045,58 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             loadSchedules();
           }}
         />
+      )}
+
+      {/* Modal de limpeza total dos plantões da escala atual */}
+      {showClearAllModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-gray-900">Limpar todos os plantões desta escala?</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Esta ação remove <strong>todos os plantões</strong> da escala
+                  {currentSchedule ? <> <strong>"{currentSchedule.name}"</strong></> : null}.
+                  A escala em si <strong>não é apagada</strong> — você pode recomeçar do zero.
+                </p>
+              </div>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-900">
+              <strong>Não pode ser desfeito.</strong> Os profissionais vinculados continuam, e ausências/trocas também — só os plantões da grade são apagados.
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Para confirmar, digite <strong>LIMPAR</strong>:
+            </label>
+            <input
+              type="text"
+              value={clearAllConfirmText}
+              onChange={(e) => setClearAllConfirmText(e.target.value)}
+              placeholder="LIMPAR"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm font-mono uppercase"
+              autoFocus
+            />
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setShowClearAllModal(false); setClearAllConfirmText(''); }}
+                disabled={clearingAll}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleClearAllShifts}
+                disabled={clearAllConfirmText !== 'LIMPAR' || clearingAll}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                {clearingAll ? 'Limpando...' : 'Limpar Escala'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <AutoFillModal

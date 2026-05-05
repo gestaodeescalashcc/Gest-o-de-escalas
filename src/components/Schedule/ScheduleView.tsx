@@ -314,16 +314,6 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
           </p>
         </div>
         <div className="flex gap-3">
-          {viewMode === 'schedules' && isAdmin() && filteredSchedules.length > 0 && (
-            <button
-              onClick={() => setShowDeleteAllModal(true)}
-              className="flex items-center gap-2 bg-white border border-red-300 text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg transition font-medium"
-              title="Excluir todas as escalas listadas"
-            >
-              <Trash2 className="w-5 h-5" />
-              Excluir Todas
-            </button>
-          )}
           {viewMode === 'schedules' && (
             <button
               onClick={() => setShowCreateScheduleModal(true)}
