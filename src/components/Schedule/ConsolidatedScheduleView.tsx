@@ -76,7 +76,7 @@ interface ConsolidatedScheduleViewProps {
 
 export default function ConsolidatedScheduleView({ initialScheduleId }: ConsolidatedScheduleViewProps) {
   const { user } = useAuth();
-  const { isAdmin, canUpdate, canCreate, allowedDepartments } = usePermissions();
+  const { isAdmin, canUpdate, canCreate, canDelete, allowedDepartments } = usePermissions();
   const { toasts, toast, removeToast } = useToast();
   const [pendingConfirm, setPendingConfirm] = useState<{ title: string; message: string; action: () => void } | null>(null);
   const [statusChangeDialog, setStatusChangeDialog] = useState<{
@@ -2098,8 +2098,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                   Histórico
                 </button>
               )}
-              {/* Excluir Escala (sempre disponível para admin, fora do modo edição também) */}
-              {isAdmin() && currentSchedule && (
+              {/* Excluir Escala — admin e coordenador (com permissão) */}
+              {currentSchedule && (isAdmin() || canDelete('schedules')) && (
                 <button
                   onClick={() => setShowDeleteScheduleModal(true)}
                   title="Exclui esta escala por completo"
