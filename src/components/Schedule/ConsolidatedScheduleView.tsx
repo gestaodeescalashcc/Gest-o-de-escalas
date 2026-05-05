@@ -2321,44 +2321,49 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       ))}
                     </tbody>
                     {uniqueShiftCodes.length > 0 && (
-                      <tfoot>
-                        {uniqueShiftCodes.map((code, idx) => {
+                      <tfoot className="border-t-4 border-double border-gray-400">
+                        {uniqueShiftCodes.map((code) => {
                           const colorCls = getCellColorClass(code);
-                          const isFirst = idx === 0;
                           const monthTotal = Array.from(dailyShiftTotals.values())
                             .reduce((acc, m) => acc + (m.get(code) ?? 0), 0);
+                          // Fundo bem suave usando a mesma cor da sigla
+                          const rowBg = colorCls.replace(/text-\S+/g, '').replace(/ring-\S+/g, '').replace(/-100/g, '-50');
                           return (
-                            <tr key={`tot-${code}`} className={isFirst ? 'border-t-2 border-gray-400' : ''}>
-                              {/* Rótulo "TOTAL <SIGLA>" — ocupa todas as 4 colunas sticky */}
+                            <tr key={`tot-${code}`} className={`${rowBg}`}>
+                              {/* Rótulo "TOTAL <SIGLA>" — 4 colunas sticky mescladas */}
                               <th
                                 colSpan={4}
-                                className="border border-gray-300 px-3 py-1 sticky left-0 bg-gray-50 z-10 text-right"
+                                className={`border border-gray-300 px-3 py-1.5 sticky left-0 z-10 text-right ${rowBg}`}
                                 style={{ minWidth: '430px' }}
                               >
-                                <span className="text-xs text-gray-600 font-semibold mr-2">TOTAL</span>
-                                <span className={`inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 rounded text-xs font-bold ${colorCls}`}>
-                                  {code}
-                                </span>
+                                <div className="inline-flex items-center gap-2">
+                                  <span className="text-[11px] uppercase tracking-wider text-gray-500 font-semibold">Total</span>
+                                  <span className={`inline-flex items-center justify-center min-w-[36px] px-2 py-0.5 rounded-md text-xs font-bold shadow-sm ${colorCls}`}>
+                                    {code}
+                                  </span>
+                                </div>
                               </th>
-                              {/* Uma célula por dia com a contagem */}
+                              {/* Contagem por dia */}
                               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                                 const count = dailyShiftTotals.get(day)?.get(code) ?? 0;
                                 return (
                                   <td
                                     key={day}
-                                    className={`border border-gray-300 px-1 py-1 text-center text-xs font-bold ${count > 0 ? 'bg-gray-50 text-gray-900' : 'bg-gray-50 text-gray-300'}`}
+                                    className={`border border-gray-200 px-1 py-1.5 text-center text-xs ${
+                                      count > 0 ? 'text-gray-900 font-bold' : 'text-gray-300 font-normal'
+                                    }`}
                                     style={{ minWidth: '32px', maxWidth: '32px' }}
                                   >
-                                    {count > 0 ? count : ''}
+                                    {count > 0 ? count : '·'}
                                   </td>
                                 );
                               })}
-                              {/* Soma do mês */}
-                              <td className="border border-gray-300 px-2 py-1 text-center text-xs font-bold bg-gray-50 text-gray-900">
+                              {/* Soma do mês — em destaque */}
+                              <td className="border border-gray-300 px-2 py-1.5 text-center text-sm font-extrabold bg-gray-800 text-white">
                                 {monthTotal}
                               </td>
                               {editMode && (
-                                <td className="border border-gray-300 bg-gray-50"></td>
+                                <td className={`border border-gray-300 ${rowBg}`}></td>
                               )}
                             </tr>
                           );
