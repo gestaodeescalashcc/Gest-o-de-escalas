@@ -2433,7 +2433,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                       <div className="bg-amber-50 px-3 py-1.5 border-b border-amber-200 flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-700" aria-hidden="true" />
                         <h3 className="font-semibold text-amber-900 text-xs uppercase tracking-wide">
-                          Profissionais Afastados (Recebendo Salário) · {onLeaveProfessionals.length}
+                          Profissionais Afastados · {onLeaveProfessionals.length}
                         </h3>
                       </div>
                       <div className="divide-y divide-amber-100">
