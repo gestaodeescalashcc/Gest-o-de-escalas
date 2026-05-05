@@ -98,7 +98,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   const [selectedMonth, setSelectedMonth] = useState<string>(
     new Date().toISOString().slice(0, 7)
   );
-  const [loading, setLoading] = useState(true);
+  // Inicia false — só vira true quando loadData realmente roda. Evita
+  // que a tela fique presa em "Carregando..." se selectedSchedule/Month
+  // não estiverem prontos ainda.
+  const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ profId: string; day: number } | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
@@ -478,6 +481,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
    *   ou tenham acabado de ser adicionados via "Adicionar Profissional").
    */
   const loadData = async (keepCurrent = false) => {
+    if (!selectedSchedule || !selectedMonth || !selectedDepartment) {
+      console.warn('[loadData] abortado — falta dado:', { selectedSchedule, selectedMonth, selectedDepartment });
+      setLoading(false);
+      return;
+    }
+    // Watchdog: se a query travar por mais de 15s, libera o spinner
+    const watchdog = setTimeout(() => {
+      console.warn('[loadData] timeout 15s — liberando loading');
+      setLoading(false);
+    }, 15000);
     try {
       setLoading(true);
       const [year, month] = selectedMonth.split('-');
@@ -536,6 +549,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
       console.error('Erro inesperado ao carregar dados:', err);
       toast.error('Erro inesperado ao carregar dados. Verifique o console para detalhes.');
     } finally {
+      clearTimeout(watchdog);
       setLoading(false);
     }
   };
