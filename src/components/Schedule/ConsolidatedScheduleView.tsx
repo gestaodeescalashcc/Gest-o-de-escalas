@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -72,9 +72,10 @@ interface Holiday {
 
 interface ConsolidatedScheduleViewProps {
   initialScheduleId?: string | null;
+  onBackToList?: () => void;
 }
 
-export default function ConsolidatedScheduleView({ initialScheduleId }: ConsolidatedScheduleViewProps) {
+export default function ConsolidatedScheduleView({ initialScheduleId, onBackToList }: ConsolidatedScheduleViewProps) {
   const { user } = useAuth();
   const { isAdmin, canUpdate, canCreate, canDelete, allowedDepartments } = usePermissions();
   const { toasts, toast, removeToast } = useToast();
@@ -2000,6 +2001,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3 flex-wrap">
+          {onBackToList && (
+            <button
+              onClick={onBackToList}
+              title="Voltar para a lista de escalas"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition text-gray-600 hover:text-gray-900"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
           <Calendar className="w-7 h-7 text-blue-600 flex-shrink-0" aria-hidden="true" />
           <h1 className="text-2xl font-bold text-gray-900">Escala do Mês</h1>
           {/* Badge de status removido — fluxo simplificado, todas as escalas

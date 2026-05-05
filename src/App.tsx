@@ -56,8 +56,12 @@ const STORAGE_KEY_SCHEDULE_ID = 'medscale.selectedScheduleId';
 function AppContent() {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<string>(() => {
-    try { return localStorage.getItem(STORAGE_KEY_VIEW) || 'schedule'; }
-    catch { return 'schedule'; }
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_VIEW);
+      // 'schedule' (item de menu antigo) foi unificado em 'consolidated'
+      if (!saved || saved === 'schedule') return 'consolidated';
+      return saved;
+    } catch { return 'consolidated'; }
   });
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(() => {
     try { return localStorage.getItem(STORAGE_KEY_SCHEDULE_ID); }
@@ -85,11 +89,15 @@ function AppContent() {
 
   return (
     <DashboardLayout currentView={currentView} onViewChange={setCurrentView}>
-      {currentView === 'schedule' && (
-        <ScheduleView onNavigateToSchedule={handleNavigateToSchedule} />
-      )}
       {currentView === 'consolidated' && (
-        <ConsolidatedScheduleView initialScheduleId={selectedScheduleId} />
+        // Sem escala selecionada → mostra a LISTA (cards com visualizar/excluir).
+        // Com escala selecionada → mostra a GRADE da escala.
+        selectedScheduleId
+          ? <ConsolidatedScheduleView
+              initialScheduleId={selectedScheduleId}
+              onBackToList={() => setSelectedScheduleId(null)}
+            />
+          : <ScheduleView onNavigateToSchedule={handleNavigateToSchedule} />
       )}
       {currentView === 'daily' && <DailyScheduleView />}
       {currentView === 'professionals' && <ProfessionalsView />}
