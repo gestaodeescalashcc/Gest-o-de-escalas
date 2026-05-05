@@ -2170,11 +2170,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                         {uniqueShiftCodes.map(code => (
                           <th
                             key={`hcol-${code}`}
-                            className={`border border-gray-300 px-1 py-2 text-center text-[10px] font-bold whitespace-nowrap ${getCellColorClass(code)}`}
-                            style={{ minWidth: '36px' }}
+                            className={`border border-gray-300 px-1 py-1 text-center font-bold whitespace-nowrap ${getCellColorClass(code)}`}
+                            style={{ minWidth: '38px' }}
                             title={`Total de ${code} no mês`}
                           >
-                            {code}
+                            <span className="block text-[8px] uppercase tracking-wider opacity-70 leading-tight">Total</span>
+                            <span className="block text-[11px] leading-tight">{code}</span>
                           </th>
                         ))}
                         <th className="border border-gray-300 px-2 py-2 text-center font-semibold whitespace-nowrap" style={{ minWidth: '70px' }}>
