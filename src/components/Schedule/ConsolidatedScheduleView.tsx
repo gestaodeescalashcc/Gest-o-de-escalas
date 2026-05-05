@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -115,6 +115,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
   const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [clearAllConfirmText, setClearAllConfirmText] = useState('');
   const [clearingAll, setClearingAll] = useState(false);
+  const [showAuditLog, setShowAuditLog] = useState(false);
+  const [auditEntries, setAuditEntries] = useState<Array<{
+    id: string;
+    action: string;
+    professional_name: string | null;
+    shift_date: string | null;
+    old_shift_type: string | null;
+    new_shift_type: string | null;
+    actor_email: string | null;
+    actor_name: string | null;
+    created_at: string;
+  }>>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   // Absenteísmo
   const [showAbsenceModal, setShowAbsenceModal] = useState(false);
@@ -175,9 +188,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     | 'Rascunho'
     | 'Publicada'
     | 'Fechada';
-  const isPublished = scheduleStatus === 'Publicada';
-  const isClosed = scheduleStatus === 'Fechada';
-  const isLocked = isPublished || isClosed;
+  const isPublished = false;
+  const isClosed = false;
+  // Workflow simplificado: todas as escalas estão sempre disponíveis para edição.
+  // Histórico imutável de alterações é registrado em schedule_audit_log.
+  const isLocked = false;
   // Admins can always edit; others only when status is Rascunho
   const canEditSchedule = isAdmin() ? true : !isLocked && canUpdate('schedules');
 
@@ -1747,6 +1762,66 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
     }
   };
 
+  // Carrega histórico de alterações da escala atual
+  const loadAuditLog = async () => {
+    if (!selectedSchedule) return;
+    setAuditLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('schedule_audit_log')
+        .select(`
+          id, action, shift_date, old_shift_type, new_shift_type,
+          actor_email, actor_name, created_at,
+          professional_id, old_professional_id, new_professional_id
+        `)
+        .eq('schedule_id', selectedSchedule)
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+
+      // Pega os nomes dos profissionais envolvidos numa só query
+      const profIds = new Set<string>();
+      (data ?? []).forEach((e: any) => {
+        if (e.professional_id) profIds.add(e.professional_id);
+        if (e.old_professional_id) profIds.add(e.old_professional_id);
+        if (e.new_professional_id) profIds.add(e.new_professional_id);
+      });
+      const nameById = new Map<string, string>();
+      if (profIds.size > 0) {
+        const { data: profs } = await supabase
+          .from('professionals')
+          .select('id, full_name')
+          .in('id', Array.from(profIds));
+        (profs ?? []).forEach((p: any) => nameById.set(p.id, p.full_name));
+      }
+
+      setAuditEntries(
+        (data ?? []).map((e: any) => ({
+          id: e.id,
+          action: e.action,
+          professional_name: e.professional_id ? nameById.get(e.professional_id) ?? null : null,
+          shift_date: e.shift_date,
+          old_shift_type: e.old_shift_type,
+          new_shift_type: e.new_shift_type,
+          actor_email: e.actor_email,
+          actor_name: e.actor_name,
+          created_at: e.created_at,
+        }))
+      );
+    } catch (err: any) {
+      console.error('Erro ao carregar histórico:', err);
+      toast.error('Erro ao carregar histórico: ' + (err.message ?? 'tente novamente'));
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  // Recarrega o log toda vez que o modal abre
+  useEffect(() => {
+    if (showAuditLog) loadAuditLog();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showAuditLog, selectedSchedule]);
+
   const handleExportExcel = async () => {
     const cs = schedules.find(s => s.id === selectedSchedule);
     if (!cs) return;
@@ -1860,14 +1935,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
         <div className="flex items-center gap-3 flex-wrap">
           <Calendar className="w-7 h-7 text-blue-600 flex-shrink-0" aria-hidden="true" />
           <h1 className="text-2xl font-bold text-gray-900">Escala Consolidada</h1>
-          {StatusBadge && (
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ring-inset ${StatusBadge.container}`}
-            >
-              <StatusIcon className="w-3.5 h-3.5" aria-hidden="true" />
-              {StatusBadge.label}
-            </span>
-          )}
+          {/* Badge de status removido — fluxo simplificado, todas as escalas
+              são editáveis. Histórico é registrado em schedule_audit_log. */}
           {/* Toggle Planejada / Realizada — só aparece se há escala selecionada */}
           {currentSchedule && !editMode && (
             <div
@@ -1965,46 +2034,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
                 Exportar Excel
                 {viewMode === 'realizada' && <span className="text-[10px] font-bold">(Realizada)</span>}
               </button>
-              {/* Status transitions */}
-              {currentSchedule && scheduleStatus === 'Rascunho' && (
+              {/* Histórico de alterações */}
+              {currentSchedule && (
                 <button
-                  onClick={requestPublish}
-                  className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                  onClick={() => setShowAuditLog(true)}
+                  title="Ver histórico de alterações desta escala"
+                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
                 >
-                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
-                  Publicar
+                  <Clock className="w-4 h-4" aria-hidden="true" />
+                  Histórico
                 </button>
               )}
-              {currentSchedule && scheduleStatus === 'Publicada' && isAdmin() && (
-                <>
-                  <button
-                    onClick={requestReopen}
-                    className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
-                  >
-                    <Unlock className="w-4 h-4" aria-hidden="true" />
-                    Reabrir
-                  </button>
-                  <button
-                    onClick={requestClose}
-                    className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
-                  >
-                    <Archive className="w-4 h-4" aria-hidden="true" />
-                    Fechar Escala
-                  </button>
-                </>
-              )}
-              {currentSchedule && scheduleStatus === 'Fechada' && isAdmin() && (
-                <button
-                  onClick={requestReopen}
-                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
-                >
-                  <Unlock className="w-4 h-4" aria-hidden="true" />
-                  Reabrir
-                </button>
-              )}
-              {/* Modo Edição — só aparece quando a escala não está bloqueada.
-                  Para Publicada/Fechada, admin precisa clicar em "Reabrir" antes. */}
-              {canEditSchedule && !isLocked && (
+              {/* Modo Edição */}
+              {canEditSchedule && (
                 <button
                   onClick={() => setEditMode(true)}
                   className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -3095,6 +3137,81 @@ export default function ConsolidatedScheduleView({ initialScheduleId }: Consolid
             loadSchedules();
           }}
         />
+      )}
+
+      {/* Modal de histórico de alterações */}
+      {showAuditLog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-slate-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Histórico de Alterações</h2>
+                <span className="text-xs text-gray-500">(imutável)</span>
+              </div>
+              <button onClick={() => setShowAuditLog(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {auditLoading ? (
+                <div className="text-center py-8 text-gray-500 text-sm">Carregando...</div>
+              ) : auditEntries.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  Nenhuma alteração registrada nesta escala.
+                </div>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {auditEntries.map(e => {
+                    const when = new Date(e.created_at).toLocaleString('pt-BR');
+                    const date = e.shift_date ? new Date(e.shift_date + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+                    let actionLabel = '';
+                    let actionColor = '';
+                    if (e.action === 'insert') {
+                      actionLabel = 'Inseriu';
+                      actionColor = 'bg-emerald-100 text-emerald-800 ring-emerald-200';
+                    } else if (e.action === 'update') {
+                      actionLabel = 'Alterou';
+                      actionColor = 'bg-blue-100 text-blue-800 ring-blue-200';
+                    } else {
+                      actionLabel = 'Removeu';
+                      actionColor = 'bg-red-100 text-red-800 ring-red-200';
+                    }
+                    return (
+                      <li key={e.id} className="py-2.5 flex flex-wrap items-start gap-2 text-sm">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ring-1 ring-inset ${actionColor}`}>
+                          {actionLabel}
+                        </span>
+                        <span className="text-gray-700 flex-1 min-w-[200px]">
+                          {e.professional_name ?? 'Profissional desconhecido'}
+                          {' · '}
+                          <span className="font-medium">{date}</span>
+                          {e.action === 'update' && (e.old_shift_type !== e.new_shift_type) && (
+                            <> · <span className="text-gray-500">{e.old_shift_type ?? '—'}</span> → <span className="font-bold">{e.new_shift_type ?? '—'}</span></>
+                          )}
+                          {e.action === 'insert' && e.new_shift_type && (
+                            <> · turno <span className="font-bold">{e.new_shift_type}</span></>
+                          )}
+                          {e.action === 'delete' && e.old_shift_type && (
+                            <> · turno <span className="font-bold line-through">{e.old_shift_type}</span></>
+                          )}
+                        </span>
+                        <div className="text-xs text-gray-500 text-right min-w-[180px]">
+                          <div>{e.actor_name ?? e.actor_email ?? 'Sistema'}</div>
+                          <div>{when}</div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <div className="p-3 border-t border-gray-200 text-xs text-gray-500 flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5" />
+              Os registros não podem ser editados ou apagados.
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal de limpeza total dos plantões da escala atual */}
