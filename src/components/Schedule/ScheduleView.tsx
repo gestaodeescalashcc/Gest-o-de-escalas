@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, ChevronLeft, ChevronRight, Info, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import ShiftCard from './ShiftCard';
 import CreateShiftModal from './CreateShiftModal';
@@ -59,6 +59,9 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
   const [filterMonth, setFilterMonth] = useState<string>(new Date().toISOString().slice(0, 7));
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deleteAllConfirmText, setDeleteAllConfirmText] = useState('');
+  const [deletingAll, setDeletingAll] = useState(false);
   const { toasts, toast, removeToast } = useToast();
   const { isAdmin, allowedDepartments } = usePermissions();
 
@@ -198,6 +201,41 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
     }
   };
 
+  // Exclusão em massa de TODAS as escalas (e seus plantões)
+  const handleDeleteAllSchedules = async () => {
+    if (deleteAllConfirmText !== 'EXCLUIR TUDO') return;
+    setDeletingAll(true);
+    try {
+      // 1) Apaga shifts vinculados às escalas visíveis (respeita filtro de departamento)
+      const ids = filteredSchedules.map(s => s.id);
+      if (ids.length === 0) {
+        toast.error('Nenhuma escala para excluir.');
+        return;
+      }
+      const { error: shiftsErr } = await supabase
+        .from('shifts')
+        .delete()
+        .in('schedule_id', ids);
+      if (shiftsErr) throw shiftsErr;
+
+      const { error: schedulesErr } = await supabase
+        .from('monthly_schedules')
+        .delete()
+        .in('id', ids);
+      if (schedulesErr) throw schedulesErr;
+
+      toast.success(`${ids.length} escala(s) e seus plantões foram excluídos.`);
+      setShowDeleteAllModal(false);
+      setDeleteAllConfirmText('');
+      loadSchedules();
+    } catch (err: any) {
+      console.error('Erro ao excluir todas as escalas:', err);
+      toast.error('Erro ao excluir todas as escalas: ' + (err.message || 'Tente novamente.'));
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   const handleViewSchedule = (scheduleId: string) => {
     if (onNavigateToSchedule) {
       onNavigateToSchedule(scheduleId);
@@ -276,6 +314,16 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
           </p>
         </div>
         <div className="flex gap-3">
+          {viewMode === 'schedules' && isAdmin() && filteredSchedules.length > 0 && (
+            <button
+              onClick={() => setShowDeleteAllModal(true)}
+              className="flex items-center gap-2 bg-white border border-red-300 text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg transition font-medium"
+              title="Excluir todas as escalas listadas"
+            >
+              <Trash2 className="w-5 h-5" />
+              Excluir Todas
+            </button>
+          )}
           {viewMode === 'schedules' && (
             <button
               onClick={() => setShowCreateScheduleModal(true)}
@@ -599,6 +647,58 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
         onConfirm={handleDeleteSchedule}
         onCancel={() => setConfirmDeleteId(null)}
       />
+
+      {/* Modal de exclusão em massa — exige digitar EXCLUIR TUDO */}
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-gray-900">Excluir TODAS as escalas listadas?</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Esta ação vai apagar <strong>{filteredSchedules.length} escala(s)</strong> e <strong>todos os plantões associados</strong>.
+                  Não pode ser desfeita.
+                </p>
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-xs text-red-900">
+              <strong>Cuidado:</strong> incluindo escalas de meses anteriores, ausências e trocas continuam, mas sem o vínculo da escala.
+              Se você só quer excluir uma escala, feche este aviso e use o ícone de lixeira na linha da escala.
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Para confirmar, digite <strong>EXCLUIR TUDO</strong>:
+            </label>
+            <input
+              type="text"
+              value={deleteAllConfirmText}
+              onChange={(e) => setDeleteAllConfirmText(e.target.value)}
+              placeholder="EXCLUIR TUDO"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm font-mono uppercase"
+              autoFocus
+            />
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => { setShowDeleteAllModal(false); setDeleteAllConfirmText(''); }}
+                disabled={deletingAll}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteAllSchedules}
+                disabled={deleteAllConfirmText !== 'EXCLUIR TUDO' || deletingAll}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                {deletingAll ? 'Excluindo...' : 'Excluir Tudo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
