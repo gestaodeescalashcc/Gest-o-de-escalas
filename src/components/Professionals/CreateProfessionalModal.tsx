@@ -484,7 +484,7 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
             )}
           </div>
 
-          {/* Afastamento (mantém recebendo) */}
+          {/* Afastamento */}
           <div className="border-t border-gray-200 pt-4">
             <label className="flex items-start gap-3 cursor-pointer select-none">
               <input
@@ -494,7 +494,7 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
                 className="w-4 h-4 mt-0.5 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
               />
               <div className="flex-1">
-                <span className="font-medium text-gray-900">Profissional afastado (segue recebendo salário)</span>
+                <span className="font-medium text-gray-900">Profissional afastado</span>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Quando marcado, ele não aparece na grade da escala — fica listado no rodapé.
                 </p>
