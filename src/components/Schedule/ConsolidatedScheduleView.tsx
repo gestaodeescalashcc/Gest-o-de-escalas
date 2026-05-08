@@ -159,6 +159,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   >([]);
   // Conjunto de células que tiveram troca aprovada: chave = `${professional_id}|${YYYY-MM-DD}`
   const [swappedCells, setSwappedCells] = useState<Set<string>>(new Set());
+  // Detalhes da troca por célula (pra suportar desfazer)
+  const [swapsByCell, setSwapsByCell] = useState<Map<string, {
+    swap_id: string;
+    requesting_professional_id: string;
+    target_professional_id: string;
+    original_shift_id: string;
+    offered_shift_id: string | null;
+  }>>(new Map());
   const [expandedSections, setExpandedSections] = useState({
     allDays: false,
     oddDays: false,
@@ -305,7 +313,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     // 1) Pega os swaps aprovados (sem JOIN para evitar surpresas no shape)
     const { data: swaps, error: swapsErr } = await supabase
       .from('shift_swaps')
-      .select('requesting_professional_id, target_professional_id, original_shift_id, offered_shift_id')
+      .select('id, requesting_professional_id, target_professional_id, original_shift_id, offered_shift_id')
       .eq('status', 'Aprovado');
 
     if (swapsErr) {
@@ -339,19 +347,32 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     (shiftsData ?? []).forEach((sh: any) => dateById.set(sh.id, sh.shift_date));
 
     // 3) Para cada swap, marca a célula do NOVO dono em cada um dos 2 dias
+    //    e guarda mapeamento célula → swap_id (pra suportar desfazer)
     const set = new Set<string>();
+    const byCell = new Map<string, any>();
     (swaps ?? []).forEach((s: any) => {
       const originalDate = s.original_shift_id ? dateById.get(s.original_shift_id) : undefined;
       const offeredDate = s.offered_shift_id ? dateById.get(s.offered_shift_id) : undefined;
+      const swapInfo = {
+        swap_id: s.id,
+        requesting_professional_id: s.requesting_professional_id,
+        target_professional_id: s.target_professional_id,
+        original_shift_id: s.original_shift_id,
+        offered_shift_id: s.offered_shift_id,
+      };
       if (originalDate && originalDate >= monthStart && originalDate <= monthEnd && s.target_professional_id) {
-        set.add(`${s.target_professional_id}|${originalDate}`);
+        const k = `${s.target_professional_id}|${originalDate}`;
+        set.add(k);
+        byCell.set(k, swapInfo);
       }
       if (offeredDate && offeredDate >= monthStart && offeredDate <= monthEnd && s.requesting_professional_id) {
-        set.add(`${s.requesting_professional_id}|${offeredDate}`);
+        const k = `${s.requesting_professional_id}|${offeredDate}`;
+        set.add(k);
+        byCell.set(k, swapInfo);
       }
     });
-    console.log('[swaps] mês:', monthStr, '| trocas aprovadas:', swaps?.length ?? 0, '| células marcadas:', set.size, [...set]);
     setSwappedCells(set);
+    setSwapsByCell(byCell);
   };
 
   const loadScheduleAbsences = async (scheduleId: string) => {
@@ -1766,6 +1787,56 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     }
   };
 
+  // Desfaz uma troca aprovada: reverte os shifts pros donos originais e apaga o registro do swap
+  const [undoingSwap, setUndoingSwap] = useState<{
+    swap_id: string;
+    requesting_professional_id: string;
+    target_professional_id: string;
+    original_shift_id: string;
+    offered_shift_id: string | null;
+  } | null>(null);
+  const [undoSwapLoading, setUndoSwapLoading] = useState(false);
+
+  const handleUndoSwap = async () => {
+    if (!undoingSwap) return;
+    setUndoSwapLoading(true);
+    try {
+      // Reverte original_shift de volta para requesting_professional_id (dono original)
+      const { error: e1 } = await supabase
+        .from('shifts')
+        .update({ professional_id: undoingSwap.requesting_professional_id })
+        .eq('id', undoingSwap.original_shift_id);
+      if (e1) throw e1;
+
+      // Reverte offered_shift de volta para target_professional_id (dono original)
+      if (undoingSwap.offered_shift_id) {
+        const { error: e2 } = await supabase
+          .from('shifts')
+          .update({ professional_id: undoingSwap.target_professional_id })
+          .eq('id', undoingSwap.offered_shift_id);
+        if (e2) throw e2;
+      }
+
+      // Apaga o registro da troca
+      const { error: e3 } = await supabase
+        .from('shift_swaps')
+        .delete()
+        .eq('id', undoingSwap.swap_id);
+      if (e3) throw e3;
+
+      toast.success('Troca desfeita.');
+      setUndoingSwap(null);
+      setShowQuickMenu(false);
+      setSelectedCell(null);
+      await loadData(true);
+    } catch (err: any) {
+      console.error('Erro ao desfazer troca:', err);
+      toast.error('Erro ao desfazer: ' + (err.message ?? 'tente novamente'));
+    } finally {
+      setUndoSwapLoading(false);
+    }
+  };
+
   // Limpa TODOS os plantões da escala atual (mantém a escala e os profissionais vinculados)
   const handleClearAllShifts = async () => {
     if (!selectedSchedule || clearAllConfirmText.trim().toUpperCase() !== 'LIMPAR') return;
@@ -2784,6 +2855,27 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 </div>
               )}
 
+              {/* DESFAZER TROCA — aparece se a célula clicada está envolvida em swap aprovado */}
+              {selectedCell && (() => {
+                const cellDateStr = `${selectedMonth}-${String(selectedCell.day).padStart(2, '0')}`;
+                const swap = swapsByCell.get(`${selectedCell.profId}|${cellDateStr}`);
+                if (!swap) return null;
+                return (
+                  <div className="px-2 mb-1">
+                    <button
+                      onClick={() => setUndoingSwap(swap)}
+                      className="w-full flex items-center gap-2 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 rounded text-left transition border border-emerald-200"
+                    >
+                      <ArrowLeftRight className="w-4 h-4 text-emerald-700" />
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold text-emerald-900">Desfazer troca</div>
+                        <div className="text-[11px] text-emerald-700">Volta o plantão para o dono original</div>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* TURNOS / AUSÊNCIAS BUILT-IN — só em modo edição com escala não bloqueada */}
               {editMode && !isLocked && (
                 <>
@@ -3512,6 +3604,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         loading={statusChangeLoading}
         onConfirm={() => statusChangeDialog && updateScheduleStatus(statusChangeDialog.targetStatus)}
         onCancel={() => setStatusChangeDialog(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={undoingSwap !== null}
+        title="Desfazer troca?"
+        message="Os plantões voltam para os profissionais originais e o registro da troca será apagado. Esta ação não pode ser desfeita."
+        variant="warning"
+        confirmLabel="Desfazer"
+        loading={undoSwapLoading}
+        onConfirm={handleUndoSwap}
+        onCancel={() => setUndoingSwap(null)}
       />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
