@@ -2488,14 +2488,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                 onClick={(e) => handleCellClick(prof.id, day, e)}
                                 title={finalTooltip || undefined}
                                 className={`border border-gray-300 px-1 py-2 text-center font-semibold relative ${
-                                  // Quando há troca, o destaque verde tem prioridade visual
+                                  // Prioridade: troca (verde) > absence (vermelho) > código planejado
                                   isSwapped ? 'bg-emerald-600 text-white ring-2 ring-inset ring-emerald-800' :
+                                  hasAbsenceMarkPlanned ? 'bg-red-200 text-red-900 ring-2 ring-inset ring-red-500' :
                                   code ? getCellColorClass(code) : ''
-                                } ${!isSwapped && isWeekend && !code ? 'bg-gray-100' : ''} ${
+                                } ${!isSwapped && !hasAbsenceMarkPlanned && isWeekend && !code ? 'bg-gray-100' : ''} ${
                                   'cursor-pointer hover:ring-2 hover:ring-blue-400'
-                                } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''} ${
-                                  hasAbsenceMarkPlanned ? 'ring-2 ring-inset ring-amber-400' : ''
-                                }`}
+                                } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''}`}
                                 style={{ minWidth: '32px', maxWidth: '32px' }}
                               >
                                 {code}
@@ -2503,13 +2502,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                 {isOverridden && (
                                   <span
                                     className="absolute top-0 right-0 w-1.5 h-1.5 rounded-full bg-red-500"
-                                    aria-hidden="true"
-                                  />
-                                )}
-                                {/* Indicador em modo Planejada: triângulo âmbar quando há absence registrada */}
-                                {hasAbsenceMarkPlanned && (
-                                  <span
-                                    className="absolute bottom-0 left-0 w-0 h-0 border-l-[6px] border-l-transparent border-b-[6px] border-b-amber-500"
                                     aria-hidden="true"
                                   />
                                 )}
