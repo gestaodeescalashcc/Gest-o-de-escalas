@@ -466,9 +466,6 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
                       Mês/Ano
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Criado em
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -505,11 +502,6 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
                             <Clock className="w-4 h-4" />
                             <span className="capitalize">{monthName}</span>
                           </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusBadge(schedule.status)}`}>
-                            {schedule.status}
-                          </span>
                         </td>
                         <td className="px-4 py-4">
                           <div className="text-sm text-gray-600">
