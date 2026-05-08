@@ -24,8 +24,10 @@ import {
   ChevronDown,
   ChevronRight,
   CalendarX,
+  KeyRound,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { usePermissions } from '../../hooks/usePermissions';
 
 interface DashboardLayoutProps {
@@ -147,6 +149,39 @@ export default function DashboardLayout({
   });
 
   const { signOut, user } = useAuth();
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+
+  const handleChangePassword = async () => {
+    setPwMsg(null);
+    if (pwNew.length < 6) {
+      setPwMsg({ type: 'err', text: 'A senha precisa ter pelo menos 6 caracteres.' });
+      return;
+    }
+    if (pwNew !== pwConfirm) {
+      setPwMsg({ type: 'err', text: 'As senhas não coincidem.' });
+      return;
+    }
+    setPwLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pwNew });
+      if (error) throw error;
+      setPwMsg({ type: 'ok', text: 'Senha alterada com sucesso!' });
+      setPwNew('');
+      setPwConfirm('');
+      setTimeout(() => {
+        setShowChangePassword(false);
+        setPwMsg(null);
+      }, 1500);
+    } catch (err: any) {
+      setPwMsg({ type: 'err', text: 'Erro: ' + (err.message ?? 'tente novamente') });
+    } finally {
+      setPwLoading(false);
+    }
+  };
   const { canRead, isAdmin, roleName, loading: permissionsLoading } = usePermissions();
 
   useEffect(() => {
@@ -360,6 +395,14 @@ export default function DashboardLayout({
         </div>
         <button
           type="button"
+          onClick={() => { setShowChangePassword(true); setPwMsg(null); setPwNew(''); setPwConfirm(''); }}
+          className="w-full min-h-[40px] flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+        >
+          <KeyRound className="w-4 h-4" aria-hidden="true" />
+          <span>Trocar Senha</span>
+        </button>
+        <button
+          type="button"
           onClick={() => signOut()}
           className="w-full min-h-[44px] flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
         >
@@ -367,6 +410,72 @@ export default function DashboardLayout({
           <span>Sair</span>
         </button>
       </div>
+
+      {showChangePassword && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <KeyRound className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-gray-900">Trocar Senha</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Defina uma nova senha (mínimo 6 caracteres).
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+                <input
+                  type="password"
+                  value={pwNew}
+                  onChange={(e) => setPwNew(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  autoFocus
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+                <input
+                  type="password"
+                  value={pwConfirm}
+                  onChange={(e) => setPwConfirm(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+            {pwMsg && (
+              <div className={`mt-3 px-3 py-2 rounded-lg text-sm ${
+                pwMsg.type === 'ok'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-red-50 text-red-800 border border-red-200'
+              }`}>
+                {pwMsg.text}
+              </div>
+            )}
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setShowChangePassword(false)}
+                disabled={pwLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm font-medium disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleChangePassword}
+                disabled={pwLoading || !pwNew || !pwConfirm}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm font-medium disabled:opacity-50"
+              >
+                {pwLoading ? 'Salvando...' : 'Trocar Senha'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 
