@@ -105,16 +105,39 @@ SELECT
 FROM src
 WHERE src.existing_id IS NULL;
 
--- PASSO 3b: reativa e ajusta os que ja existiam
+-- PASSO 3b: reativa e ajusta APENAS o profissional mais antigo de cada nome
+--   (se houver duplicatas no banco, só um fica ativo)
+WITH ranked AS (
+  SELECT
+    p.id,
+    p.full_name,
+    pp.matricula,
+    ROW_NUMBER() OVER (PARTITION BY norm_name(p.full_name) ORDER BY p.created_at) AS rn
+  FROM professionals p
+  JOIN _planilha_profs pp ON norm_name(p.full_name) = norm_name(pp.nome)
+)
 UPDATE professionals p
 SET active = true,
     department_id = (SELECT id FROM departments WHERE name = 'Fisioterapia' LIMIT 1),
     company_id = COALESCE(p.company_id,
                   (SELECT id FROM companies WHERE name ILIKE 'FESF%' LIMIT 1)),
-    registration_number = COALESCE(NULLIF(p.registration_number, ''), pp.matricula),
+    registration_number = COALESCE(NULLIF(p.registration_number, ''), r.matricula),
     updated_at = now()
-FROM _planilha_profs pp
-WHERE norm_name(p.full_name) = norm_name(pp.nome);
+FROM ranked r
+WHERE p.id = r.id AND r.rn = 1;
+
+-- PASSO 3c: desativa as DUPLICATAS (mesmo nome, registros adicionais)
+WITH ranked AS (
+  SELECT
+    p.id,
+    ROW_NUMBER() OVER (PARTITION BY norm_name(p.full_name) ORDER BY p.created_at) AS rn
+  FROM professionals p
+  JOIN _planilha_profs pp ON norm_name(p.full_name) = norm_name(pp.nome)
+)
+UPDATE professionals p
+SET active = false, updated_at = now()
+FROM ranked r
+WHERE p.id = r.id AND r.rn > 1;
 
 -- PASSO 4: desativa profs de Fisio fora da planilha
 UPDATE professionals p
