@@ -118,9 +118,13 @@ export default function AbsenteeismView() {
   const [confirmDelete, setConfirmDelete] = useState<Absence | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Recarrega quando allowedDepartments mudar (importante: na 1a render
+  // ele pode estar null porque o usePermissions ainda está carregando do
+  // banco. Quando popular, recarrega aplicando o filtro correto).
   useEffect(() => {
     loadData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedDepartments]);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY_PAGE_SIZE, String(pageSize)); } catch {}
