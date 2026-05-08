@@ -74,7 +74,7 @@ function daysBetween(start: string, end: string): number {
 const STORAGE_KEY_PAGE_SIZE = 'medscale.absenteeism.pageSize';
 
 export default function AbsenteeismView() {
-  const { canCreate, canUpdate, canDelete } = usePermissions();
+  const { canCreate, canUpdate, canDelete, isAdmin, allowedDepartments } = usePermissions();
   const { toasts, toast, removeToast } = useToast();
 
   const [absences, setAbsences] = useState<Absence[]>([]);
@@ -133,17 +133,31 @@ export default function AbsenteeismView() {
   async function loadData() {
     setLoading(true);
     try {
+      // Coordenadora só vê absenteísmos dos seus setores permitidos
+      const restrictByDept = !isAdmin() && allowedDepartments && allowedDepartments.length > 0;
+
+      let absencesQuery = supabase.from('absences').select(`
+        *,
+        professional:professionals!absences_professional_id_fkey(id, full_name),
+        department:departments(id, name),
+        reason:absence_reasons(*),
+        coverage_professional:professionals!absences_coverage_professional_id_fkey(id, full_name)
+      `).order('start_date', { ascending: false });
+
+      let deptsQuery = supabase.from('departments').select('id, name').eq('active', true).order('name');
+      let profsQuery = supabase.from('professionals').select('id, full_name, department_id').eq('active', true).order('full_name');
+
+      if (restrictByDept && allowedDepartments) {
+        absencesQuery = absencesQuery.in('department_id', allowedDepartments);
+        deptsQuery = deptsQuery.in('id', allowedDepartments);
+        profsQuery = profsQuery.in('department_id', allowedDepartments);
+      }
+
       const [a, r, d, p] = await Promise.all([
-        supabase.from('absences').select(`
-          *,
-          professional:professionals!absences_professional_id_fkey(id, full_name),
-          department:departments(id, name),
-          reason:absence_reasons(*),
-          coverage_professional:professionals!absences_coverage_professional_id_fkey(id, full_name)
-        `).order('start_date', { ascending: false }),
+        absencesQuery,
         supabase.from('absence_reasons').select('*').eq('active', true).order('name'),
-        supabase.from('departments').select('id, name').eq('active', true).order('name'),
-        supabase.from('professionals').select('id, full_name, department_id').eq('active', true).order('full_name'),
+        deptsQuery,
+        profsQuery,
       ]);
 
       if (a.error) throw a.error;

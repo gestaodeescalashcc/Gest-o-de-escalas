@@ -151,6 +151,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const [scheduleAbsences, setScheduleAbsences] = useState<
     Array<{
       professional_id: string;
+      coverage_professional_id: string | null;
       start_date: string;
       end_date: string;
       shift_code: string;
@@ -384,6 +385,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       .from('absences')
       .select(`
         professional_id,
+        coverage_professional_id,
         start_date,
         end_date,
         reason:absence_reasons(name, shift_code)
@@ -398,6 +400,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       setScheduleAbsences(
         data.map((a: any) => ({
           professional_id: a.professional_id,
+          coverage_professional_id: a.coverage_professional_id,
           start_date: a.start_date,
           end_date: a.end_date,
           shift_code: a.reason?.shift_code ?? 'FA',
@@ -631,6 +634,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       // Códigos válidos do sistema; se não bater, exibe FA como fallback
       return absence.shift_code || 'FA';
     }
+
+    // Se este profissional COBRIU a falta de outro nesse dia,
+    // mostra o turno original do ausente (em modo Realizada)
+    const coverage = scheduleAbsences.find(
+      a =>
+        a.coverage_professional_id === professionalId &&
+        date >= a.start_date &&
+        date <= a.end_date
+    );
+    if (coverage) {
+      const coveredShift = getShiftCode(coverage.professional_id, day);
+      if (coveredShift) return coveredShift;
+    }
+
     return planned;
   };
 
@@ -2552,7 +2569,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             const cellDateStr = `${selectedMonth}-${String(day).padStart(2, '0')}`;
                             const isSwapped = swappedCells.has(`${prof.id}|${cellDateStr}`);
                             const swapTooltip = isSwapped ? 'Plantão envolvido em troca aprovada' : '';
-                            const finalTooltip = [tooltip, swapTooltip].filter(Boolean).join('\n');
+                            // Verifica se este prof COBRIU uma falta nesse dia
+                            const coverageAbsence = scheduleAbsences.find(
+                              a => a.coverage_professional_id === prof.id &&
+                                   cellDateStr >= a.start_date &&
+                                   cellDateStr <= a.end_date
+                            );
+                            const isCoverage = !!coverageAbsence;
+                            const coverageTooltip = isCoverage ? 'Cobertura — turno extra' : '';
+                            const finalTooltip = [tooltip, swapTooltip, coverageTooltip].filter(Boolean).join('\n');
                             return (
                               <td
                                 key={day}
@@ -2584,6 +2609,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                     title="Plantão envolvido em troca"
                                   >
                                     T
+                                  </span>
+                                )}
+                                {/* Indicador de cobertura (turno extra cobrindo falta de outro prof) */}
+                                {isCoverage && !isSwapped && (
+                                  <span
+                                    className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-blue-700 text-white text-[10px] font-bold flex items-center justify-center shadow"
+                                    aria-label="Cobertura"
+                                    title="Cobertura — turno extra"
+                                  >
+                                    +
                                   </span>
                                 )}
                               </td>
