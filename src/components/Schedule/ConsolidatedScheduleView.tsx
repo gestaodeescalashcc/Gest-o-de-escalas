@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -24,6 +24,8 @@ interface Professional {
   contracted_hours_per_month?: number;
   on_leave?: boolean;
   leave_reason?: string | null;
+  display_order?: number | null;
+  block_separator_after?: boolean;
 }
 
 interface Shift {
@@ -175,7 +177,18 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   // de Adicionar/Remover Profissional.
   // Visíveis na grade principal (exclui afastados — eles vão pro rodapé)
   const professionals = useMemo(
-    () => allProfessionals.filter(p => professionalIdsInSchedule.has(p.id) && !p.on_leave),
+    () => {
+      const list = allProfessionals.filter(
+        p => professionalIdsInSchedule.has(p.id) && !p.on_leave
+      );
+      // Ordena por display_order (custom). Quem não tem ordem custom vai pro fim, alfabético.
+      return [...list].sort((a, b) => {
+        const aOrder = a.display_order ?? Number.MAX_SAFE_INTEGER;
+        const bOrder = b.display_order ?? Number.MAX_SAFE_INTEGER;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return a.full_name.localeCompare(b.full_name, 'pt-BR');
+      });
+    },
     [allProfessionals, professionalIdsInSchedule]
   );
   // Afastados do setor da escala — mostrados automaticamente no rodapé.
@@ -501,7 +514,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const [allProfsData, shiftsData] = await Promise.all([
         supabase
           .from('professionals')
-          .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, category:professional_categories(name), department:departments(name)')
+          .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, category:professional_categories(name), department:departments(name)')
           .eq('department_id', selectedDepartment)
           .eq('active', true)
           .order('full_name'),
@@ -2429,7 +2442,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                     </thead>
                     <tbody>
                       {professionals.map((prof) => (
-                        <tr key={prof.id} className={`hover:bg-gray-50 ${isOverWorkload(prof.id) ? 'bg-red-50' : ''}`}>
+                        <Fragment key={prof.id}>
+                        <tr className={`hover:bg-gray-50 ${isOverWorkload(prof.id) ? 'bg-red-50' : ''}`}>
                           <td className={`border border-gray-300 px-2 py-2 text-center sticky left-0 z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}>
                             {prof.registration_number || '-'}
                           </td>
@@ -2581,6 +2595,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             </td>
                           )}
                         </tr>
+                        {prof.block_separator_after && (
+                          <tr aria-hidden="true">
+                            <td
+                              colSpan={(showCorenColumn ? 5 : 4) + daysInMonth + uniqueShiftCodes.length + 1 + (editMode ? 1 : 0)}
+                              className="bg-gray-100"
+                              style={{ height: '14px', padding: 0, border: 0 }}
+                            ></td>
+                          </tr>
+                        )}
+                        </Fragment>
                       ))}
                     </tbody>
                     {uniqueShiftCodes.length > 0 && (
