@@ -1854,6 +1854,43 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     }
   };
 
+  // Desfaz absenteísmo: apaga o registro da ausência para essa célula
+  const [undoingAbsence, setUndoingAbsence] = useState<{
+    professional_id: string;
+    professional_name: string;
+    date: string;
+    reason_name: string;
+  } | null>(null);
+  const [undoAbsenceLoading, setUndoAbsenceLoading] = useState(false);
+
+  const handleUndoAbsence = async () => {
+    if (!undoingAbsence || !selectedSchedule) return;
+    setUndoAbsenceLoading(true);
+    try {
+      const { error } = await supabase
+        .from('absences')
+        .delete()
+        .eq('schedule_id', selectedSchedule)
+        .eq('professional_id', undoingAbsence.professional_id)
+        .lte('start_date', undoingAbsence.date)
+        .gte('end_date', undoingAbsence.date);
+      if (error) throw error;
+
+      toast.success('Ausência desfeita.');
+      setUndoingAbsence(null);
+      setShowQuickMenu(false);
+      setSelectedCell(null);
+      // Recarrega ausências e dados
+      if (selectedSchedule) await loadScheduleAbsences(selectedSchedule);
+      await loadData(true);
+    } catch (err: any) {
+      console.error('Erro ao desfazer ausência:', err);
+      toast.error('Erro ao desfazer: ' + (err.message ?? 'tente novamente'));
+    } finally {
+      setUndoAbsenceLoading(false);
+    }
+  };
+
   // Limpa TODOS os plantões da escala atual (mantém a escala e os profissionais vinculados)
   const handleClearAllShifts = async () => {
     if (!selectedSchedule || clearAllConfirmText.trim().toUpperCase() !== 'LIMPAR') return;
@@ -2911,6 +2948,35 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 );
               })()}
 
+              {/* DESFAZER AUSÊNCIA — aparece se a célula tem absence registrada */}
+              {selectedCell && (() => {
+                const absence = findAbsenceForCell(selectedCell.profId, selectedCell.day);
+                if (!absence) return null;
+                const profName = professionals.find(p => p.id === selectedCell.profId)?.full_name ?? '';
+                const cellDateStr = `${selectedMonth}-${String(selectedCell.day).padStart(2, '0')}`;
+                return (
+                  <div className="px-2 mb-1">
+                    <button
+                      onClick={() => setUndoingAbsence({
+                        professional_id: selectedCell.profId,
+                        professional_name: profName,
+                        date: cellDateStr,
+                        reason_name: absence.reason_name,
+                      })}
+                      className="w-full flex items-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 rounded text-left transition border border-red-200"
+                    >
+                      <CalendarX className="w-4 h-4 text-red-700" />
+                      <div className="flex-1">
+                        <div className="text-sm font-semibold text-red-900">Desfazer ausência</div>
+                        <div className="text-[11px] text-red-700 truncate">
+                          Remove "{absence.reason_name}" deste dia
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* TURNOS / AUSÊNCIAS BUILT-IN — só em modo edição com escala não bloqueada */}
               {editMode && !isLocked && (
                 <>
@@ -3650,6 +3716,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         loading={undoSwapLoading}
         onConfirm={handleUndoSwap}
         onCancel={() => setUndoingSwap(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={undoingAbsence !== null}
+        title="Desfazer ausência?"
+        message={`Remove o registro de "${undoingAbsence?.reason_name ?? ''}" de ${undoingAbsence?.professional_name ?? ''} no dia ${undoingAbsence?.date.split('-').reverse().join('/') ?? ''}. Se a ausência cobre mais de um dia, todos eles serão removidos. Esta ação não pode ser desfeita.`}
+        variant="danger"
+        confirmLabel="Desfazer"
+        loading={undoAbsenceLoading}
+        onConfirm={handleUndoAbsence}
+        onCancel={() => setUndoingAbsence(null)}
       />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
