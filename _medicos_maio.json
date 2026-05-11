@@ -1,0 +1,2684 @@
+{
+  "shifts_diarismo": [
+    {
+      "date": "2026-05-01",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-02",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "MARIA LUIZA",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-01",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-02",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-01",
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-02",
+      "name": "RENATA 15/15",
+      "company": "CPR",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "RENATA 15/15",
+      "company": "CPR",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-01",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-02",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-01",
+      "name": "VICTÓRIA",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-02",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "ISABELA LIMA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-09",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "GISELE CAFEZEIRO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "LIDIANE BISPO",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-09",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-09",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "ALISSON SILVA",
+      "company": "KLT SERVIÇOS",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-09",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "ALISSON SILVA",
+      "company": "KLT SERVIÇOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "EDUARDA DANTAS",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "VICTÓRIA",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-09",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "ISABELA LIMA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-04-14",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-16",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "MARIA LUIZA",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "LIDIANE BISPO",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-04-14",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-16",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-04-14",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-16",
+      "name": "RENATA 15/15",
+      "company": "CPR",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "RENATA 15/15",
+      "company": "CPR",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "ALISSON SILVA",
+      "company": "KLT SERVIÇOS",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-04-14",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-16",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "ALISSON SILVA",
+      "company": "KLT SERVIÇOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-04-14",
+      "name": "EDUARDA DANTAS",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "VICTÓRIA",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-16",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "ISABELA LIMA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-23",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "GISELE CAFEZEIRO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "LIDIANE BISPO",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-23",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-23",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "ALISSON SILVA",
+      "company": "KLT SERVIÇOS",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-23",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "ALISSON SILVA",
+      "company": "KLT SERVIÇOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "EDUARDA DANTAS",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "VICTÓRIA",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-23",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "ISABELA LIMA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-29",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-30",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "MARIA LUIZA",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "1. DIARISTA"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "LIDIANE BISPO",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-29",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-30",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Diarista",
+      "position": "2. DIARISTA"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-29",
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-30",
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "RENATA 15/15",
+      "company": "CPR",
+      "category": "Médico Diarista",
+      "position": "3. DIARISTA"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "ALISSON SILVA",
+      "company": "KLT SERVIÇOS",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-29",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-30",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "4. DIARISTA"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "ALISSON SILVA",
+      "company": "KLT SERVIÇOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "EDUARDA DANTAS",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-29",
+      "name": "VICTÓRIA",
+      "company": "MRLR SERVICOS",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-30",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "ISABELA LIMA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Diarista",
+      "position": "5. DIARISTA"
+    }
+  ],
+  "shifts_plantoes": [
+    {
+      "date": "2026-05-01",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-02",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-01",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-02",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-01",
+      "name": "INGRID BANDEIRA",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-02",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVIÇOS",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-01",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-02",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "INGRID BANDEIRA",
+      "company": "MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "EUDALDO",
+      "company": "SMC SOCIEDADE",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "BRUNO LEIRO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-09",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "BRUNA SILVEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-09",
+      "name": "SERGIO ABREU",
+      "company": "JOMAR",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "INGRID BANDEIRA",
+      "company": "DSC",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "INGRID BANDEIRA",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-09",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVIÇOS",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "BRUNA SILVEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "INGRID DANIELLE",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-09",
+      "name": "SERGIO ABREU",
+      "company": "JOMAR",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "INGRID BANDEIRA",
+      "company": "MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "EUDALDO",
+      "company": "SMC SOCIEDADE",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-14",
+      "name": "BRUNO LEIRO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-16",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "BRUNA SILVEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-14",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-16",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "LIDIANE BISPO",
+      "company": "DSC",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-14",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "INGRID BANDEIRA",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-16",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVIÇOS",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "BRUNA SILVEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "INGRID DANIELLE",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-14",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-16",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "INGRID BANDEIRA",
+      "company": "MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "EUDALDO",
+      "company": "SMC SOCIEDADE",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "BRUNO LEIRO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-23",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "BRUNA SILVEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-23",
+      "name": "SERGIO ABREU",
+      "company": "JOMAR",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "INGRID BANDEIRA",
+      "company": "DSC",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "INGRID BANDEIRA",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-23",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVIÇOS",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "BRUNA SILVEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "INGRID DANIELLE",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-23",
+      "name": "SERGIO ABREU",
+      "company": "JOMAR",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "INGRID BANDEIRA",
+      "company": "MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "EUDALDO",
+      "company": "SMC SOCIEDADE",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "BRUNO LEIRO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-30",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "1. PLANTAO SD"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "BRUNA SILVEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-30",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "2. PLANTÃO SD"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "LIDIANE BISPO",
+      "company": "DSC",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-30",
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVIÇOS",
+      "category": "Médico Plantonista",
+      "position": "3. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "BRUNA SILVEIRA",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "INGRID DANIELLE",
+      "company": "EQUIPE MED1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-30",
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED 1",
+      "category": "Médico Plantonista",
+      "position": "4. PLANTÃO SN"
+    }
+  ],
+  "shifts_interconsultas": [
+    {
+      "date": "2026-05-01",
+      "name": "EDGAR SOUZA",
+      "specialty": "ORTOPEDISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-01",
+      "name": "JÉSSICA",
+      "specialty": "CARDIOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-03",
+      "name": "CHEYZA",
+      "specialty": "NEFROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "LEDIVIA",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "EDGAR SOUZA",
+      "specialty": "ORTOPEDISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "EDGAR SOUZA",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "LEONARDO",
+      "specialty": "NEUROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "ALISSON SILVA",
+      "specialty": "CIRURGIA GERAL",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "ANABELY",
+      "specialty": "PALIATIVISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "TAMILES TEIXEIRA",
+      "specialty": "PNEUMOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": ""
+    },
+    {
+      "date": "2026-05-05",
+      "name": "JÉSSICA",
+      "specialty": "CARDIOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-08",
+      "name": "JÉSSICA",
+      "specialty": "CARDIOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-04",
+      "name": "LEONARDO",
+      "specialty": "NEUROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-05",
+      "name": "TRAJANO",
+      "specialty": "VASCULAR",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-06",
+      "name": "CHEYZA",
+      "specialty": "NEFROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-07",
+      "name": "ANDRE",
+      "specialty": "VASCULAR",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-10",
+      "name": "CHEYZA",
+      "specialty": "NEFROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "LEDIVIA",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-14",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "EDGAR SOUZA",
+      "specialty": "ORTOPEDISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "EDGAR SOUZA",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-14",
+      "name": "FREDERICO",
+      "specialty": "NEUROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "ALISSON SILVA",
+      "specialty": "CIRURGIA GERAL",
+      "category": "Médico Interconsultor",
+      "shift_type": ""
+    },
+    {
+      "date": "2026-05-12",
+      "name": "TAMILES TEIXEIRA",
+      "specialty": "PNEUMOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "ANABELY",
+      "specialty": "PALIATIVISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "JÉSSICA",
+      "specialty": "CARDIOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-15",
+      "name": "JÉSSICA",
+      "specialty": "CARDIOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-11",
+      "name": "LEONARDO",
+      "specialty": "NEUROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-12",
+      "name": "TRAJANO",
+      "specialty": "VASCULAR",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-13",
+      "name": "CHEYZA",
+      "specialty": "NEFROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-14",
+      "name": "ANDRE",
+      "specialty": "VASCULAR",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-17",
+      "name": "CHEYZA",
+      "specialty": "NEFROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "LEDIVIA",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "EDGAR SOUZA",
+      "specialty": "ORTOPEDISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "EDGAR SOUZA",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "LEONARDO",
+      "specialty": "NEUROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "ALISSON SILVA",
+      "specialty": "CIRURGIA GERAL",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "ANABELY",
+      "specialty": "PALIATIVISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "TAMILES TEIXEIRA",
+      "specialty": "PNEUMOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": ""
+    },
+    {
+      "date": "2026-05-19",
+      "name": "JÉSSICA",
+      "specialty": "CARDIOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-22",
+      "name": "JÉSSICA",
+      "specialty": "CARDIOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-18",
+      "name": "LEONARDO",
+      "specialty": "NEUROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-19",
+      "name": "TRAJANO",
+      "specialty": "VASCULAR",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-20",
+      "name": "CHEYZA",
+      "specialty": "NEFROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-21",
+      "name": "ANDRE",
+      "specialty": "VASCULAR",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-24",
+      "name": "CHEYZA",
+      "specialty": "NEFROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "LEDIVIA",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-29",
+      "name": "EDGAR SOUZA",
+      "specialty": "ORTOPEDISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "EDGAR SOUZA",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "M"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "ALISSON SILVA",
+      "specialty": "CIRURGIA GERAL",
+      "category": "Médico Interconsultor",
+      "shift_type": ""
+    },
+    {
+      "date": "2026-05-26",
+      "name": "TAMILES TEIXEIRA",
+      "specialty": "PNEUMOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "ANABELY",
+      "specialty": "PALIATIVISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "FREDERICO",
+      "specialty": "NEUROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "JÉSSICA",
+      "specialty": "CARDIOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "ANDERSON",
+      "specialty": "INFECTOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-29",
+      "name": "JÉSSICA",
+      "specialty": "CARDIOLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-25",
+      "name": "LEONARDO",
+      "specialty": "NEUROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-26",
+      "name": "TRAJANO",
+      "specialty": "VASCULAR",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-27",
+      "name": "CHEYZA",
+      "specialty": "NEFROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-28",
+      "name": "ANDRE",
+      "specialty": "VASCULAR",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    },
+    {
+      "date": "2026-05-31",
+      "name": "CHEYZA",
+      "specialty": "NEFROLOGISTA",
+      "category": "Médico Interconsultor",
+      "shift_type": "T"
+    }
+  ],
+  "professionals": [
+    {
+      "name": "DARIO MANOEL",
+      "company": "DOCTOR-DARIO",
+      "categories": [
+        "Médico Diarista"
+      ]
+    },
+    {
+      "name": "LIDIANE BISPO",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Diarista",
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "MARIA LUIZA",
+      "company": "MRLR SERVICOS",
+      "categories": [
+        "Médico Diarista"
+      ]
+    },
+    {
+      "name": "DIEGO CADE",
+      "company": "DSC SERVICOS",
+      "categories": [
+        "Médico Diarista",
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "MARCOS OLIVEIRA",
+      "company": "GL SERVICOS",
+      "categories": [
+        "Médico Diarista",
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "BRUNA PORTELA",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Diarista"
+      ]
+    },
+    {
+      "name": "RENATA 15/15",
+      "company": "CPR",
+      "categories": [
+        "Médico Diarista"
+      ]
+    },
+    {
+      "name": "INGRID BANDEIRA",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Diarista",
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "VICTÓRIA",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Diarista",
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "THALLES KELVIN",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Diarista",
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "ISABELA LIMA",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Diarista"
+      ]
+    },
+    {
+      "name": "GISELE CAFEZEIRO",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Diarista"
+      ]
+    },
+    {
+      "name": "ISAAC RAMON",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Diarista",
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "ALISSON SILVA",
+      "company": "KLT SERVIÇOS",
+      "categories": [
+        "Médico Diarista",
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "JOSÉ GILVAN",
+      "company": "RSM AAP",
+      "categories": [
+        "Médico Diarista"
+      ]
+    },
+    {
+      "name": "EDUARDA DANTAS",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Diarista"
+      ]
+    },
+    {
+      "name": "CARLOS AUGUSTO",
+      "company": "MVY",
+      "categories": [
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "EUDALDO",
+      "company": "SMC SOCIEDADE",
+      "categories": [
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "BRUNO LEIRO",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "BRUNA SILVEIRA",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "SERGIO ABREU",
+      "company": "JOMAR",
+      "categories": [
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "INGRID DANIELLE",
+      "company": "EQUIPE MED1",
+      "categories": [
+        "Médico Plantonista"
+      ]
+    },
+    {
+      "name": "EDGAR SOUZA",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "JÉSSICA",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "CHEYZA",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "LEDIVIA",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "ANDERSON",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "LEONARDO",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "ANABELY",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "TAMILES TEIXEIRA",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "TRAJANO",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "ANDRE",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    },
+    {
+      "name": "FREDERICO",
+      "company": null,
+      "categories": [
+        "Médico Interconsultor"
+      ]
+    }
+  ],
+  "companies": [
+    "CPR",
+    "DOCTOR-DARIO",
+    "DSC SERVICOS",
+    "EQUIPE MED1",
+    "GL SERVICOS",
+    "JOMAR",
+    "KLT SERVIÇOS",
+    "MRLR SERVICOS",
+    "MVY",
+    "RSM AAP",
+    "SMC SOCIEDADE"
+  ]
+}

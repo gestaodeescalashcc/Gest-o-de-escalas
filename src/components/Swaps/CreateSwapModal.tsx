@@ -156,6 +156,13 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
   const getOfferedShift = () => shifts.find(s => s.id === formData.offered_shift_id);
   const getTargetProfessional = () => professionals.find(p => p.id === formData.target_professional_id);
   const getRequestingProfessionalId = () => getSelectedShift()?.professional.id || '';
+  // Médico: regra especial — pode fazer cessão simples e a troca fica Pendente
+  // até aprovação da Diretoria Médica.
+  const isDoctorFlow = (() => {
+    const sel = getSelectedShift();
+    const catName = sel?.professional?.category?.name ?? '';
+    return /m[eé]dic/i.test(catName);
+  })();
 
   // Step 3: lista de plantões do DESTINATÁRIO que o solicitante pegará em troca.
   // Importante: o shift "oferecido" deve ser do target, não do requesting,
@@ -230,8 +237,30 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
     const now = new Date().toISOString();
 
     try {
-      // 1. Inserir a troca já como Aprovada (registro de auditoria)
-      // Usa .select() para detectar silent RLS failure (insert sem erro mas 0 rows)
+      // MÉDICOS: troca vai pra Pendente, aguarda Diretoria Médica. Não aplica
+      // mudança em shifts ainda.
+      if (isDoctorFlow) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('shift_swaps')
+          .insert({
+            original_shift_id: formData.original_shift_id,
+            requesting_professional_id: requestingProfId,
+            target_professional_id: formData.target_professional_id,
+            offered_shift_id: formData.offered_shift_id || null,
+            reason: formData.reason.trim() || 'Solicitação de troca',
+            status: 'Pendente',
+          })
+          .select('id');
+        if (insertError) throw insertError;
+        if (!inserted || inserted.length === 0) {
+          throw new Error('A troca não foi registrada (RLS).');
+        }
+        toast.success('Solicitação enviada. Aguardando aprovação da Diretoria Médica.');
+        onSuccess();
+        return;
+      }
+
+      // FLUXO PADRÃO (não-médicos): inserir como Aprovada e aplicar imediatamente
       const { data: inserted, error: insertError } = await supabase
         .from('shift_swaps')
         .insert({
@@ -251,16 +280,13 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
         throw new Error('A troca não foi registrada (RLS bloqueou). Verifique permissões de "schedules.create" para o seu perfil.');
       }
 
-      // 2. Aplicar imediatamente o swap recíproco nos shifts
       const { data: u1, error: e1 } = await supabase
         .from('shifts')
         .update({ professional_id: formData.target_professional_id })
         .eq('id', formData.original_shift_id)
         .select('id');
       if (e1) throw e1;
-      if (!u1 || u1.length === 0) {
-        throw new Error('Não foi possível atualizar o plantão original (RLS).');
-      }
+      if (!u1 || u1.length === 0) throw new Error('Não foi possível atualizar o plantão original (RLS).');
 
       const { data: u2, error: e2 } = await supabase
         .from('shifts')
@@ -268,9 +294,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
         .eq('id', formData.offered_shift_id)
         .select('id');
       if (e2) throw e2;
-      if (!u2 || u2.length === 0) {
-        throw new Error('Não foi possível atualizar o plantão oferecido (RLS).');
-      }
+      if (!u2 || u2.length === 0) throw new Error('Não foi possível atualizar o plantão oferecido (RLS).');
 
       toast.success('Troca aprovada e plantões atualizados.');
       onSuccess();
@@ -284,7 +308,8 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
 
   const canProceedToStep2 = formData.original_shift_id !== '';
   const canProceedToStep3 = formData.target_professional_id !== '';
-  const canProceedToStep4 = formData.offered_shift_id !== '';
+  // Para médicos, oferecer plantão é opcional (cessão simples permitida)
+  const canProceedToStep4 = isDoctorFlow ? true : formData.offered_shift_id !== '';
   // Motivo é opcional — sempre pode submeter no último passo
   const canSubmit = true;
 
@@ -493,15 +518,52 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
 
               {step === 3 && (
                 <div className="space-y-4">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-900">
-                    <p className="font-semibold mb-1">Qual plantão de {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'destinatário'} será assumido por {getSelectedShift()?.professional.full_name?.split(' ')[0] ?? 'solicitante'}?</p>
-                    <p className="text-xs">
-                      A troca é sempre <strong>recíproca</strong>: cada um troca de dia,
-                      todos mantêm o mesmo número de plantões.
-                    </p>
+                  <div className={`${isDoctorFlow ? 'bg-blue-50 border-blue-200 text-blue-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'} border rounded-lg p-3 text-sm`}>
+                    {isDoctorFlow ? (
+                      <>
+                        <p className="font-semibold mb-1">Médico — escolha como será a troca</p>
+                        <p className="text-xs">
+                          Você pode <strong>oferecer um plantão em troca</strong> (recíproca)
+                          ou <strong>ceder o plantão sem retorno</strong> (cessão simples).
+                          A solicitação fica <strong>pendente até aprovação da Diretoria Médica</strong>.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-semibold mb-1">Qual plantão de {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'destinatário'} será assumido por {getSelectedShift()?.professional.full_name?.split(' ')[0] ?? 'solicitante'}?</p>
+                        <p className="text-xs">
+                          A troca é sempre <strong>recíproca</strong>: cada um troca de dia,
+                          todos mantêm o mesmo número de plantões.
+                        </p>
+                      </>
+                    )}
                   </div>
 
                   <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {/* Opção de cessão simples — apenas para médicos */}
+                    {isDoctorFlow && (
+                      <button
+                        onClick={() => setFormData({ ...formData, offered_shift_id: '' })}
+                        className={`w-full text-left p-4 rounded-lg border-2 transition ${
+                          !formData.offered_shift_id
+                            ? 'border-amber-400 bg-amber-50'
+                            : 'border-gray-200 hover:border-amber-300'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className={`w-5 h-5 mt-0.5 flex-shrink-0 ${!formData.offered_shift_id ? 'text-amber-600' : 'text-gray-400'}`} />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-gray-900">Cessão simples (sem retorno)</span>
+                              {!formData.offered_shift_id && <CheckCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />}
+                            </div>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'Destinatário'} assume o plantão sem precisar trabalhar no lugar.
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    )}
                     {getAvailableShiftsForOffer().map((shift) => (
                       <button
                         key={shift.id}
@@ -720,10 +782,10 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                 disabled={loading || !canSubmit}
                 className="flex-1 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {loading ? 'Aplicando...' : (
+                {loading ? (isDoctorFlow ? 'Enviando...' : 'Aplicando...') : (
                   <>
                     <CheckCircle className="w-5 h-5" />
-                    Confirmar Troca
+                    {isDoctorFlow ? 'Enviar Solicitação' : 'Confirmar Troca'}
                   </>
                 )}
               </button>
