@@ -3,6 +3,7 @@ import { Plus, Search, AlertCircle, Filter, TrendingUp, Clock, CheckCircle, XCir
 import { supabase } from '../../lib/supabase';
 import CreateSwapModal from './CreateSwapModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import ToastContainer from '../Common/ToastContainer';
 import { useToast } from '../../hooks/useToast';
@@ -49,6 +50,8 @@ interface Department {
 
 export default function SwapsView() {
   const { user } = useAuth();
+  const { roleName, isAdmin } = usePermissions();
+  const isDiretoriaMedica = roleName === 'Diretoria Médica';
   const [swaps, setSwaps] = useState<ShiftSwap[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,6 +136,12 @@ export default function SwapsView() {
   };
 
   const filteredSwaps = swaps.filter(swap => {
+    const catName = swap.requesting_professional?.category?.name ?? '';
+    const isMedical = /m[eé]dic/i.test(catName);
+    // Diretoria Médica → só trocas de médicos
+    if (isDiretoriaMedica && !isAdmin() && !isMedical) return false;
+    // Coordenadora (não-admin, não-DiretoriaMédica) → NÃO vê trocas de médicos
+    if (!isDiretoriaMedica && !isAdmin() && roleName === 'Coordenador' && isMedical) return false;
     const matchesStatus = filterStatus === 'all' || swap.status === filterStatus;
     const matchesDepartment = filterDepartment === 'all' ||
       swap.original_shift.department.id === filterDepartment ||
