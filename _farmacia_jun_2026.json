@@ -1,0 +1,239 @@
+[
+  {
+    "nome": "ANDRESSA SILVA DE SOUZA",
+    "matricula": "",
+    "funcao": "FARMACÊUTICA",
+    "lotacao": "CAF",
+    "ch": "40H",
+    "shifts": {
+      "2": "SD",
+      "4": "SD",
+      "6": "SD",
+      "8": "SD",
+      "10": "SD",
+      "12": "SD",
+      "14": "SD",
+      "16": "SD",
+      "18": "SD",
+      "22": "SD",
+      "24": "MT",
+      "26": "SD",
+      "28": "MT",
+      "30": "SD"
+    }
+  },
+  {
+    "nome": "PEDRO PAULO SILVA DE ASSIS JUNIOR",
+    "matricula": "12385",
+    "funcao": "FARMACÊUTICO",
+    "lotacao": "CAF",
+    "ch": "40H",
+    "shifts": {
+      "1": "SD",
+      "4": "MT",
+      "5": "SD",
+      "9": "SD",
+      "12": "SD",
+      "13": "SD",
+      "16": "SD",
+      "17": "SD",
+      "20": "SD",
+      "21": "SD",
+      "24": "SD",
+      "25": "MT",
+      "28": "SD",
+      "29": "SD"
+    }
+  },
+  {
+    "nome": "ROSELIA DELGADO DAS CHAGAS",
+    "matricula": "17938",
+    "funcao": "FARMACÊUTICA",
+    "lotacao": "CAF",
+    "ch": "40H",
+    "shifts": {
+      "1": "SD",
+      "3": "SD",
+      "5": "MT",
+      "7": "SD",
+      "11": "SD",
+      "14": "MT",
+      "15": "SD",
+      "17": "SD",
+      "19": "SD",
+      "23": "SD",
+      "25": "SD",
+      "27": "SD",
+      "29": "SD",
+      "30": "SD"
+    }
+  },
+  {
+    "nome": "JEAN CLAÚDIO LOURENÇO ALVES",
+    "matricula": "17891",
+    "funcao": "ATENDENTE DE FARMÁCIA",
+    "lotacao": "CAF",
+    "ch": "36H",
+    "shifts": {
+      "1": "SN",
+      "3": "SD",
+      "4": "SD",
+      "6": "SN",
+      "8": "SD",
+      "11": "SD",
+      "13": "SN",
+      "16": "SN",
+      "19": "SD",
+      "20": "SD",
+      "24": "SN",
+      "29": "SD"
+    }
+  },
+  {
+    "nome": "CERINEIDE DA SILVA OLIVEIRA DE OLIVEIRA",
+    "matricula": "17995",
+    "funcao": "ATENDENTE DE FARMÁCIA",
+    "lotacao": "CAF",
+    "ch": "36H",
+    "shifts": {
+      "1": "SD",
+      "2": "SN",
+      "4": "SD",
+      "8": "SD",
+      "9": "SD",
+      "14": "SD",
+      "16": "SD",
+      "20": "SN",
+      "22": "SN",
+      "25": "SD",
+      "28": "SD",
+      "30": "SD"
+    }
+  },
+  {
+    "nome": "FLÁVIA MADALENA DE OLIVEIRA CRUZ",
+    "matricula": "12121170",
+    "funcao": "ATENDENTE DE FARMÁCIA",
+    "lotacao": "CAF",
+    "ch": "36H",
+    "shifts": {
+      "1": "SD",
+      "3": "SD",
+      "4": "SN",
+      "7": "SD",
+      "10": "SN",
+      "12": "SD",
+      "15": "SD",
+      "18": "SD",
+      "21": "SN",
+      "24": "SD",
+      "27": "SN",
+      "29": "SN"
+    }
+  },
+  {
+    "nome": "JÓCELIA ALCÂNTARA PEREIRA",
+    "matricula": "17885",
+    "funcao": "ATENDENTE DE FARMÁCIA",
+    "lotacao": "CAF",
+    "ch": "36H",
+    "shifts": {
+      "3": "SN",
+      "5": "SD",
+      "7": "SD",
+      "9": "SD",
+      "12": "SD",
+      "15": "SN",
+      "17": "SD",
+      "19": "SN",
+      "21": "SD",
+      "26": "SN",
+      "28": "SD",
+      "30": "SD"
+    }
+  },
+  {
+    "nome": "MARLI DE ASSIS SANTOS BISPO",
+    "matricula": "17920",
+    "funcao": "ATENDENTE DE FARMÁCIA",
+    "lotacao": "CAF",
+    "ch": "36H",
+    "shifts": {
+      "2": "SD",
+      "5": "SN",
+      "10": "SD",
+      "11": "SN",
+      "13": "SD",
+      "16": "SD",
+      "18": "SN",
+      "21": "SD",
+      "23": "SD",
+      "25": "SD",
+      "28": "SN",
+      "30": "SN"
+    }
+  },
+  {
+    "nome": "RENILTON DE JESUS OLIVEIRA",
+    "matricula": "17907",
+    "funcao": "ATENDENTE DE FARMÁCIA",
+    "lotacao": "CAF",
+    "ch": "36H",
+    "shifts": {
+      "3": "SD",
+      "5": "SD",
+      "7": "SN",
+      "9": "SN",
+      "13": "SD",
+      "15": "SD",
+      "17": "SN",
+      "22": "SD",
+      "23": "SN",
+      "26": "SD",
+      "27": "SD",
+      "29": "SD"
+    }
+  },
+  {
+    "nome": "UENDERSON DE JESUS SANTOS",
+    "matricula": "12121081",
+    "funcao": "ATENDENTE DE FARMÁCIA",
+    "lotacao": "CAF",
+    "ch": "36H",
+    "shifts": {
+      "4": "SD",
+      "6": "SD",
+      "9": "SD",
+      "11": "SD",
+      "12": "SD",
+      "14": "SD",
+      "17": "SD",
+      "19": "SD",
+      "23": "SD",
+      "26": "SD",
+      "27": "SD",
+      "30": "SD"
+    }
+  },
+  {
+    "nome": "VIVIAN KEILA CAMPOS ABREU TAVARES",
+    "matricula": "17925",
+    "funcao": "ATENDENTE DE FARMÁCIA",
+    "lotacao": "CAF",
+    "ch": "36H",
+    "shifts": {
+      "2": "SD",
+      "6": "SD",
+      "8": "SN",
+      "10": "SD",
+      "12": "SN",
+      "14": "SN",
+      "16": "SD",
+      "18": "SD",
+      "20": "SD",
+      "22": "SD",
+      "24": "SD",
+      "25": "SN"
+    }
+  }
+]
