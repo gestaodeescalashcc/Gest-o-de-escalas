@@ -1,7 +1,17 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useParams,
+  useLocation,
+} from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import LoginForm from './components/Auth/LoginForm';
+import DoctorSignupForm from './components/Auth/DoctorSignupForm';
 import DashboardLayout from './components/Dashboard/DashboardLayout';
 import { PageSkeleton } from './components/Common/Skeleton';
 import { Calendar } from 'lucide-react';
@@ -26,7 +36,6 @@ const FiscalExportsView = lazy(() => import('./components/Reports/FiscalExportsV
 const HourBankView = lazy(() =>
   import('./components/HourBank/HourBankView').then(m => ({ default: m.HourBankView }))
 );
-// Heavy: loads face-api.js (~16MB) — only when actually accessed
 const TimesheetClockView = lazy(() => import('./components/Timesheet/TimesheetClockView'));
 const TimesheetReportView = lazy(() => import('./components/Timesheet/TimesheetReportView'));
 const PunchMirrorView = lazy(() => import('./components/Timesheet/PunchMirrorView'));
@@ -50,149 +59,95 @@ function ViewSuspense({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageSkeleton variant="table" />}>{children}</Suspense>;
 }
 
-const STORAGE_KEY_VIEW = 'medscale.currentView';
-const STORAGE_KEY_SCHEDULE_ID = 'medscale.selectedScheduleId';
+// Wrapper components to bridge the old prop-callback API with React Router navigation
+function ScheduleListRoute() {
+  const navigate = useNavigate();
+  return <ScheduleView onNavigateToSchedule={(id) => navigate(`/escala/${id}`)} />;
+}
 
-function AppContent() {
-  const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_VIEW);
-      // 'schedule' (item de menu antigo) foi unificado em 'consolidated'
-      if (!saved || saved === 'schedule') return 'consolidated';
-      return saved;
-    } catch { return 'consolidated'; }
-  });
-  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(() => {
-    try { return localStorage.getItem(STORAGE_KEY_SCHEDULE_ID); }
-    catch { return null; }
-  });
-
-  // Persistência da página atual (sobrevive a F5)
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY_VIEW, currentView); } catch {}
-  }, [currentView]);
-  useEffect(() => {
-    try {
-      if (selectedScheduleId) localStorage.setItem(STORAGE_KEY_SCHEDULE_ID, selectedScheduleId);
-      else localStorage.removeItem(STORAGE_KEY_SCHEDULE_ID);
-    } catch {}
-  }, [selectedScheduleId]);
-
-  if (loading) return <AppLoadingScreen />;
-  if (!user) return <LoginForm />;
-
-  const handleNavigateToSchedule = (scheduleId: string) => {
-    setSelectedScheduleId(scheduleId);
-    setCurrentView('consolidated');
-  };
-
-  // Ao clicar em qualquer item do menu, limpa a seleção de escala —
-  // assim "Escala do Mês" sempre abre na lista.
-  const handleViewChange = (view: string) => {
-    setSelectedScheduleId(null);
-    setCurrentView(view);
-  };
-
+function ScheduleDetailRoute() {
+  const { scheduleId } = useParams<{ scheduleId: string }>();
+  const navigate = useNavigate();
   return (
-    <DashboardLayout currentView={currentView} onViewChange={handleViewChange}>
-      {currentView === 'consolidated' && (
-        // Sem escala selecionada → mostra a LISTA (cards com visualizar/excluir).
-        // Com escala selecionada → mostra a GRADE da escala.
-        selectedScheduleId
-          ? <ConsolidatedScheduleView
-              initialScheduleId={selectedScheduleId}
-              onBackToList={() => setSelectedScheduleId(null)}
-            />
-          : <ScheduleView onNavigateToSchedule={handleNavigateToSchedule} />
-      )}
-      {currentView === 'daily' && <DailyScheduleView />}
-      {currentView === 'professionals' && <ProfessionalsView />}
-      {currentView === 'swaps' && (
-        <ViewSuspense>
-          <SwapsView />
-        </ViewSuspense>
-      )}
-      {currentView === 'absenteeism' && (
-        <ViewSuspense>
-          <AbsenteeismView />
-        </ViewSuspense>
-      )}
-      {currentView === 'timesheet-clock' && (
-        <ViewSuspense>
-          <TimesheetClockView />
-        </ViewSuspense>
-      )}
-      {currentView === 'timesheet-report' && (
-        <ViewSuspense>
-          <TimesheetReportView />
-        </ViewSuspense>
-      )}
-      {currentView === 'punch-mirror' && (
-        <ViewSuspense>
-          <PunchMirrorView />
-        </ViewSuspense>
-      )}
-      {currentView === 'punch-adjustments' && (
-        <ViewSuspense>
-          <PunchAdjustmentsView />
-        </ViewSuspense>
-      )}
-      {currentView === 'establishments' && (
-        <ViewSuspense>
-          <EstablishmentsView />
-        </ViewSuspense>
-      )}
-      {currentView === 'fiscal-exports' && (
-        <ViewSuspense>
-          <FiscalExportsView />
-        </ViewSuspense>
-      )}
-      {currentView === 'hour-bank' && (
-        <ViewSuspense>
-          <HourBankView />
-        </ViewSuspense>
-      )}
-      {currentView === 'departments' && (
-        <ViewSuspense>
-          <DepartmentsView />
-        </ViewSuspense>
-      )}
-      {currentView === 'categories' && (
-        <ViewSuspense>
-          <CategoriesView />
-        </ViewSuspense>
-      )}
-      {currentView === 'companies' && (
-        <ViewSuspense>
-          <CompaniesView />
-        </ViewSuspense>
-      )}
-      {currentView === 'users' && (
-        <ViewSuspense>
-          <UsersView />
-        </ViewSuspense>
-      )}
-      {currentView === 'history' && (
-        <ViewSuspense>
-          <HistoryView />
-        </ViewSuspense>
-      )}
-      {currentView === 'reports' && (
-        <ViewSuspense>
-          <ReportsView />
-        </ViewSuspense>
-      )}
-    </DashboardLayout>
+    <ConsolidatedScheduleView
+      initialScheduleId={scheduleId}
+      onBackToList={() => navigate('/escala')}
+    />
+  );
+}
+
+function LoginRoute() {
+  const navigate = useNavigate();
+  return <LoginForm onSignupClick={() => navigate('/cadastro-medico')} />;
+}
+
+function SignupRoute() {
+  const navigate = useNavigate();
+  return <DoctorSignupForm onBackToLogin={() => navigate('/login')} />;
+}
+
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) return <AppLoadingScreen />;
+  if (!user) return <Navigate to="/login" replace state={{ from: location }} />;
+  return <DashboardLayout>{children}</DashboardLayout>;
+}
+
+function PublicOnly({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <AppLoadingScreen />;
+  if (user) return <Navigate to="/escala" replace />;
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public */}
+      <Route path="/login" element={<PublicOnly><LoginRoute /></PublicOnly>} />
+      <Route path="/cadastro-medico" element={<PublicOnly><SignupRoute /></PublicOnly>} />
+
+      {/* Protected */}
+      <Route path="/escala" element={<ProtectedLayout><ScheduleListRoute /></ProtectedLayout>} />
+      <Route path="/escala/:scheduleId" element={<ProtectedLayout><ScheduleDetailRoute /></ProtectedLayout>} />
+      <Route path="/escala-diaria" element={<ProtectedLayout><DailyScheduleView /></ProtectedLayout>} />
+      <Route path="/profissionais" element={<ProtectedLayout><ProfessionalsView /></ProtectedLayout>} />
+
+      <Route path="/trocas" element={<ProtectedLayout><ViewSuspense><SwapsView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/absenteismo" element={<ProtectedLayout><ViewSuspense><AbsenteeismView /></ViewSuspense></ProtectedLayout>} />
+
+      <Route path="/ponto/registro" element={<ProtectedLayout><ViewSuspense><TimesheetClockView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/ponto/relatorio" element={<ProtectedLayout><ViewSuspense><TimesheetReportView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/ponto/espelho" element={<ProtectedLayout><ViewSuspense><PunchMirrorView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/ponto/ajustes" element={<ProtectedLayout><ViewSuspense><PunchAdjustmentsView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/ponto/banco-horas" element={<ProtectedLayout><ViewSuspense><HourBankView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/ponto/exportacoes" element={<ProtectedLayout><ViewSuspense><FiscalExportsView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/ponto/estabelecimentos" element={<ProtectedLayout><ViewSuspense><EstablishmentsView /></ViewSuspense></ProtectedLayout>} />
+
+      <Route path="/setores" element={<ProtectedLayout><ViewSuspense><DepartmentsView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/categorias" element={<ProtectedLayout><ViewSuspense><CategoriesView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/empresas" element={<ProtectedLayout><ViewSuspense><CompaniesView /></ViewSuspense></ProtectedLayout>} />
+
+      <Route path="/usuarios" element={<ProtectedLayout><ViewSuspense><UsersView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/historico" element={<ProtectedLayout><ViewSuspense><HistoryView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/relatorios" element={<ProtectedLayout><ViewSuspense><ReportsView /></ViewSuspense></ProtectedLayout>} />
+
+      {/* Legacy / fallback */}
+      <Route path="/" element={<Navigate to="/escala" replace />} />
+      <Route path="*" element={<Navigate to="/escala" replace />} />
+    </Routes>
   );
 }
 
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

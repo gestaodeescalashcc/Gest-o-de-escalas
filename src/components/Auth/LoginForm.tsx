@@ -11,7 +11,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
-export default function LoginForm() {
+interface LoginFormProps {
+  onSignupClick?: () => void;
+}
+
+export default function LoginForm({ onSignupClick }: LoginFormProps = {}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -219,6 +223,21 @@ export default function LoginForm() {
                 )}
               </button>
             </form>
+
+            {onSignupClick && (
+              <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+                <p className="text-sm text-gray-600">
+                  É médico do HECC e ainda não tem conta?
+                </p>
+                <button
+                  type="button"
+                  onClick={onSignupClick}
+                  className="mt-2 inline-block text-sm font-medium text-blue-700 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                >
+                  Cadastre-se aqui
+                </button>
+              </div>
+            )}
 
             <p className="mt-6 text-xs text-gray-500 text-center">
               Problemas para entrar? Procure o administrador do sistema.

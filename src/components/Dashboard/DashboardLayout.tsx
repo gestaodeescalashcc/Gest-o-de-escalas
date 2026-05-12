@@ -26,14 +26,13 @@ import {
   CalendarX,
   KeyRound,
 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { usePermissions } from '../../hooks/usePermissions';
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  currentView: string;
-  onViewChange: (view: string) => void;
 }
 
 type Module =
@@ -49,6 +48,7 @@ type Module =
 
 interface MenuItem {
   id: string;
+  path: string;
   label: string;
   icon: typeof Calendar;
   module: Module;
@@ -65,26 +65,26 @@ const MENU_GROUPS = [
 
 const MENU_ITEMS: MenuItem[] = [
   // Schedule group
-  { id: 'consolidated', label: 'Escala do Mês', icon: LayoutGrid, module: 'schedules', group: 'schedule' },
-  { id: 'daily', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule' },
-  { id: 'professionals', label: 'Profissionais', icon: Users, module: 'professionals', group: 'schedule' },
-  { id: 'swaps', label: 'Trocas de Plantões', icon: ArrowLeftRight, module: 'swaps', group: 'schedule', keywords: 'plantoes plantões' },
-  { id: 'absenteeism', label: 'Absenteísmo', icon: CalendarX, module: 'absences', group: 'schedule', keywords: 'absenteismo faltas atestados' },
+  { id: 'consolidated', path: '/escala', label: 'Escala do Mês', icon: LayoutGrid, module: 'schedules', group: 'schedule' },
+  { id: 'daily', path: '/escala-diaria', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule' },
+  { id: 'professionals', path: '/profissionais', label: 'Profissionais', icon: Users, module: 'professionals', group: 'schedule' },
+  { id: 'swaps', path: '/trocas', label: 'Trocas de Plantões', icon: ArrowLeftRight, module: 'swaps', group: 'schedule', keywords: 'plantoes plantões' },
+  { id: 'absenteeism', path: '/absenteismo', label: 'Absenteísmo', icon: CalendarX, module: 'absences', group: 'schedule', keywords: 'absenteismo faltas atestados' },
   // REP-P group
-  { id: 'timesheet-clock', label: 'Registro de Ponto', icon: Fingerprint, module: 'schedules', group: 'rep-p' },
-  { id: 'punch-mirror', label: 'Espelho de Ponto', icon: FileText, module: 'reports', group: 'rep-p' },
-  { id: 'punch-adjustments', label: 'Ajustes de Ponto', icon: Edit3, module: 'schedules', group: 'rep-p' },
-  { id: 'hour-bank', label: 'Banco de Horas', icon: Wallet, module: 'schedules', group: 'rep-p' },
-  { id: 'fiscal-exports', label: 'Exportações Fiscais', icon: FileCheck, module: 'reports', group: 'rep-p', keywords: 'exportacoes' },
-  { id: 'establishments', label: 'Estabelecimentos', icon: Building2, module: 'users', group: 'rep-p' },
+  { id: 'timesheet-clock', path: '/ponto/registro', label: 'Registro de Ponto', icon: Fingerprint, module: 'schedules', group: 'rep-p' },
+  { id: 'punch-mirror', path: '/ponto/espelho', label: 'Espelho de Ponto', icon: FileText, module: 'reports', group: 'rep-p' },
+  { id: 'punch-adjustments', path: '/ponto/ajustes', label: 'Ajustes de Ponto', icon: Edit3, module: 'schedules', group: 'rep-p' },
+  { id: 'hour-bank', path: '/ponto/banco-horas', label: 'Banco de Horas', icon: Wallet, module: 'schedules', group: 'rep-p' },
+  { id: 'fiscal-exports', path: '/ponto/exportacoes', label: 'Exportações Fiscais', icon: FileCheck, module: 'reports', group: 'rep-p', keywords: 'exportacoes' },
+  { id: 'establishments', path: '/ponto/estabelecimentos', label: 'Estabelecimentos', icon: Building2, module: 'users', group: 'rep-p' },
   // Tables group
-  { id: 'departments', label: 'Setores', icon: Building2, module: 'departments', group: 'tables' },
-  { id: 'categories', label: 'Categorias', icon: Briefcase, module: 'professional_categories', group: 'tables' },
-  { id: 'companies', label: 'Empresas', icon: Building2, module: 'companies', group: 'tables' },
+  { id: 'departments', path: '/setores', label: 'Setores', icon: Building2, module: 'departments', group: 'tables' },
+  { id: 'categories', path: '/categorias', label: 'Categorias', icon: Briefcase, module: 'professional_categories', group: 'tables' },
+  { id: 'companies', path: '/empresas', label: 'Empresas', icon: Building2, module: 'companies', group: 'tables' },
   // Admin group
-  { id: 'users', label: 'Usuários', icon: UserCog, module: 'users', group: 'admin', keywords: 'usuarios' },
-  { id: 'history', label: 'Histórico', icon: Clock, module: 'schedules', group: 'admin', keywords: 'historico' },
-  { id: 'reports', label: 'Relatórios', icon: BarChart3, module: 'reports', group: 'admin', keywords: 'relatorios' },
+  { id: 'users', path: '/usuarios', label: 'Usuários', icon: UserCog, module: 'users', group: 'admin', keywords: 'usuarios' },
+  { id: 'history', path: '/historico', label: 'Histórico', icon: Clock, module: 'schedules', group: 'admin', keywords: 'historico' },
+  { id: 'reports', path: '/relatorios', label: 'Relatórios', icon: BarChart3, module: 'reports', group: 'admin', keywords: 'relatorios' },
 ];
 
 const ADMIN_ONLY = new Set([
@@ -133,9 +133,17 @@ const ROLE_BADGE_STYLES: Record<string, string> = {
 
 export default function DashboardLayout({
   children,
-  currentView,
-  onViewChange,
 }: DashboardLayoutProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentView = (() => {
+    // Match the longest matching menu path so /escala/:id still highlights "Escala do Mês"
+    const sorted = [...MENU_ITEMS].sort((a, b) => b.path.length - a.path.length);
+    const match = sorted.find(m =>
+      location.pathname === m.path || location.pathname.startsWith(m.path + '/')
+    );
+    return match?.id ?? '';
+  })();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -340,7 +348,7 @@ export default function DashboardLayout({
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => onViewChange(item.id)}
+                          onClick={() => navigate(item.path)}
                           aria-current={isActive ? 'page' : undefined}
                           className={`w-full min-h-[44px] flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
                             isActive
