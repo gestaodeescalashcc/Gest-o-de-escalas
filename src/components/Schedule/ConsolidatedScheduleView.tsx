@@ -684,6 +684,22 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     return days[date.getDay()];
   };
 
+  // Mapa dia → feriado (do mês selecionado). Permite destaque visual e tooltip.
+  const holidayByDay = useMemo(() => {
+    const map = new Map<number, Holiday>();
+    holidays.forEach(h => {
+      // h.date está como 'YYYY-MM-DD' — pega o dia
+      const d = parseInt(h.date.slice(8, 10), 10);
+      if (!isNaN(d)) map.set(d, h);
+    });
+    return map;
+  }, [holidays]);
+
+  const getHolidayForDay = (day: number): Holiday | undefined => holidayByDay.get(day);
+  const isHolidayDay = (day: number) => holidayByDay.has(day);
+  const isWeekendOrHoliday = (day: number) =>
+    ['SAB', 'DOM'].includes(getDayOfWeek(day)) || isHolidayDay(day);
+
   const calculateTotalHours = (professionalId: string) => {
     return totalHoursCache.get(professionalId) || 0;
   };
@@ -2519,11 +2535,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                         </th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                           const isWeekendHeader = ['SAB', 'DOM'].includes(getDayOfWeek(day));
+                          const holiday = getHolidayForDay(day);
+                          const highlight = isWeekendHeader || !!holiday;
                           return (
                             <th
                               key={day}
+                              title={holiday ? `${holiday.name} (${holiday.type})` : undefined}
                               className={`border border-gray-300 px-1 py-2 text-center font-semibold ${
-                                isWeekendHeader ? 'bg-amber-200 text-amber-900' : ''
+                                highlight ? 'bg-amber-200 text-amber-900' : ''
                               }`}
                               style={{ minWidth: '32px', maxWidth: '32px' }}
                             >
@@ -2563,17 +2582,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                           const dow = getDayOfWeek(day);
                           const isWeekendHeader = ['SAB', 'DOM'].includes(dow);
+                          const holiday = getHolidayForDay(day);
+                          const highlight = isWeekendHeader || !!holiday;
                           return (
                             <th
                               key={day}
+                              title={holiday ? `${holiday.name} (${holiday.type})` : undefined}
                               className={`border border-gray-300 px-1 py-1 text-center font-medium ${
-                                isWeekendHeader
+                                highlight
                                   ? 'bg-amber-200 text-amber-900 font-bold'
                                   : 'text-gray-600'
                               }`}
                               style={{ fontSize: '9px' }}
                             >
-                              {dow}
+                              {holiday ? 'FER' : dow}
                             </th>
                           );
                         })}
@@ -2613,7 +2635,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             const cellAbsence = findAbsenceForCell(prof.id, day);
                             const isOverridden =
                               viewMode === 'realizada' && code !== plannedCode && plannedCode !== '';
-                            const isWeekend = ['SAB', 'DOM'].includes(getDayOfWeek(day));
+                            const holidayForCell = getHolidayForDay(day);
+                            const isWeekend = ['SAB', 'DOM'].includes(getDayOfWeek(day)) || !!holidayForCell;
                             // Tooltip: mostra info de ausência sempre que houver
                             const tooltip = cellAbsence
                               ? viewMode === 'realizada'
@@ -2635,7 +2658,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             );
                             const isCoverage = !!coverageAbsence;
                             const coverageTooltip = isCoverage ? 'Cobertura — turno extra' : '';
-                            const finalTooltip = [tooltip, swapTooltip, coverageTooltip].filter(Boolean).join('\n');
+                            const holidayTooltip = holidayForCell
+                              ? `Feriado ${holidayForCell.type}: ${holidayForCell.name}`
+                              : '';
+                            const finalTooltip = [tooltip, swapTooltip, coverageTooltip, holidayTooltip].filter(Boolean).join('\n');
                             return (
                               <td
                                 key={day}
