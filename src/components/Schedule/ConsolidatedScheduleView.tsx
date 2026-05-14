@@ -2517,11 +2517,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                         <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px' }}>
                           DIAS<br/>TRAB.
                         </th>
-                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
-                          <th key={day} className="border border-gray-300 px-1 py-2 text-center font-semibold" style={{ minWidth: '32px', maxWidth: '32px' }}>
-                            {day}
-                          </th>
-                        ))}
+                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+                          const isWeekendHeader = ['SAB', 'DOM'].includes(getDayOfWeek(day));
+                          return (
+                            <th
+                              key={day}
+                              className={`border border-gray-300 px-1 py-2 text-center font-semibold ${
+                                isWeekendHeader ? 'bg-amber-200 text-amber-900' : ''
+                              }`}
+                              style={{ minWidth: '32px', maxWidth: '32px' }}
+                            >
+                              {day}
+                            </th>
+                          );
+                        })}
                         {/* Uma coluna por sigla com o total daquele profissional */}
                         {uniqueShiftCodes.map(code => (
                           <th
@@ -2551,11 +2560,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                           <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '80px', left: '370px' }}></th>
                         )}
                         <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px' }}></th>
-                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => (
-                          <th key={day} className="border border-gray-300 px-1 py-1 text-center font-medium text-gray-600" style={{ fontSize: '9px' }}>
-                            {getDayOfWeek(day)}
-                          </th>
-                        ))}
+                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
+                          const dow = getDayOfWeek(day);
+                          const isWeekendHeader = ['SAB', 'DOM'].includes(dow);
+                          return (
+                            <th
+                              key={day}
+                              className={`border border-gray-300 px-1 py-1 text-center font-medium ${
+                                isWeekendHeader
+                                  ? 'bg-amber-200 text-amber-900 font-bold'
+                                  : 'text-gray-600'
+                              }`}
+                              style={{ fontSize: '9px' }}
+                            >
+                              {dow}
+                            </th>
+                          );
+                        })}
                         {uniqueShiftCodes.map(code => (
                           <th key={`hcol2-${code}`} className="border border-gray-300 bg-gray-50"></th>
                         ))}
@@ -2625,7 +2646,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                   isSwapped ? 'bg-emerald-600 text-white ring-2 ring-inset ring-emerald-800' :
                                   hasAbsenceMarkPlanned ? 'bg-red-200 text-red-900 ring-2 ring-inset ring-red-500' :
                                   code ? getCellColorClass(code) : ''
-                                } ${!isSwapped && !hasAbsenceMarkPlanned && isWeekend && !code ? 'bg-gray-100' : ''} ${
+                                } ${!isSwapped && !hasAbsenceMarkPlanned && isWeekend && !code ? 'bg-amber-100' : ''} ${
+                                  isWeekend && code && !isSwapped && !hasAbsenceMarkPlanned ? 'ring-1 ring-inset ring-amber-400' : ''
+                                } ${
                                   'cursor-pointer hover:ring-2 hover:ring-blue-400'
                                 } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''}`}
                                 style={{ minWidth: '32px', maxWidth: '32px' }}
