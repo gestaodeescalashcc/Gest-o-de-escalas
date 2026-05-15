@@ -28,10 +28,13 @@ const MONTH_NAMES_PT = [
 const DAY_OF_WEEK_PT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
 // Templates oficiais (devem estar em /public/templates/)
+// Modelo unificado de enfermagem — todos os setores de enfermagem usam o mesmo modelo (ESCALA MODELO.xlsx)
+const ENFERMAGEM_TEMPLATE = '/templates/escala-enfermagem.xlsx';
 const TEMPLATE_BY_DEPT: Record<string, string> = {
-  'Enfermeiros': '/templates/escala-enfermeiros.xlsx',
-  'Técnicos de Enfermagem': '/templates/escala-tecnicos.xlsx',
-  'Técnicos de Enfermagem CME': '/templates/escala-tecnicos-cme.xlsx',
+  'Enfermeiros': ENFERMAGEM_TEMPLATE,
+  'Técnicos de Enfermagem': ENFERMAGEM_TEMPLATE,
+  'Técnicos de Enfermagem CME': ENFERMAGEM_TEMPLATE,
+  'Enfermeira Administrativa': ENFERMAGEM_TEMPLATE,
 };
 
 // Cores de fundo por código de turno (estilo das siglas no app)
