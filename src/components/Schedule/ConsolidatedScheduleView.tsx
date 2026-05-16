@@ -897,6 +897,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             : s
         ));
       } else {
+        // Captura a empresa do profissional no momento da criação do plantão
+        const profForShift = professionals.find(p => p.id === selectedCell.profId);
+        const shiftCompanyId = (profForShift as any)?.company_id || null;
+
         const { data, error } = await supabase
           .from('shifts')
           .insert({
@@ -908,6 +912,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             start_time: shiftType.start,
             end_time: shiftType.end,
             status: 'Agendado',
+            company_id: shiftCompanyId,
             created_by: user?.id,
           })
           .select()

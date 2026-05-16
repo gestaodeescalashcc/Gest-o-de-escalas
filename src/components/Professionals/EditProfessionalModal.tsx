@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import MultiSelectChips from '../Common/MultiSelectChips';
 import { X, User, Camera, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -62,6 +63,12 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
     return `${digits.slice(0, 3)}.${digits.slice(3, 8)}.${digits.slice(8)}`;
   };
 
+  // Multi-categoria e multi-setor
+  const [categoryIds, setCategoryIds] = useState<string[]>([professional.category_id].filter(Boolean));
+  const [primaryCategoryId, setPrimaryCategoryId] = useState<string | null>(professional.category_id || null);
+  const [departmentIds, setDepartmentIds] = useState<string[]>([professional.department_id].filter(Boolean));
+  const [primaryDepartmentId, setPrimaryDepartmentId] = useState<string | null>(professional.department_id || null);
+
   const [formData, setFormData] = useState({
     full_name: professional.full_name,
     cpf: professional.cpf ? formatCPF(professional.cpf) : '',
@@ -85,8 +92,31 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
     loadDepartments();
     loadCompanies();
     loadFacialData();
+    loadLinks();
     initModels();
   }, []);
+
+  const loadLinks = async () => {
+    // Carrega categorias e setores adicionais (N:N) do profissional
+    const [catResult, deptResult] = await Promise.all([
+      supabase.from('professional_category_links').select('category_id, is_primary').eq('professional_id', professional.id),
+      supabase.from('professional_department_links').select('department_id, is_primary').eq('professional_id', professional.id),
+    ]);
+    if (catResult.data && catResult.data.length > 0) {
+      const rows = catResult.data as any[];
+      const ids = rows.map(r => r.category_id);
+      const primary = rows.find(r => r.is_primary)?.category_id || professional.category_id || ids[0];
+      setCategoryIds(ids);
+      setPrimaryCategoryId(primary);
+    }
+    if (deptResult.data && deptResult.data.length > 0) {
+      const rows = deptResult.data as any[];
+      const ids = rows.map(r => r.department_id);
+      const primary = rows.find(r => r.is_primary)?.department_id || professional.department_id || ids[0];
+      setDepartmentIds(ids);
+      setPrimaryDepartmentId(primary);
+    }
+  };
 
   const initModels = async () => {
     try {
@@ -209,6 +239,16 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!primaryCategoryId || categoryIds.length === 0) {
+      alert('Selecione ao menos uma categoria.');
+      return;
+    }
+    if (!primaryDepartmentId || departmentIds.length === 0) {
+      alert('Selecione ao menos um setor.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -219,8 +259,8 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
           cpf: formData.cpf.replace(/\D/g, ''),
           pis_number: formData.pis_number.replace(/\D/g, ''),
           hire_date: formData.hire_date || null,
-          category_id: formData.category_id,
-          department_id: formData.department_id,
+          category_id: primaryCategoryId,
+          department_id: primaryDepartmentId,
           company_id: formData.company_id,
           registration_number: formData.registration_number || null,
           coren: formData.coren?.trim() || null,
@@ -240,6 +280,26 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
         throw new Error('UPDATE bloqueado pelo RLS — não foi possível salvar. Contate o administrador.');
       }
       console.log('[edit professional] gravado:', updated[0]);
+
+      // Sincroniza vínculos N:N (delete-then-insert)
+      await supabase.from('professional_category_links').delete().eq('professional_id', professional.id);
+      await supabase.from('professional_department_links').delete().eq('professional_id', professional.id);
+      const catLinks = categoryIds.map(id => ({
+        professional_id: professional.id,
+        category_id: id,
+        is_primary: id === primaryCategoryId,
+      }));
+      const deptLinks = departmentIds.map(id => ({
+        professional_id: professional.id,
+        department_id: id,
+        is_primary: id === primaryDepartmentId,
+      }));
+      if (catLinks.length > 0) {
+        await supabase.from('professional_category_links').insert(catLinks as any);
+      }
+      if (deptLinks.length > 0) {
+        await supabase.from('professional_department_links').insert(deptLinks as any);
+      }
 
       if (facialDescriptor && !hasExistingDescriptor) {
         if (facialDataId) {
@@ -389,41 +449,27 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categoria Profissional *
-              </label>
-              <select
-                required
-                value={formData.category_id}
-                onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              >
-                <option value="">Selecione</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+              <MultiSelectChips
+                label="Categoria(s) Profissional(is) *"
+                options={categories}
+                selectedIds={categoryIds}
+                primaryId={primaryCategoryId}
+                onChange={(ids, primary) => { setCategoryIds(ids); setPrimaryCategoryId(primary); }}
+                placeholder="Adicionar categoria"
+                emptyText="Nenhuma categoria"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Setor *
-              </label>
-              <select
-                required
-                value={formData.department_id}
-                onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              >
-                <option value="">Selecione</option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
+              <MultiSelectChips
+                label="Setor(es) *"
+                options={departments}
+                selectedIds={departmentIds}
+                primaryId={primaryDepartmentId}
+                onChange={(ids, primary) => { setDepartmentIds(ids); setPrimaryDepartmentId(primary); }}
+                placeholder="Adicionar setor"
+                emptyText="Nenhum setor"
+              />
             </div>
 
             <div>
