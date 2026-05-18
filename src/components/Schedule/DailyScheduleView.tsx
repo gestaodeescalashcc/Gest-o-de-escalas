@@ -113,11 +113,11 @@ export default function DailyScheduleView() {
             id,
             full_name,
             registration_number,
-            category:professional_categories (
+            category:professional_categories!category_id (
               name
             )
           ),
-          department:departments (
+          department:departments!department_id (
             id,
             name
           )

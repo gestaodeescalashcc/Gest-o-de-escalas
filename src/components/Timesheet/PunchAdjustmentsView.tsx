@@ -91,7 +91,7 @@ export default function PunchAdjustmentsView() {
         .order('requested_at', { ascending: false }),
       supabase
         .from('professionals')
-        .select('id, full_name, registration_number, department:departments(name)')
+        .select('id, full_name, registration_number, department:departments!department_id(name)')
         .eq('active', true)
         .order('full_name'),
       supabase

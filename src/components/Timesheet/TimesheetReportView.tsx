@@ -86,8 +86,8 @@ export default function TimesheetReportView() {
             id,
             full_name,
             registration_number,
-            category:professional_categories(name),
-            department:departments(id, name)
+            category:professional_categories!category_id(name),
+            department:departments!department_id(id, name)
           ),
           shift:shifts(shift_type, shift_date)
         `)

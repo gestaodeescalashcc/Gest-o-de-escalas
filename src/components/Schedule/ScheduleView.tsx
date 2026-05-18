@@ -99,7 +99,7 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
         .from('monthly_schedules')
         .select(`
           *,
-          department:departments(id, name)
+          department:departments!department_id(id, name)
         `)
         .order('month', { ascending: false })
         .order('created_at', { ascending: false });
@@ -133,12 +133,12 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
           *,
           professional:professionals (
             full_name,
-            category:professional_categories (
+            category:professional_categories!category_id (
               name,
               color
             )
           ),
-          department:departments (
+          department:departments!department_id (
             name
           )
         `)

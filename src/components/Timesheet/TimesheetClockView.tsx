@@ -190,8 +190,8 @@ export default function TimesheetClockView() {
             registration_number,
             department_id,
             establishment_id,
-            category:professional_categories(name),
-            department:departments(name)
+            category:professional_categories!category_id(name),
+            department:departments!department_id(name)
           `)
           .eq('active', true)
           .order('full_name'),
@@ -242,7 +242,7 @@ export default function TimesheetClockView() {
           *,
           professional:professionals(
             full_name,
-            category:professional_categories(name)
+            category:professional_categories!category_id(name)
           )
         `)
         .gte('punch_datetime', today + 'T00:00:00')

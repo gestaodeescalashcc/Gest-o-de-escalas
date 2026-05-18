@@ -183,8 +183,8 @@ export default function ProfessionalsView() {
       .select(
         `
         *,
-        category:professional_categories (id, name, color),
-        department:departments (id, name),
+        category:professional_categories!category_id (id, name, color),
+        department:departments!department_id (id, name),
         company:companies (id, name)
       `
       )

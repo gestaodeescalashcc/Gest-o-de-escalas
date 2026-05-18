@@ -63,7 +63,7 @@ export function HourBankBalanceView() {
         .from('professionals')
         .select(`
           id, full_name, department_id, company_id,
-          department:departments(name),
+          department:departments!department_id(name),
           company:companies(name)
         `)
         .eq('active', true)

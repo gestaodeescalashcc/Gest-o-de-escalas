@@ -79,10 +79,10 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
           .from('shifts')
           .select(`
             id, shift_date, start_time, end_time, shift_type,
-            department:departments (id, name),
+            department:departments!department_id (id, name),
             professional:professionals (
               id, full_name,
-              category:professional_categories (name, color)
+              category:professional_categories!category_id (name, color)
             )
           `)
           .gte('shift_date', today)
@@ -92,8 +92,8 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
           .from('professionals')
           .select(`
             id, full_name, registration_number,
-            category:professional_categories(name, color),
-            department:departments(id, name)
+            category:professional_categories!category_id(name, color),
+            department:departments!department_id(id, name)
           `)
           .eq('active', true)
           .order('full_name'),
@@ -134,10 +134,10 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
           .from('shifts')
           .select(`
             id, shift_date, start_time, end_time, shift_type,
-            department:departments (id, name),
+            department:departments!department_id (id, name),
             professional:professionals (
               id, full_name,
-              category:professional_categories (name, color)
+              category:professional_categories!category_id (name, color)
             )
           `)
           .eq('id', initialShiftId)

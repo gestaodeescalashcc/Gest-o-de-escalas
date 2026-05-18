@@ -78,12 +78,12 @@ export default function MealScheduleView({ onBack }: MealScheduleViewProps = {})
           *,
           professional:professionals (
             full_name,
-            category:professional_categories (
+            category:professional_categories!category_id (
               name
             )
           ),
           shift:shifts (
-            department:departments (
+            department:departments!department_id (
               name
             )
           )
@@ -211,7 +211,7 @@ export default function MealScheduleView({ onBack }: MealScheduleViewProps = {})
             full_name,
             category_id,
             company_id,
-            category:professional_categories (
+            category:professional_categories!category_id (
               id,
               name
             )

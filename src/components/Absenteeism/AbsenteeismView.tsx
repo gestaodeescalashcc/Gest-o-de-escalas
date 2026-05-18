@@ -143,7 +143,7 @@ export default function AbsenteeismView() {
       let absencesQuery = supabase.from('absences').select(`
         *,
         professional:professionals!absences_professional_id_fkey(id, full_name),
-        department:departments(id, name),
+        department:departments!department_id(id, name),
         reason:absence_reasons(*),
         coverage_professional:professionals!absences_coverage_professional_id_fkey(id, full_name)
       `).order('start_date', { ascending: false });

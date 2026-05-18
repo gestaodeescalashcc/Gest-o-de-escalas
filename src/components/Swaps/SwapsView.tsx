@@ -86,27 +86,27 @@ export default function SwapsView() {
             id,
             full_name,
             registration_number,
-            category:professional_categories (name, color)
+            category:professional_categories!category_id (name, color)
           ),
           target_professional:professionals!shift_swaps_target_professional_id_fkey (
             id,
             full_name,
             registration_number,
-            category:professional_categories (name, color)
+            category:professional_categories!category_id (name, color)
           ),
           original_shift:shifts!shift_swaps_original_shift_id_fkey (
             shift_date,
             start_time,
             end_time,
             shift_type,
-            department:departments (id, name)
+            department:departments!department_id (id, name)
           ),
           offered_shift:shifts!shift_swaps_offered_shift_id_fkey (
             shift_date,
             start_time,
             end_time,
             shift_type,
-            department:departments (id, name)
+            department:departments!department_id (id, name)
           )
         `)
         .order('requested_at', { ascending: false });

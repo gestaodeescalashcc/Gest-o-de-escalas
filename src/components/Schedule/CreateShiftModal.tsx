@@ -57,7 +57,7 @@ export default function CreateShiftModal({ onClose, onSuccess }: CreateShiftModa
   const loadProfessionals = async () => {
     const { data, error } = await supabase
       .from('professionals')
-      .select('id, full_name, category:professional_categories(name)')
+      .select('id, full_name, category:professional_categories!category_id(name)')
       .eq('active', true)
       .order('full_name');
 

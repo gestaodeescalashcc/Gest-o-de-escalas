@@ -538,7 +538,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const [allProfsData, shiftsData] = await Promise.all([
         supabase
           .from('professionals')
-          .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, category:professional_categories(name), department:departments(name)')
+          .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, category:professional_categories!category_id(name), department:departments!department_id(name)')
           .eq('department_id', selectedDepartment)
           .eq('active', true)
           .order('full_name'),

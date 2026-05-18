@@ -81,8 +81,8 @@ export default function PunchMirrorView() {
       .from('professionals')
       .select(`
         id, full_name, registration_number,
-        category:professional_categories(name),
-        department:departments(name)
+        category:professional_categories!category_id(name),
+        department:departments!department_id(name)
       `)
       .eq('active', true)
       .order('full_name');
@@ -110,8 +110,8 @@ export default function PunchMirrorView() {
       .from('professionals')
       .select(`
         id, full_name, registration_number,
-        category:professional_categories(name),
-        department:departments(name)
+        category:professional_categories!category_id(name),
+        department:departments!department_id(name)
       `)
       .eq('id', selectedProfessional)
       .maybeSingle();
