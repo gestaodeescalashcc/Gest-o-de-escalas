@@ -2227,52 +2227,48 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           <h1 className="text-2xl font-bold text-gray-900">Escala do Mês</h1>
           {/* Badge de status removido — fluxo simplificado, todas as escalas
               são editáveis. Histórico é registrado em schedule_audit_log. */}
-          {/* Toggle Planejada / Realizada — sempre visível e bem destacado */}
+          {/* Toggle Planejada / Realizada — segmented control limpo */}
           {currentSchedule && (
             <div
               role="tablist"
               aria-label="Modo de visualização da escala"
-              className={`inline-flex items-stretch rounded-xl p-1 shadow-sm ring-2 ${
-                viewMode === 'planejada'
-                  ? 'bg-blue-50 ring-blue-300'
-                  : 'bg-orange-50 ring-orange-300'
-              }`}
+              className="inline-flex items-stretch bg-gray-100 rounded-lg p-0.5 border border-gray-200"
             >
               <button
                 type="button"
                 role="tab"
                 aria-selected={viewMode === 'planejada'}
                 onClick={() => setViewMode('planejada')}
-                title="Mostra a escala como foi originalmente criada (planejamento inicial)"
-                className={`min-h-[40px] px-4 py-2 text-sm font-bold rounded-lg transition flex items-center gap-2 ${
+                title="Escala como foi originalmente criada"
+                className={`min-h-[36px] px-3 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-1.5 ${
                   viewMode === 'planejada'
-                    ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-700'
-                    : 'text-gray-700 hover:bg-white/60'
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Calendar className="w-4 h-4" aria-hidden="true" />
-                <span>PLANEJADA</span>
+                <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
+                Planejada
               </button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={viewMode === 'realizada'}
                 onClick={() => setViewMode('realizada')}
-                title="Mostra o que aconteceu de fato (com ausências, trocas e edições aplicadas)"
-                className={`min-h-[40px] px-4 py-2 text-sm font-bold rounded-lg transition flex items-center gap-2 ${
+                title="Estado atual com ausências, coberturas e trocas aplicadas"
+                className={`min-h-[36px] px-3 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-1.5 ${
                   viewMode === 'realizada'
-                    ? 'bg-orange-600 text-white shadow-md ring-2 ring-orange-700'
-                    : 'text-gray-700 hover:bg-white/60'
+                    ? 'bg-white text-orange-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <ArrowLeftRight className="w-4 h-4" aria-hidden="true" />
-                <span>REALIZADA</span>
+                <ArrowLeftRight className="w-3.5 h-3.5" aria-hidden="true" />
+                Realizada
                 {scheduleAbsences.length > 0 && (
                   <span
                     className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                       viewMode === 'realizada'
-                        ? 'bg-white text-orange-700'
-                        : 'bg-orange-200 text-orange-800'
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'bg-gray-200 text-gray-700'
                     }`}
                   >
                     {scheduleAbsences.length}
@@ -2446,16 +2442,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         </div>
       </div>
 
-      {editMode && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-yellow-700" />
-            <p className="text-sm font-medium text-yellow-900">
-              Modo de Edição Ativo - Clique em qualquer célula para adicionar ou editar turnos
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Banner "Modo Edição" e "Visualizando Realizada" foram consolidados
+          em um único bloco informativo dentro do header da escala (abaixo). */}
 
       {!editMode && currentSchedule && isLocked && (
         <div
@@ -2496,23 +2484,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         </div>
       )}
 
-      {viewMode === 'realizada' && currentSchedule && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-3">
-          <CalendarX className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" aria-hidden="true" />
-          <div className="flex-1 text-sm">
-            <p className="font-medium text-red-900">
-              Visualizando ESCALA REALIZADA — com ausências aplicadas
-            </p>
-            <p className="text-red-700 mt-0.5">
-              Faltas, atestados e licenças cadastradas em "Absenteísmo" sobrescrevem o turno
-              planejado. Células com ponto vermelho indicam dias alterados em relação ao plano.
-              {scheduleAbsences.length > 0 && (
-                <> Total de {scheduleAbsences.length} ausência{scheduleAbsences.length !== 1 ? 's' : ''} registrada{scheduleAbsences.length !== 1 ? 's' : ''} nesta escala.</>
-              )}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Banner vermelho duplicado removido — info consolidada no header. */}
 
       <div className="bg-white rounded-lg shadow-sm p-6">
         {schedules.length > 0 && (
@@ -2569,59 +2541,47 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 Setor: {departments.find(d => d.id === selectedDepartment)?.name}
               </p>
               {currentSchedule && (
-                <>
-                  <div
-                    className={`mt-3 flex items-start gap-3 rounded-lg border-l-4 px-4 py-3 ${
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  {/* Chip indicando o modo atual */}
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold ${
                       viewMode === 'planejada'
-                        ? 'bg-blue-50 border-blue-500 text-blue-900'
-                        : 'bg-orange-50 border-orange-500 text-orange-900'
+                        ? 'bg-blue-100 text-blue-800 ring-1 ring-inset ring-blue-200'
+                        : 'bg-orange-100 text-orange-800 ring-1 ring-inset ring-orange-200'
                     }`}
-                    role="status"
-                    aria-live="polite"
                   >
-                    <div
-                      className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                        viewMode === 'planejada' ? 'bg-blue-600' : 'bg-orange-600'
-                      }`}
-                    >
-                      {viewMode === 'planejada' ? (
-                        <Calendar className="w-5 h-5 text-white" aria-hidden="true" />
-                      ) : (
-                        <ArrowLeftRight className="w-5 h-5 text-white" aria-hidden="true" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-base">
-                        {viewMode === 'planejada'
-                          ? 'Você está vendo a escala PLANEJADA (original)'
-                          : 'Você está vendo a escala REALIZADA (com alterações)'}
-                      </p>
-                      <p className="text-sm mt-0.5 opacity-90">
-                        {viewMode === 'planejada'
-                          ? 'Esta é a versão original criada pela coordenadora, intocável. Para ver o que aconteceu de fato com ausências e trocas, clique em REALIZADA no topo.'
-                          : 'Mostra o estado atual com ausências, coberturas e trocas aplicadas. Células com ponto vermelho indicam divergência da Planejada. Clique em PLANEJADA no topo para ver a original.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Status de finalização da Planejada */}
-                  <div className="mt-2">
-                    {isPublished ? (
-                      <span
-                        title={`Finalizada em ${new Date((currentSchedule as any).published_at).toLocaleString('pt-BR')}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-300"
-                      >
-                        <Lock className="w-3.5 h-3.5" />
-                        Planejamento finalizado em {new Date((currentSchedule as any).published_at).toLocaleDateString('pt-BR')}
-                      </span>
+                    {viewMode === 'planejada' ? (
+                      <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-300">
-                        <Unlock className="w-3.5 h-3.5" />
-                        Em rascunho — Planejada acompanha a Realizada. Use "Finalizar Planejamento" quando estiver pronta.
-                      </span>
+                      <ArrowLeftRight className="w-3.5 h-3.5" aria-hidden="true" />
                     )}
-                  </div>
-                </>
+                    Vendo {viewMode === 'planejada' ? 'Planejada' : 'Realizada'}
+                  </span>
+
+                  {/* Modo edição (substitui o banner amarelo grande) */}
+                  {editMode && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold bg-yellow-100 text-yellow-800 ring-1 ring-inset ring-yellow-200">
+                      <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
+                      Edição ativa — clique numa célula
+                    </span>
+                  )}
+
+                  {/* Status do planejamento */}
+                  {isPublished ? (
+                    <span
+                      title={`Finalizada em ${new Date((currentSchedule as any).published_at).toLocaleString('pt-BR')}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200"
+                    >
+                      <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+                      Planejamento finalizado
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200">
+                      <Unlock className="w-3.5 h-3.5" aria-hidden="true" />
+                      Rascunho
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
