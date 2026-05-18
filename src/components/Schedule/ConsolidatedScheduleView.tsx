@@ -40,6 +40,7 @@ interface Shift {
 const SHIFT_TYPES = [
   { code: 'SN', name: 'Serviço Noturno (19h às 7h) 12h', start: '19:00', end: '07:00', hours: 12 },
   { code: 'SD', name: 'Serviço Diurno (7h às 19h) 12h', start: '07:00', end: '19:00', hours: 12 },
+  { code: 'D', name: 'Diarista', start: '07:00', end: '13:00', hours: 6 },
   { code: 'M', name: 'Manhã (7h às 13h) 6h', start: '07:00', end: '13:00', hours: 6 },
   { code: 'M2', name: 'Manhã (8h às 12h) 4h', start: '08:00', end: '12:00', hours: 4 },
   { code: 'T', name: 'Tarde (12h às 18h) 6h', start: '12:00', end: '18:00', hours: 6 },
@@ -784,6 +785,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         return 'bg-indigo-100 text-indigo-900 ring-1 ring-inset ring-indigo-200';
       case 'SD':
         return 'bg-sky-100 text-sky-900 ring-1 ring-inset ring-sky-200';
+      case 'D':
+        return 'bg-cyan-100 text-cyan-900 ring-1 ring-inset ring-cyan-200';
       case 'M':
         return 'bg-emerald-100 text-emerald-900 ring-1 ring-inset ring-emerald-200';
       case 'M2':

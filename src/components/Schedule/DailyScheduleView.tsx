@@ -35,6 +35,7 @@ interface Shift {
 const SHIFT_TYPES = [
   { code: 'SN', name: 'Noite', time: '19h-07h', color: 'bg-blue-500' },
   { code: 'SD', name: 'Diurno', time: '07h-19h', color: 'bg-green-500' },
+  { code: 'D', name: 'Diarista', time: '—', color: 'bg-cyan-500' },
   { code: 'M', name: 'Manhã', time: '07h-13h', color: 'bg-yellow-500' },
   { code: 'M2', name: 'Manhã', time: '08h-12h', color: 'bg-yellow-400' },
   { code: 'T', name: 'Tarde', time: '13h-19h', color: 'bg-orange-500' },

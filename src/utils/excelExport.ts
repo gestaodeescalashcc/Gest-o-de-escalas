@@ -590,6 +590,7 @@ async function exportGeneric(data: ExportData) {
   const legends: Array<[string, string]> = [
     ['P', 'Plantão 24h (7h às 7h)'],
     ['SD', 'Serviço Diurno (7h às 19h)'],
+    ['D', 'Diarista'],
     ['SN', 'Serviço Noturno (19h às 7h)'],
     ['MT', 'Manhã e Tarde (8h às 17h)'],
     ['M', 'Manhã (7h às 13h)'],
