@@ -2283,9 +2283,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             <>
               <button
                 onClick={() => setShowCreateScheduleModal(true)}
-                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
               >
-                <Plus className="w-4 h-4" aria-hidden="true" />
+                <Plus className="w-4 h-4 text-gray-500" aria-hidden="true" />
                 Nova Escala
               </button>
 
@@ -2294,7 +2294,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 <button
                   onClick={requestPublish}
                   title="Congela a Planejada atual. A partir daqui, novos plantões e edições só afetam a Realizada."
-                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-emerald-600 text-white border border-emerald-700 rounded-lg hover:bg-emerald-700 shadow-sm transition-colors text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1"
                 >
                   <Lock className="w-4 h-4" aria-hidden="true" />
                   Finalizar Planejamento
@@ -2305,16 +2305,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               {currentSchedule && isPublished && isAdmin() && (
                 <button
                   onClick={requestReopen}
-                  title="Reabre o planejamento para edição direta da Planejada (apenas Administrador)"
-                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                  title="Reabre o planejamento (apenas Administrador)"
+                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 >
-                  <Unlock className="w-4 h-4" aria-hidden="true" />
-                  Reabrir Planejamento
+                  <Unlock className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                  Reabrir
                 </button>
               )}
 
-              {/* "Adicionar Profissional" só aparece no Modo Edição
-                  (botão equivalente está abaixo, no bloco de editMode) */}
               {currentSchedule && (
                 <button
                   onClick={() => {
@@ -2325,61 +2323,55 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                     });
                     setShowAbsenceModal(true);
                   }}
-                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-red-700 border border-red-200 rounded-lg hover:bg-red-50 hover:border-red-300 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 >
-                  <CalendarX className="w-4 h-4" aria-hidden="true" />
+                  <CalendarX className="w-4 h-4 text-gray-500" aria-hidden="true" />
                   Registrar Ausência
                 </button>
               )}
               {!isLocked && (
                 <button
                   onClick={copyPreviousMonth}
-                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 >
-                  <Copy className="w-4 h-4" aria-hidden="true" />
+                  <Copy className="w-4 h-4 text-gray-500" aria-hidden="true" />
                   Copiar Mês Anterior
                 </button>
               )}
               <button
                 onClick={handleExportExcel}
-                title={`Exporta a escala ${viewMode === 'realizada' ? 'REALIZADA (com ausências aplicadas)' : 'PLANEJADA'}`}
-                className={`inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  viewMode === 'realizada'
-                    ? 'bg-red-50 text-red-700 border border-red-300 hover:bg-red-100 focus:ring-red-500'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 focus:ring-blue-500'
-                }`}
+                title={`Exporta a escala ${viewMode === 'realizada' ? 'Realizada (com ausências aplicadas)' : 'Planejada'}`}
+                className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
               >
-                <Download className="w-4 h-4" aria-hidden="true" />
+                <Download className="w-4 h-4 text-gray-500" aria-hidden="true" />
                 Exportar Excel
-                {viewMode === 'realizada' && <span className="text-[10px] font-bold">(Realizada)</span>}
               </button>
-              {/* Histórico de alterações */}
               {currentSchedule && (
                 <button
                   onClick={() => setShowAuditLog(true)}
                   title="Ver histórico de alterações desta escala"
-                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 >
-                  <Clock className="w-4 h-4" aria-hidden="true" />
+                  <Clock className="w-4 h-4 text-gray-500" aria-hidden="true" />
                   Histórico
                 </button>
               )}
-              {/* Excluir Escala — admin e coordenador (com permissão) */}
+              {/* Excluir Escala — agrupado por último, ghost vermelho discreto */}
               {currentSchedule && (isAdmin() || canDelete('schedules')) && (
                 <button
                   onClick={() => setShowDeleteScheduleModal(true)}
-                  title="Exclui esta escala por completo"
-                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                  title="Excluir esta escala por completo"
+                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-red-600 border border-gray-200 rounded-md hover:bg-red-50 hover:border-red-200 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
                 >
                   <Trash2 className="w-4 h-4" aria-hidden="true" />
-                  Excluir Escala
+                  Excluir
                 </button>
               )}
-              {/* Modo Edição */}
+              {/* Modo Edição — único botão primário (azul sólido) do toolbar */}
               {canEditSchedule && (
                 <button
                   onClick={() => setEditMode(true)}
-                  className="inline-flex items-center gap-2 min-h-[40px] px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3.5 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 >
                   <Edit3 className="w-4 h-4" aria-hidden="true" />
                   Modo Edição
