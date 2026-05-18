@@ -61,6 +61,8 @@ interface MonthlySchedule {
   month: string;
   status: string;
   department_id: string;
+  published_at?: string | null;
+  published_by?: string | null;
 }
 
 interface Holiday {
@@ -217,11 +219,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     | 'Rascunho'
     | 'Publicada'
     | 'Fechada';
-  const isPublished = false;
   const isClosed = false;
-  // Workflow simplificado: todas as escalas estão sempre disponíveis para edição.
-  // Histórico imutável de alterações é registrado em schedule_audit_log.
+  // Edição continua permitida após publicação — mudanças vão para a Realizada,
+  // a Planejada original fica preservada no snapshot (original_*).
   const isLocked = false;
+  // Flag de "publicada" baseada em published_at (preenchido pela RPC publish_schedule
+  // que faz o snapshot dos shifts em original_*).
+  const isPublished = !!(currentSchedule as any)?.published_at;
   // Admins can always edit; others only when status is Rascunho
   const canEditSchedule = isAdmin() ? true : !isLocked && canUpdate('schedules');
 
@@ -544,7 +548,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           .order('full_name'),
         supabase
           .from('shifts')
-          .select('id, professional_id, shift_date, shift_type, start_time, end_time')
+          .select('id, professional_id, shift_date, shift_type, start_time, end_time, original_shift_type, original_start_time, original_end_time, published_at, company_id, original_company_id')
           .eq('schedule_id', selectedSchedule)
           .gte('shift_date', startDate)
           .lte('shift_date', endDate)
@@ -604,8 +608,32 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
 
     if (!shift) return '';
 
-    const shiftType = SHIFT_TYPES.find(st => st.name === shift.shift_type);
+    // Em modo "planejada" + escala publicada → lê o snapshot original (intocável).
+    // Em "realizada" ou rascunho → lê o valor corrente.
+    const useOriginal =
+      viewMode === 'planejada' && isPublished && (shift as any).original_shift_type;
+    const shiftTypeName = useOriginal
+      ? (shift as any).original_shift_type
+      : shift.shift_type;
+
+    const shiftType = SHIFT_TYPES.find(st => st.name === shiftTypeName);
     return shiftType?.code || '';
+  };
+
+  /**
+   * Código da planejada original (snapshot), independente do viewMode atual.
+   * Usado para detectar diferenças entre Planejada e Realizada.
+   * Quando a escala ainda é rascunho, retorna o código corrente (não há diff).
+   */
+  const getOriginalShiftCode = (professionalId: string, day: number): string => {
+    const [year, month] = selectedMonth.split('-');
+    const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
+    const shift = shiftsCache.get(professionalId)?.get(date);
+    if (!shift) return '';
+    const name = isPublished && (shift as any).original_shift_type
+      ? (shift as any).original_shift_type
+      : shift.shift_type;
+    return SHIFT_TYPES.find(st => st.name === name)?.code || '';
   };
 
   /**
@@ -768,29 +796,39 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     if (!currentSchedule) return;
     setStatusChangeLoading(true);
     try {
-      const updates: any = { status: newStatus };
-      if (newStatus === 'Publicada' && !currentSchedule.status?.startsWith('Pub')) {
-        updates.published_at = new Date().toISOString();
+      // Quando transita para "Publicada" e ainda não tem published_at, usa a RPC
+      // publish_schedule, que faz o snapshot dos shifts em original_* além de
+      // marcar published_at/published_by em monthly_schedules.
+      if (newStatus === 'Publicada' && !(currentSchedule as any).published_at) {
+        const { data, error } = await supabase.rpc('publish_schedule' as any, {
+          p_schedule_id: currentSchedule.id,
+        });
+        if (error) throw error;
+        const result = data as { success: boolean; error?: string; shifts_snapshotted?: number } | null;
+        if (!result?.success) throw new Error(result?.error || 'Falha ao publicar');
+        // Também atualiza o campo status (texto) para consistência com UI atual
+        await supabase
+          .from('monthly_schedules')
+          .update({ status: newStatus } as any)
+          .eq('id', currentSchedule.id);
+        toast.success(`Escala publicada e congelada (${result.shifts_snapshotted ?? 0} plantões em snapshot).`);
+      } else {
+        const updates: any = { status: newStatus };
+        const { error } = await supabase
+          .from('monthly_schedules')
+          .update(updates)
+          .eq('id', currentSchedule.id);
+        if (error) throw error;
+        const messages = {
+          Rascunho: 'Escala reaberta para edição.',
+          Publicada: 'Status atualizado.',
+          Fechada: 'Escala fechada. Não pode mais ser editada.',
+        };
+        toast.success(messages[newStatus]);
       }
-      const { error } = await supabase
-        .from('monthly_schedules')
-        .update(updates)
-        .eq('id', currentSchedule.id);
-      if (error) throw error;
 
-      // Update local state
-      setSchedules(prev =>
-        prev.map(s =>
-          s.id === currentSchedule.id ? { ...s, status: newStatus } : s
-        )
-      );
-
-      const messages = {
-        Rascunho: 'Escala reaberta para edição.',
-        Publicada: 'Escala publicada com sucesso.',
-        Fechada: 'Escala fechada. Não pode mais ser editada.',
-      };
-      toast.success(messages[newStatus]);
+      // Recarrega escalas para puxar published_at do banco
+      await loadSchedules();
       setStatusChangeDialog(null);
     } catch (err: any) {
       console.error('Error updating schedule status:', err);
@@ -803,11 +841,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const requestPublish = () =>
     setStatusChangeDialog({
       targetStatus: 'Publicada',
-      title: 'Publicar escala?',
+      title: 'Publicar e congelar a Planejada?',
       message:
-        'Após publicar, a escala será visível e os profissionais poderão consultá-la. Coordenadores não poderão mais editá-la — apenas Administradores. Você pode reabrir depois se precisar.',
+        'Esta ação cria um snapshot imutável da escala atual como Planejada Original. Você ainda poderá editar as células — as mudanças aparecerão apenas na visão Realizada, preservando a Planejada para auditoria. Recomendado fazer só quando a escala estiver pronta.',
       variant: 'default',
-      confirmLabel: 'Publicar',
+      confirmLabel: 'Publicar e congelar',
     });
 
   const requestClose = () =>
@@ -2481,6 +2519,24 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               <p className="text-sm text-gray-600">
                 Setor: {departments.find(d => d.id === selectedDepartment)?.name}
               </p>
+              {currentSchedule && (
+                <div className="mt-2 inline-flex items-center gap-2">
+                  {isPublished ? (
+                    <span
+                      title={`Publicada em ${new Date((currentSchedule as any).published_at).toLocaleString('pt-BR')}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-300"
+                    >
+                      <Lock className="w-3 h-3" />
+                      Planejada publicada em {new Date((currentSchedule as any).published_at).toLocaleDateString('pt-BR')}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-300">
+                      <Unlock className="w-3 h-3" />
+                      Rascunho — publique para congelar a Planejada
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {professionals.length === 0 ? (
@@ -2638,8 +2694,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             const code = getEffectiveShiftCode(prof.id, day);
                             const plannedCode = getShiftCode(prof.id, day);
                             const cellAbsence = findAbsenceForCell(prof.id, day);
+                            const originalCode = getOriginalShiftCode(prof.id, day);
+                            // Marca célula como divergente:
+                            // - Em realizada: quando o realizado (com ausências) difere do planejado/original
+                            // - Em planejada (publicada): quando o atual difere do original (alguém editou)
                             const isOverridden =
-                              viewMode === 'realizada' && code !== plannedCode && plannedCode !== '';
+                              (viewMode === 'realizada' && code !== plannedCode && plannedCode !== '') ||
+                              (isPublished && originalCode !== '' && originalCode !== plannedCode);
                             const holidayForCell = getHolidayForDay(day);
                             const isWeekend = ['SAB', 'DOM'].includes(getDayOfWeek(day)) || !!holidayForCell;
                             // Tooltip: mostra info de ausência sempre que houver
@@ -2666,7 +2727,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             const holidayTooltip = holidayForCell
                               ? `Feriado ${holidayForCell.type}: ${holidayForCell.name}`
                               : '';
-                            const finalTooltip = [tooltip, swapTooltip, coverageTooltip, holidayTooltip].filter(Boolean).join('\n');
+                            const diffTooltip =
+                              isPublished && originalCode !== '' && originalCode !== plannedCode
+                                ? `Planejado original: ${originalCode}\nAtual: ${plannedCode || '—'}`
+                                : '';
+                            const finalTooltip = [tooltip, swapTooltip, coverageTooltip, holidayTooltip, diffTooltip].filter(Boolean).join('\n');
                             return (
                               <td
                                 key={day}
