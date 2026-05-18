@@ -96,7 +96,9 @@ export default function ProfessionalsView() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const { toasts, toast, removeToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterActive, setFilterActive] = useState<boolean | null>(null);
+  // Default: mostra só ativos. Inativos (soft-deleted) ficam ocultos até
+  // o usuário clicar no filtro "Inativos".
+  const [filterActive, setFilterActive] = useState<boolean | null>(true);
   const [filterCategory, setFilterCategory] = useState<string>('');
   const [filterDepartment, setFilterDepartment] = useState<string>('');
   const [filterCompany, setFilterCompany] = useState<string>('');
@@ -151,21 +153,38 @@ export default function ProfessionalsView() {
     if (!deletingProf) return;
     setDeleteLoading(true);
     try {
-      // Tenta DELETE definitivo primeiro
-      const { error } = await supabase
+      // Tenta DELETE definitivo. Usa .select() para saber QUANTAS linhas
+      // foram realmente afetadas — sem isso, o Supabase devolve sucesso
+      // mesmo quando a RLS bloqueia silenciosamente (0 rows affected).
+      const { data: deleted, error: delErr } = await supabase
         .from('professionals')
         .delete()
-        .eq('id', deletingProf.id);
-      if (error) {
-        // Se falhar (ex: FK de shifts/swaps), faz soft delete (active=false)
-        const { error: softErr } = await supabase
+        .eq('id', deletingProf.id)
+        .select('id');
+
+      let hardDeleted = !delErr && Array.isArray(deleted) && deleted.length > 0;
+
+      if (!hardDeleted) {
+        // DELETE falhou (erro ou silenciosamente bloqueado). Tenta soft delete.
+        const { data: updated, error: softErr } = await supabase
           .from('professionals')
-          .update({ active: false, updated_at: new Date().toISOString() })
-          .eq('id', deletingProf.id);
-        if (softErr) throw softErr;
-        toast.success(`${deletingProf.full_name} foi desativado (tinha histórico vinculado).`);
+          .update({ active: false, updated_at: new Date().toISOString() } as any)
+          .eq('id', deletingProf.id)
+          .select('id');
+
+        const softWorked = !softErr && Array.isArray(updated) && updated.length > 0;
+
+        if (!softWorked) {
+          throw new Error(
+            softErr?.message ||
+              'Você não tem permissão para excluir este profissional. Procure um Administrador.'
+          );
+        }
+        toast.success(
+          `${deletingProf.full_name} foi DESATIVADO (preservando histórico de plantões).`
+        );
       } else {
-        toast.success(`${deletingProf.full_name} foi removido.`);
+        toast.success(`${deletingProf.full_name} foi removido definitivamente.`);
       }
       setDeletingProf(null);
       await loadProfessionals();
