@@ -949,8 +949,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         // Captura a empresa do profissional no momento da criação do plantão
         const profForShift = professionals.find(p => p.id === selectedCell.profId);
         const shiftCompanyId = (profForShift as any)?.company_id || null;
-        const nowIso = new Date().toISOString();
 
+        // IMPORTANTE: NÃO setar original_* aqui — o trigger do banco
+        // (shifts_auto_original_snapshot) decide se popula ou deixa NULL
+        // com base em monthly_schedules.published_at:
+        //   - Escala em rascunho: trigger popula original_* = atual (Planejada acompanha)
+        //   - Escala finalizada: trigger deixa original_* NULL (só aparece na Realizada)
         const { data, error } = await supabase
           .from('shifts')
           .insert({
@@ -964,14 +968,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             status: 'Agendado',
             company_id: shiftCompanyId,
             created_by: user?.id,
-            // Snapshot automático da Planejada: igual ao valor corrente na criação.
-            // A partir daqui, edições só alteram os campos sem original_*.
-            original_shift_type: shiftType.name,
-            original_start_time: shiftType.start,
-            original_end_time: shiftType.end,
-            original_company_id: shiftCompanyId,
-            original_professional_id: selectedCell.profId,
-            published_at: nowIso,
           })
           .select()
           .maybeSingle();
