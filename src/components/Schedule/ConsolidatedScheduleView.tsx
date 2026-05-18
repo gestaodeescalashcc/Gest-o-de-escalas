@@ -2202,44 +2202,52 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           <h1 className="text-2xl font-bold text-gray-900">Escala do Mês</h1>
           {/* Badge de status removido — fluxo simplificado, todas as escalas
               são editáveis. Histórico é registrado em schedule_audit_log. */}
-          {/* Toggle Planejada / Realizada — só aparece se há escala selecionada */}
-          {currentSchedule && !editMode && (
+          {/* Toggle Planejada / Realizada — sempre visível e bem destacado */}
+          {currentSchedule && (
             <div
               role="tablist"
               aria-label="Modo de visualização da escala"
-              className="inline-flex items-center bg-gray-100 rounded-lg p-0.5 ml-1"
+              className={`inline-flex items-stretch rounded-xl p-1 shadow-sm ring-2 ${
+                viewMode === 'planejada'
+                  ? 'bg-blue-50 ring-blue-300'
+                  : 'bg-orange-50 ring-orange-300'
+              }`}
             >
               <button
                 type="button"
                 role="tab"
                 aria-selected={viewMode === 'planejada'}
                 onClick={() => setViewMode('planejada')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${
+                title="Mostra a escala como foi originalmente criada (planejamento inicial)"
+                className={`min-h-[40px] px-4 py-2 text-sm font-bold rounded-lg transition flex items-center gap-2 ${
                   viewMode === 'planejada'
-                    ? 'bg-white shadow-sm text-gray-900'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-700'
+                    : 'text-gray-700 hover:bg-white/60'
                 }`}
               >
-                Planejada
+                <Calendar className="w-4 h-4" aria-hidden="true" />
+                <span>PLANEJADA</span>
               </button>
               <button
                 type="button"
                 role="tab"
                 aria-selected={viewMode === 'realizada'}
                 onClick={() => setViewMode('realizada')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition flex items-center gap-1 ${
+                title="Mostra o que aconteceu de fato (com ausências, trocas e edições aplicadas)"
+                className={`min-h-[40px] px-4 py-2 text-sm font-bold rounded-lg transition flex items-center gap-2 ${
                   viewMode === 'realizada'
-                    ? 'bg-white shadow-sm text-red-700'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-orange-600 text-white shadow-md ring-2 ring-orange-700'
+                    : 'text-gray-700 hover:bg-white/60'
                 }`}
               >
-                Realizada
+                <ArrowLeftRight className="w-4 h-4" aria-hidden="true" />
+                <span>REALIZADA</span>
                 {scheduleAbsences.length > 0 && (
                   <span
-                    className={`text-[10px] px-1 rounded-full ${
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                       viewMode === 'realizada'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-gray-300 text-gray-700'
+                        ? 'bg-white text-orange-700'
+                        : 'bg-orange-200 text-orange-800'
                     }`}
                   >
                     {scheduleAbsences.length}
@@ -2510,14 +2518,39 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               <p className="text-sm text-gray-600">
                 Setor: {departments.find(d => d.id === selectedDepartment)?.name}
               </p>
-              {currentSchedule && viewMode === 'realizada' && (
-                <div className="mt-2 inline-flex items-center gap-2">
-                  <span
-                    title="A Planejada é o que foi originalmente criado. A Realizada reflete o estado atual com ausências, trocas e edições. Células com ponto vermelho indicam divergência."
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-200"
+              {currentSchedule && (
+                <div
+                  className={`mt-3 flex items-start gap-3 rounded-lg border-l-4 px-4 py-3 ${
+                    viewMode === 'planejada'
+                      ? 'bg-blue-50 border-blue-500 text-blue-900'
+                      : 'bg-orange-50 border-orange-500 text-orange-900'
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div
+                    className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      viewMode === 'planejada' ? 'bg-blue-600' : 'bg-orange-600'
+                    }`}
                   >
-                    Visualizando Realizada — células com ponto vermelho diferem da Planejada original
-                  </span>
+                    {viewMode === 'planejada' ? (
+                      <Calendar className="w-5 h-5 text-white" aria-hidden="true" />
+                    ) : (
+                      <ArrowLeftRight className="w-5 h-5 text-white" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-base">
+                      {viewMode === 'planejada'
+                        ? 'Você está vendo a escala PLANEJADA (original)'
+                        : 'Você está vendo a escala REALIZADA (com alterações)'}
+                    </p>
+                    <p className="text-sm mt-0.5 opacity-90">
+                      {viewMode === 'planejada'
+                        ? 'Esta é a versão original criada pela coordenadora, intocável. Para ver o que aconteceu de fato com ausências e trocas, clique em REALIZADA no topo.'
+                        : 'Mostra o estado atual com ausências, coberturas e trocas aplicadas. Células com ponto vermelho indicam divergência da Planejada. Clique em PLANEJADA no topo para ver a original.'}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
