@@ -168,7 +168,45 @@ export default function DailyScheduleView() {
   };
 
   const getShiftTypeInfo = (type: string) => {
-    return SHIFT_TYPES.find(st => st.code === type || st.name === type) || SHIFT_TYPES[0];
+    if (!type) return SHIFT_TYPES[0];
+    // 1. Match exato por code ou name
+    const exact = SHIFT_TYPES.find(st => st.code === type || st.name === type);
+    if (exact) return exact;
+    // 2. Match por palavra-chave dentro do nome completo do banco
+    //    (ex: "Plantão 24h (7h às 7h) 24h" → P; "Serviço Noturno (19h às 7h) 12h" → SN)
+    const normalized = type.toLowerCase();
+    const keywordMap: Array<[string, string]> = [
+      ['plantão 24h', 'P'],
+      ['servico noturno', 'SN'],
+      ['serviço noturno', 'SN'],
+      ['servico diurno', 'SD'],
+      ['serviço diurno', 'SD'],
+      ['manhã e tarde', 'MT'],
+      ['manha e tarde', 'MT'],
+      ['manhã (08', 'M2'],
+      ['manha (08', 'M2'],
+      ['manhã', 'M'],
+      ['manha', 'M'],
+      ['tarde', 'T'],
+      ['licença médica', 'LM'],
+      ['licenca medica', 'LM'],
+      ['licença prêmio', 'LP'],
+      ['licenca premio', 'LP'],
+      ['licença gestação', 'LG'],
+      ['licenca gestacao', 'LG'],
+      ['férias', 'FE'],
+      ['ferias', 'FE'],
+      ['feriado', 'FR'],
+      ['folga', 'FG'],
+      ['afastamento', 'AS'],
+    ];
+    for (const [kw, code] of keywordMap) {
+      if (normalized.includes(kw)) {
+        const found = SHIFT_TYPES.find(st => st.code === code);
+        if (found) return found;
+      }
+    }
+    return SHIFT_TYPES[0];
   };
 
   const groupedByDepartment = shifts.reduce((acc, shift) => {
@@ -459,8 +497,11 @@ export default function DailyScheduleView() {
                                   {shift.professional?.registration_number || 'N/A'}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-center">
-                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold text-white ${shiftInfo.color}`}>
-                                    {shift.shift_type}
+                                  <span
+                                    title={shift.shift_type}
+                                    className={`inline-flex items-center justify-center min-w-[40px] h-7 px-2.5 rounded-md text-xs font-bold text-white ${shiftInfo.color}`}
+                                  >
+                                    {shiftInfo.code}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">
@@ -520,8 +561,11 @@ export default function DailyScheduleView() {
                             {shift.department?.name || 'Sem setor'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold text-white ${shiftInfo.color}`}>
-                              {shift.shift_type}
+                            <span
+                              title={shift.shift_type}
+                              className={`inline-flex items-center justify-center min-w-[40px] h-7 px-2.5 rounded-md text-xs font-bold text-white ${shiftInfo.color}`}
+                            >
+                              {shiftInfo.code}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">
