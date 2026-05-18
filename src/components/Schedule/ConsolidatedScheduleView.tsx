@@ -220,12 +220,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     | 'Publicada'
     | 'Fechada';
   const isClosed = false;
-  // Edição continua permitida após publicação — mudanças vão para a Realizada,
-  // a Planejada original fica preservada no snapshot (original_*).
   const isLocked = false;
-  // Flag de "publicada" baseada em published_at (preenchido pela RPC publish_schedule
-  // que faz o snapshot dos shifts em original_*).
-  const isPublished = !!(currentSchedule as any)?.published_at;
+  // Snapshot da Planejada é automático no momento da criação de cada plantão.
+  // Edições posteriores só alteram os campos correntes; original_* fica
+  // preservado para sempre. Logo, sempre tratamos como "tendo planejada".
+  const isPublished = true;
   // Admins can always edit; others only when status is Rascunho
   const canEditSchedule = isAdmin() ? true : !isLocked && canUpdate('schedules');
 
@@ -796,39 +795,22 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     if (!currentSchedule) return;
     setStatusChangeLoading(true);
     try {
-      // Quando transita para "Publicada" e ainda não tem published_at, usa a RPC
-      // publish_schedule, que faz o snapshot dos shifts em original_* além de
-      // marcar published_at/published_by em monthly_schedules.
-      if (newStatus === 'Publicada' && !(currentSchedule as any).published_at) {
-        const { data, error } = await supabase.rpc('publish_schedule' as any, {
-          p_schedule_id: currentSchedule.id,
-        });
-        if (error) throw error;
-        const result = data as { success: boolean; error?: string; shifts_snapshotted?: number } | null;
-        if (!result?.success) throw new Error(result?.error || 'Falha ao publicar');
-        // Também atualiza o campo status (texto) para consistência com UI atual
-        await supabase
-          .from('monthly_schedules')
-          .update({ status: newStatus } as any)
-          .eq('id', currentSchedule.id);
-        toast.success(`Escala publicada e congelada (${result.shifts_snapshotted ?? 0} plantões em snapshot).`);
-      } else {
-        const updates: any = { status: newStatus };
-        const { error } = await supabase
-          .from('monthly_schedules')
-          .update(updates)
-          .eq('id', currentSchedule.id);
-        if (error) throw error;
-        const messages = {
-          Rascunho: 'Escala reaberta para edição.',
-          Publicada: 'Status atualizado.',
-          Fechada: 'Escala fechada. Não pode mais ser editada.',
-        };
-        toast.success(messages[newStatus]);
-      }
+      const { error } = await supabase
+        .from('monthly_schedules')
+        .update({ status: newStatus } as any)
+        .eq('id', currentSchedule.id);
+      if (error) throw error;
 
-      // Recarrega escalas para puxar published_at do banco
-      await loadSchedules();
+      setSchedules(prev =>
+        prev.map(s => (s.id === currentSchedule.id ? { ...s, status: newStatus } : s))
+      );
+
+      const messages = {
+        Rascunho: 'Escala marcada como rascunho.',
+        Publicada: 'Escala marcada como publicada.',
+        Fechada: 'Escala fechada.',
+      };
+      toast.success(messages[newStatus]);
       setStatusChangeDialog(null);
     } catch (err: any) {
       console.error('Error updating schedule status:', err);
@@ -841,11 +823,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const requestPublish = () =>
     setStatusChangeDialog({
       targetStatus: 'Publicada',
-      title: 'Publicar e congelar a Planejada?',
+      title: 'Marcar escala como Publicada?',
       message:
-        'Esta ação cria um snapshot imutável da escala atual como Planejada Original. Você ainda poderá editar as células — as mudanças aparecerão apenas na visão Realizada, preservando a Planejada para auditoria. Recomendado fazer só quando a escala estiver pronta.',
+        'Apenas um rótulo de status (informativo). Não afeta o snapshot da Planejada — esse já é capturado automaticamente na criação de cada plantão.',
       variant: 'default',
-      confirmLabel: 'Publicar e congelar',
+      confirmLabel: 'Marcar como Publicada',
     });
 
   const requestClose = () =>
@@ -938,6 +920,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         // Captura a empresa do profissional no momento da criação do plantão
         const profForShift = professionals.find(p => p.id === selectedCell.profId);
         const shiftCompanyId = (profForShift as any)?.company_id || null;
+        const nowIso = new Date().toISOString();
 
         const { data, error } = await supabase
           .from('shifts')
@@ -952,6 +935,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             status: 'Agendado',
             company_id: shiftCompanyId,
             created_by: user?.id,
+            // Snapshot automático da Planejada: igual ao valor corrente na criação.
+            // A partir daqui, edições só alteram os campos sem original_*.
+            original_shift_type: shiftType.name,
+            original_start_time: shiftType.start,
+            original_end_time: shiftType.end,
+            original_company_id: shiftCompanyId,
+            original_professional_id: selectedCell.profId,
+            published_at: nowIso,
           })
           .select()
           .maybeSingle();
@@ -2519,22 +2510,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               <p className="text-sm text-gray-600">
                 Setor: {departments.find(d => d.id === selectedDepartment)?.name}
               </p>
-              {currentSchedule && (
+              {currentSchedule && viewMode === 'realizada' && (
                 <div className="mt-2 inline-flex items-center gap-2">
-                  {isPublished ? (
-                    <span
-                      title={`Publicada em ${new Date((currentSchedule as any).published_at).toLocaleString('pt-BR')}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-300"
-                    >
-                      <Lock className="w-3 h-3" />
-                      Planejada publicada em {new Date((currentSchedule as any).published_at).toLocaleDateString('pt-BR')}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-300">
-                      <Unlock className="w-3 h-3" />
-                      Rascunho — publique para congelar a Planejada
-                    </span>
-                  )}
+                  <span
+                    title="A Planejada é o que foi originalmente criado. A Realizada reflete o estado atual com ausências, trocas e edições. Células com ponto vermelho indicam divergência."
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-200"
+                  >
+                    Visualizando Realizada — células com ponto vermelho diferem da Planejada original
+                  </span>
                 </div>
               )}
             </div>
