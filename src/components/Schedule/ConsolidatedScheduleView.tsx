@@ -221,10 +221,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     | 'Fechada';
   const isClosed = false;
   const isLocked = false;
-  // Snapshot da Planejada é automático no momento da criação de cada plantão.
-  // Edições posteriores só alteram os campos correntes; original_* fica
-  // preservado para sempre. Logo, sempre tratamos como "tendo planejada".
-  const isPublished = true;
+  // Escala é considerada "finalizada" quando monthly_schedules.published_at foi setado
+  // (via botão "Finalizar Planejamento" pelo Coordenador/Admin). A partir desse momento:
+  // - Novos plantões (INSERT em célula vazia) só aparecem na Realizada (original_* fica NULL)
+  // - Edições em plantões existentes preservam original_* (Planejada não muda)
+  const isPublished = !!(currentSchedule as any)?.published_at;
   // Admins can always edit; others only when status is Rascunho
   const canEditSchedule = isAdmin() ? true : !isLocked && canUpdate('schedules');
 
@@ -607,15 +608,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
 
     if (!shift) return '';
 
-    // Em modo "planejada" + escala publicada → lê o snapshot original (intocável).
-    // Em "realizada" ou rascunho → lê o valor corrente.
-    const useOriginal =
-      viewMode === 'planejada' && isPublished && (shift as any).original_shift_type;
-    const shiftTypeName = useOriginal
-      ? (shift as any).original_shift_type
-      : shift.shift_type;
+    // Lógica:
+    // - Modo Planejada + escala finalizada:
+    //     * Shift tem original_shift_type → mostra ele (snapshot da planejada)
+    //     * Shift NÃO tem original_shift_type → é um plantão adicionado APÓS a
+    //       finalização → não pertence à planejada, retorna vazio.
+    // - Modo Realizada (ou escala ainda em rascunho):
+    //     * Sempre mostra o valor atual.
+    if (viewMode === 'planejada' && isPublished) {
+      const orig = (shift as any).original_shift_type;
+      if (!orig) return '';  // plantão pós-finalização: invisível na planejada
+      const shiftType = SHIFT_TYPES.find(st => st.name === orig);
+      return shiftType?.code || '';
+    }
 
-    const shiftType = SHIFT_TYPES.find(st => st.name === shiftTypeName);
+    const shiftType = SHIFT_TYPES.find(st => st.name === shift.shift_type);
     return shiftType?.code || '';
   };
 
@@ -795,26 +802,48 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     if (!currentSchedule) return;
     setStatusChangeLoading(true);
     try {
-      const { error } = await supabase
-        .from('monthly_schedules')
-        .update({ status: newStatus } as any)
-        .eq('id', currentSchedule.id);
-      if (error) throw error;
+      // "Publicada" agora significa "Planejamento finalizado" — chama a RPC que
+      // marca published_at e congela a planejada (qualquer INSERT a partir daqui
+      // só aparece na Realizada).
+      if (newStatus === 'Publicada' && !(currentSchedule as any).published_at) {
+        const { data, error } = await supabase.rpc('finalize_schedule_planning' as any, {
+          p_schedule_id: currentSchedule.id,
+        });
+        if (error) throw error;
+        const result = data as { success: boolean; error?: string; shifts?: number } | null;
+        if (!result?.success) throw new Error(result?.error || 'Falha ao finalizar planejamento');
+        await supabase
+          .from('monthly_schedules')
+          .update({ status: newStatus } as any)
+          .eq('id', currentSchedule.id);
+        toast.success(`Planejamento finalizado — Planejada congelada (${result.shifts ?? 0} plantões).`);
+      } else if (newStatus === 'Rascunho' && (currentSchedule as any).published_at) {
+        // Reabrir planejamento — apenas admin via RPC
+        const { data, error } = await supabase.rpc('reopen_schedule_planning' as any, {
+          p_schedule_id: currentSchedule.id,
+        });
+        if (error) throw error;
+        const result = data as { success: boolean; error?: string } | null;
+        if (!result?.success) throw new Error(result?.error || 'Falha ao reabrir');
+        await supabase
+          .from('monthly_schedules')
+          .update({ status: newStatus } as any)
+          .eq('id', currentSchedule.id);
+        toast.success('Planejamento reaberto.');
+      } else {
+        const { error } = await supabase
+          .from('monthly_schedules')
+          .update({ status: newStatus } as any)
+          .eq('id', currentSchedule.id);
+        if (error) throw error;
+        toast.success(`Status alterado para ${newStatus}.`);
+      }
 
-      setSchedules(prev =>
-        prev.map(s => (s.id === currentSchedule.id ? { ...s, status: newStatus } : s))
-      );
-
-      const messages = {
-        Rascunho: 'Escala marcada como rascunho.',
-        Publicada: 'Escala marcada como publicada.',
-        Fechada: 'Escala fechada.',
-      };
-      toast.success(messages[newStatus]);
+      await loadSchedules();
       setStatusChangeDialog(null);
     } catch (err: any) {
       console.error('Error updating schedule status:', err);
-      toast.error('Erro ao alterar status: ' + (err.message || 'desconhecido'));
+      toast.error('Erro: ' + (err.message || 'desconhecido'));
     } finally {
       setStatusChangeLoading(false);
     }
@@ -823,11 +852,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const requestPublish = () =>
     setStatusChangeDialog({
       targetStatus: 'Publicada',
-      title: 'Marcar escala como Publicada?',
+      title: 'Finalizar planejamento desta escala?',
       message:
-        'Apenas um rótulo de status (informativo). Não afeta o snapshot da Planejada — esse já é capturado automaticamente na criação de cada plantão.',
+        'A Planejada será CONGELADA exatamente como está agora. A partir daqui:\n\n• Edições em plantões existentes → vão apenas para a Realizada (Planejada preservada)\n• Novos plantões adicionados → aparecem só na Realizada (não fazem parte da Planejada original)\n• Exclusões → somem da Realizada mas continuam na Planejada\n\nUse este botão quando terminar de montar a escala e quiser que dali pra frente tudo seja tratado como "exceção".',
       variant: 'default',
-      confirmLabel: 'Marcar como Publicada',
+      confirmLabel: 'Finalizar planejamento',
     });
 
   const requestClose = () =>
@@ -2267,6 +2296,31 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 <Plus className="w-4 h-4" aria-hidden="true" />
                 Nova Escala
               </button>
+
+              {/* Finalizar Planejamento — congela a Planejada e separa novas alterações para a Realizada */}
+              {currentSchedule && !isPublished && canEditSchedule && (
+                <button
+                  onClick={requestPublish}
+                  title="Congela a Planejada atual. A partir daqui, novos plantões e edições só afetam a Realizada."
+                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-emerald-600 text-white border border-emerald-700 rounded-lg hover:bg-emerald-700 shadow-sm transition-colors text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                >
+                  <Lock className="w-4 h-4" aria-hidden="true" />
+                  Finalizar Planejamento
+                </button>
+              )}
+
+              {/* Reabrir Planejamento — admin only */}
+              {currentSchedule && isPublished && isAdmin() && (
+                <button
+                  onClick={requestReopen}
+                  title="Reabre o planejamento para edição direta da Planejada (apenas Administrador)"
+                  className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 bg-white text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                >
+                  <Unlock className="w-4 h-4" aria-hidden="true" />
+                  Reabrir Planejamento
+                </button>
+              )}
+
               {/* "Adicionar Profissional" só aparece no Modo Edição
                   (botão equivalente está abaixo, no bloco de editMode) */}
               {currentSchedule && (
@@ -2519,39 +2573,59 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 Setor: {departments.find(d => d.id === selectedDepartment)?.name}
               </p>
               {currentSchedule && (
-                <div
-                  className={`mt-3 flex items-start gap-3 rounded-lg border-l-4 px-4 py-3 ${
-                    viewMode === 'planejada'
-                      ? 'bg-blue-50 border-blue-500 text-blue-900'
-                      : 'bg-orange-50 border-orange-500 text-orange-900'
-                  }`}
-                  role="status"
-                  aria-live="polite"
-                >
+                <>
                   <div
-                    className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                      viewMode === 'planejada' ? 'bg-blue-600' : 'bg-orange-600'
+                    className={`mt-3 flex items-start gap-3 rounded-lg border-l-4 px-4 py-3 ${
+                      viewMode === 'planejada'
+                        ? 'bg-blue-50 border-blue-500 text-blue-900'
+                        : 'bg-orange-50 border-orange-500 text-orange-900'
                     }`}
+                    role="status"
+                    aria-live="polite"
                   >
-                    {viewMode === 'planejada' ? (
-                      <Calendar className="w-5 h-5 text-white" aria-hidden="true" />
+                    <div
+                      className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                        viewMode === 'planejada' ? 'bg-blue-600' : 'bg-orange-600'
+                      }`}
+                    >
+                      {viewMode === 'planejada' ? (
+                        <Calendar className="w-5 h-5 text-white" aria-hidden="true" />
+                      ) : (
+                        <ArrowLeftRight className="w-5 h-5 text-white" aria-hidden="true" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-base">
+                        {viewMode === 'planejada'
+                          ? 'Você está vendo a escala PLANEJADA (original)'
+                          : 'Você está vendo a escala REALIZADA (com alterações)'}
+                      </p>
+                      <p className="text-sm mt-0.5 opacity-90">
+                        {viewMode === 'planejada'
+                          ? 'Esta é a versão original criada pela coordenadora, intocável. Para ver o que aconteceu de fato com ausências e trocas, clique em REALIZADA no topo.'
+                          : 'Mostra o estado atual com ausências, coberturas e trocas aplicadas. Células com ponto vermelho indicam divergência da Planejada. Clique em PLANEJADA no topo para ver a original.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status de finalização da Planejada */}
+                  <div className="mt-2">
+                    {isPublished ? (
+                      <span
+                        title={`Finalizada em ${new Date((currentSchedule as any).published_at).toLocaleString('pt-BR')}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-300"
+                      >
+                        <Lock className="w-3.5 h-3.5" />
+                        Planejamento finalizado em {new Date((currentSchedule as any).published_at).toLocaleDateString('pt-BR')}
+                      </span>
                     ) : (
-                      <ArrowLeftRight className="w-5 h-5 text-white" aria-hidden="true" />
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-300">
+                        <Unlock className="w-3.5 h-3.5" />
+                        Em rascunho — Planejada acompanha a Realizada. Use "Finalizar Planejamento" quando estiver pronta.
+                      </span>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-base">
-                      {viewMode === 'planejada'
-                        ? 'Você está vendo a escala PLANEJADA (original)'
-                        : 'Você está vendo a escala REALIZADA (com alterações)'}
-                    </p>
-                    <p className="text-sm mt-0.5 opacity-90">
-                      {viewMode === 'planejada'
-                        ? 'Esta é a versão original criada pela coordenadora, intocável. Para ver o que aconteceu de fato com ausências e trocas, clique em REALIZADA no topo.'
-                        : 'Mostra o estado atual com ausências, coberturas e trocas aplicadas. Células com ponto vermelho indicam divergência da Planejada. Clique em PLANEJADA no topo para ver a original.'}
-                    </p>
-                  </div>
-                </div>
+                </>
               )}
             </div>
 
