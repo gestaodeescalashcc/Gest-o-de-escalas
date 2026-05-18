@@ -539,7 +539,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const startDate = `${year}-${month}-01`;
       const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().slice(0, 10);
 
-      const [allProfsData, shiftsData] = await Promise.all([
+      const [allProfsData, shiftsData, linksData] = await Promise.all([
         supabase
           .from('professionals')
           .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, category:professional_categories!category_id(name), department:departments!department_id(name)')
@@ -553,6 +553,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           .gte('shift_date', startDate)
           .lte('shift_date', endDate)
           .order('shift_date'),
+        // Profissionais explicitamente adicionados à escala (mesmo sem plantões)
+        supabase
+          .from('schedule_professional_links')
+          .select('professional_id')
+          .eq('schedule_id', selectedSchedule),
       ]);
 
       if (allProfsData.error) {
@@ -573,17 +578,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         const shiftsArr = shiftsData.data ?? [];
         setShifts(shiftsArr);
         const profsWithShifts = new Set(shiftsArr.map(s => s.professional_id));
+        const linkedProfIds = new Set(((linksData?.data ?? []) as any[]).map(l => l.professional_id));
 
-        // Se keepCurrent: mantém quem JÁ estava no Set (preserva profissionais
-        // adicionados mas ainda sem turnos, mesmo após auto-fill ou limpeza).
-        // Caso contrário: parte do zero (apenas quem tem turnos).
+        // União: profissionais com plantões + explicitamente vinculados à escala
+        // (estes últimos podem não ter plantão ainda — recém-adicionados).
         setProfessionalIdsInSchedule(prev => {
+          const base = new Set<string>([...profsWithShifts, ...linkedProfIds]);
           if (keepCurrent) {
-            return new Set<string>([...profsWithShifts, ...prev]);
+            for (const id of prev) base.add(id);
           }
-          return profsWithShifts;
+          return base;
         });
-        // `professionals` é derivado via useMemo — não setamos aqui.
       }
       // Recarrega marcações de troca para manter a célula verde após swaps
       loadScheduleSwaps(selectedMonth);
@@ -1053,6 +1058,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             }
 
             setShifts(prev => prev.filter(s => s.professional_id !== professionalId));
+          }
+
+          // Remove o vínculo escala-profissional para que não reapareça ao recarregar
+          if (selectedSchedule) {
+            await supabase
+              .from('schedule_professional_links')
+              .delete()
+              .eq('schedule_id', selectedSchedule)
+              .eq('professional_id', professionalId);
           }
 
           setProfessionalIdsInSchedule(prev => {
@@ -1826,9 +1840,34 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     });
   };
 
-  const handleAddProfessionalToSchedule = (professionalId: string) => {
+  const handleAddProfessionalToSchedule = async (professionalId: string) => {
+    if (!selectedSchedule) return;
+    // Optimistic UI
     setProfessionalIdsInSchedule(prev => new Set([...prev, professionalId]));
     const prof = allProfessionals.find(p => p.id === professionalId);
+
+    // Persiste no banco (link table) — sem isso o profissional sumiria ao recarregar
+    const { error } = await supabase
+      .from('schedule_professional_links')
+      .insert({
+        schedule_id: selectedSchedule,
+        professional_id: professionalId,
+        added_by: user?.id,
+      } as any);
+
+    if (error && (error as any).code !== '23505') {
+      // 23505 = duplicate key, ok (já estava na escala)
+      console.error('Erro ao vincular profissional à escala:', error);
+      toast.error('Erro ao adicionar: ' + error.message);
+      // Reverter UI optimista
+      setProfessionalIdsInSchedule(prev => {
+        const next = new Set(prev);
+        next.delete(professionalId);
+        return next;
+      });
+      return;
+    }
+
     if (prof) {
       setAddProfessionalSuccess(`${prof.full_name} adicionado com sucesso!`);
       setTimeout(() => setAddProfessionalSuccess(null), 3000);
