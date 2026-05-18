@@ -548,7 +548,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           .order('full_name'),
         supabase
           .from('shifts')
-          .select('id, professional_id, shift_date, shift_type, start_time, end_time, original_shift_type, original_start_time, original_end_time, published_at, company_id, original_company_id')
+          .select('id, professional_id, shift_date, shift_type, start_time, end_time, original_shift_type, original_start_time, original_end_time, published_at, company_id, original_company_id, deleted_in_realizada_at')
           .eq('schedule_id', selectedSchedule)
           .gte('shift_date', startDate)
           .lte('shift_date', endDate)
@@ -621,11 +621,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     // - Modo Realizada (ou escala ainda em rascunho):
     //     * Sempre mostra o valor atual.
     if (viewMode === 'planejada' && isPublished) {
+      // Planejada: ignora o soft-delete da Realizada — mostra o original imutável.
       const orig = (shift as any).original_shift_type;
       if (!orig) return '';  // plantão pós-finalização: invisível na planejada
       const shiftType = SHIFT_TYPES.find(st => st.name === orig);
       return shiftType?.code || '';
     }
+
+    // Realizada: se foi soft-deletado, célula fica vazia
+    if ((shift as any).deleted_in_realizada_at) return '';
 
     const shiftType = SHIFT_TYPES.find(st => st.name === shift.shift_type);
     return shiftType?.code || '';
@@ -641,9 +645,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
     const shift = shiftsCache.get(professionalId)?.get(date);
     if (!shift) return '';
+    // Original (Planejada) é IMUTÁVEL — não respeita soft-delete da Realizada
     const name = isPublished && (shift as any).original_shift_type
       ? (shift as any).original_shift_type
-      : shift.shift_type;
+      : (shift as any).deleted_in_realizada_at
+        ? '' // se não há original e foi soft-deletado, nada a mostrar
+        : shift.shift_type;
+    if (!name) return '';
     return SHIFT_TYPES.find(st => st.name === name)?.code || '';
   };
 
@@ -930,13 +938,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       );
 
       if (existingShift) {
+        // Se o shift estava soft-deletado da Realizada, reativa
         const { error } = await supabase
           .from('shifts')
           .update({
             shift_type: shiftType.name,
             start_time: shiftType.start,
             end_time: shiftType.end,
-          })
+            deleted_in_realizada_at: null,
+          } as any)
           .eq('id', existingShift.id);
 
         if (error) {
@@ -947,7 +957,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
 
         setShifts(prev => prev.map(s =>
           s.id === existingShift.id
-            ? { ...s, shift_type: shiftType.name, start_time: shiftType.start, end_time: shiftType.end }
+            ? ({ ...s, shift_type: shiftType.name, start_time: shiftType.start, end_time: shiftType.end, deleted_in_realizada_at: null } as any)
             : s
         ));
       } else {
@@ -1019,15 +1029,36 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       );
 
       if (existingShift) {
-        const { error } = await supabase.from('shifts').delete().eq('id', existingShift.id);
-
-        if (error) {
-          console.error('Erro ao deletar turno:', error);
-          toast.error('Erro ao deletar turno: ' + error.message);
-          return;
+        // Se a escala foi finalizada, NUNCA deletar a linha (perderia o snapshot
+        // da Planejada original). Faz soft delete: marca deleted_in_realizada_at.
+        // Caso a Planejada nunca tenha sido finalizada → DELETE real.
+        const hasPlanejada = (existingShift as any).original_shift_type;
+        if (isPublished && hasPlanejada) {
+          const { error } = await supabase
+            .from('shifts')
+            .update({ deleted_in_realizada_at: new Date().toISOString() } as any)
+            .eq('id', existingShift.id);
+          if (error) {
+            console.error('Erro ao excluir turno (soft):', error);
+            toast.error('Erro ao excluir turno: ' + error.message);
+            return;
+          }
+          setShifts(prev =>
+            prev.map(s =>
+              s.id === existingShift.id
+                ? ({ ...s, deleted_in_realizada_at: new Date().toISOString() } as any)
+                : s
+            )
+          );
+        } else {
+          const { error } = await supabase.from('shifts').delete().eq('id', existingShift.id);
+          if (error) {
+            console.error('Erro ao deletar turno:', error);
+            toast.error('Erro ao deletar turno: ' + error.message);
+            return;
+          }
+          setShifts(prev => prev.filter(s => s.id !== existingShift.id));
         }
-
-        setShifts(prev => prev.filter(s => s.id !== existingShift.id));
         setHasChanges(true);
       }
 
@@ -2786,12 +2817,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                 ? `${cellAbsence.reason_name}\nPlanejado: ${plannedCode || '—'}`
                                 : `${cellAbsence.reason_name} registrada\nTurno planejado: ${plannedCode || '—'}`
                               : undefined;
-                            // Em modo planejada, destaca célula com absence registrada
-                            const hasAbsenceMarkPlanned =
-                              viewMode === 'planejada' && cellAbsence !== undefined && cellAbsence !== null;
+                            // Planejada NUNCA é alterada visualmente por absences/trocas.
+                            // O overlay vermelho de absence vale só na Realizada
+                            // (já tratado pelo getEffectiveShiftCode).
+                            const hasAbsenceMarkPlanned = false;
                             // Célula que sofreu troca de plantão aprovada
                             const cellDateStr = `${selectedMonth}-${String(day).padStart(2, '0')}`;
-                            const isSwapped = swappedCells.has(`${prof.id}|${cellDateStr}`);
+                            // Trocas só impactam a Realizada visualmente (a Planejada
+                            // mostra o estado original imutável).
+                            const isSwapped =
+                              viewMode === 'realizada' && swappedCells.has(`${prof.id}|${cellDateStr}`);
                             const swapTooltip = isSwapped ? 'Plantão envolvido em troca aprovada' : '';
                             // Verifica se este prof COBRIU uma falta nesse dia
                             const coverageAbsence = scheduleAbsences.find(
@@ -2799,7 +2834,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                    cellDateStr >= a.start_date &&
                                    cellDateStr <= a.end_date
                             );
-                            const isCoverage = !!coverageAbsence;
+                            // Coberturas só aparecem na Realizada (Planejada não muda)
+                            const isCoverage = viewMode === 'realizada' && !!coverageAbsence;
                             const coverageTooltip = isCoverage ? 'Cobertura — turno extra' : '';
                             const holidayTooltip = holidayForCell
                               ? `Feriado ${holidayForCell.type}: ${holidayForCell.name}`
