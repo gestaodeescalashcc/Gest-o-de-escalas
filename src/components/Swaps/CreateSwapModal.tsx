@@ -234,7 +234,6 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
   const handleSubmit = async () => {
     setLoading(true);
     const requestingProfId = getRequestingProfessionalId();
-    const now = new Date().toISOString();
 
     try {
       // MÉDICOS: troca vai pra Pendente, aguarda Diretoria Médica. Não aplica
@@ -260,41 +259,18 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
         return;
       }
 
-      // FLUXO PADRÃO (não-médicos): inserir como Aprovada e aplicar imediatamente
-      const { data: inserted, error: insertError } = await supabase
-        .from('shift_swaps')
-        .insert({
-          original_shift_id: formData.original_shift_id,
-          requesting_professional_id: requestingProfId,
-          target_professional_id: formData.target_professional_id,
-          offered_shift_id: formData.offered_shift_id,
-          reason: formData.reason.trim() || 'Troca recíproca aprovada pelo coordenador',
-          status: 'Aprovado',
-          responded_at: now,
-          approved_by: user?.id,
-          approved_at: now,
-        })
-        .select('id');
-      if (insertError) throw insertError;
-      if (!inserted || inserted.length === 0) {
-        throw new Error('A troca não foi registrada (RLS bloqueou). Verifique permissões de "schedules.create" para o seu perfil.');
-      }
-
-      const { data: u1, error: e1 } = await supabase
-        .from('shifts')
-        .update({ professional_id: formData.target_professional_id })
-        .eq('id', formData.original_shift_id)
-        .select('id');
-      if (e1) throw e1;
-      if (!u1 || u1.length === 0) throw new Error('Não foi possível atualizar o plantão original (RLS).');
-
-      const { data: u2, error: e2 } = await supabase
-        .from('shifts')
-        .update({ professional_id: requestingProfId })
-        .eq('id', formData.offered_shift_id)
-        .select('id');
-      if (e2) throw e2;
-      if (!u2 || u2.length === 0) throw new Error('Não foi possível atualizar o plantão oferecido (RLS).');
+      // FLUXO PADRÃO (não-médicos): RPC atômica que insere swap Aprovado
+      // e aplica os UPDATEs nos shifts em uma única transação.
+      // Garante consistência (tudo ou nada) e dispara triggers de validação
+      // anti-conflito e histórico.
+      const { error: rpcError } = await supabase.rpc('create_and_apply_swap', {
+        p_original_shift_id: formData.original_shift_id,
+        p_offered_shift_id: formData.offered_shift_id,
+        p_requesting_professional_id: requestingProfId,
+        p_target_professional_id: formData.target_professional_id,
+        p_reason: formData.reason,
+      });
+      if (rpcError) throw rpcError;
 
       toast.success('Troca aprovada e plantões atualizados.');
       onSuccess();

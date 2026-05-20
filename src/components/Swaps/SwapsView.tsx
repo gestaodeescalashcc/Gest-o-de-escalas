@@ -14,7 +14,7 @@ interface ShiftSwap {
   status: string;
   requested_at: string;
   responded_at: string | null;
-  admin_notes: string | null;
+  notes: string | null;
   requesting_professional: {
     id: string;
     full_name: string;
@@ -224,54 +224,10 @@ export default function SwapsView() {
   const handleApprove = async (swap: ShiftSwap) => {
     setActionLoading(true);
     try {
-      const { data: swapData, error: swapError } = await supabase
-        .from('shift_swaps')
-        .select('original_shift_id, offered_shift_id, requesting_professional_id, target_professional_id')
-        .eq('id', swap.id)
-        .maybeSingle();
-
-      if (swapError) throw swapError;
-      if (!swapData) throw new Error('Troca não encontrada');
-
-      if (swapData.offered_shift_id) {
-        const { error: swap1Error } = await supabase
-          .from('shifts')
-          .update({ professional_id: swapData.target_professional_id })
-          .eq('id', swapData.original_shift_id);
-
-        if (swap1Error) throw swap1Error;
-
-        const { error: swap2Error } = await supabase
-          .from('shifts')
-          .update({ professional_id: swapData.requesting_professional_id })
-          .eq('id', swapData.offered_shift_id);
-
-        if (swap2Error) throw swap2Error;
-      } else {
-        const { error: unassignError } = await supabase
-          .from('shifts')
-          .update({ professional_id: swapData.target_professional_id })
-          .eq('id', swapData.original_shift_id);
-
-        if (unassignError) throw unassignError;
-      }
-
-      const { data: updatedRows, error: updateError } = await supabase
-        .from('shift_swaps')
-        .update({
-          status: 'Aprovado',
-          responded_at: new Date().toISOString(),
-          approved_by: user?.id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('id', swap.id)
-        .select('id');
-
-      if (updateError) throw updateError;
-      if (!updatedRows || updatedRows.length === 0) {
-        throw new Error('Sem permissão para aprovar trocas. Procure um Administrador.');
-      }
-
+      // Aprovação atômica via RPC: troca shifts + marca status em uma única
+      // transação no banco. Garante consistência (se algo falhar, nada é aplicado).
+      const { error } = await supabase.rpc('approve_shift_swap', { p_swap_id: swap.id });
+      if (error) throw error;
       toast.success('Troca aprovada e plantões atualizados com sucesso!');
       loadSwaps();
     } catch (err: any) {
@@ -300,20 +256,12 @@ export default function SwapsView() {
 
     setActionLoading(true);
     try {
-      const { data: updatedRows, error } = await supabase
-        .from('shift_swaps')
-        .update({
-          status: 'Recusado',
-          responded_at: new Date().toISOString(),
-          admin_notes: adminNotes,
-        })
-        .eq('id', selectedSwap.id)
-        .select('id');
-
+      // Recusa atômica via RPC: valida motivo, status e salva em uma transação
+      const { error } = await supabase.rpc('reject_shift_swap', {
+        p_swap_id: selectedSwap.id,
+        p_reason: adminNotes,
+      });
       if (error) throw error;
-      if (!updatedRows || updatedRows.length === 0) {
-        throw new Error('Sem permissão para recusar trocas. Procure um Administrador.');
-      }
       toast.success('Troca recusada com sucesso.');
       setShowRejectModal(false);
       setSelectedSwap(null);
@@ -392,15 +340,15 @@ export default function SwapsView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Trocas de Plantoes</h2>
-          <p className="text-gray-600 mt-1">Gerencie solicitacoes de troca de plantoes</p>
+          <h2 className="text-2xl font-bold text-gray-900">Trocas de Plantões</h2>
+          <p className="text-gray-600 mt-1">Gerencie solicitações de troca de plantões</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
         >
           <Plus className="w-5 h-5" />
-          Nova Solicitacao
+          Nova Solicitação
         </button>
       </div>
 
@@ -471,7 +419,7 @@ export default function SwapsView() {
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 animate-pulse" />
             <p className="text-sm text-red-700">
-              <span className="font-bold">{getUrgentCount()}</span> solicitacoes urgentes (plantoes nos proximos 7 dias)
+              <span className="font-bold">{getUrgentCount()}</span> solicitações urgentes (plantões nos próximos 7 dias)
             </p>
           </div>
         </div>
@@ -534,7 +482,7 @@ export default function SwapsView() {
         ) : filteredSwaps.length === 0 ? (
           <div className="text-center py-12">
             <AlertCircle className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600">Nenhuma solicitacao encontrada</p>
+            <p className="text-gray-600">Nenhuma solicitação encontrada</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -547,8 +495,8 @@ export default function SwapsView() {
                   <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase"></th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Para</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Setor</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Horario</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Acoes</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Horário</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-gray-600 uppercase">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -666,7 +614,7 @@ export default function SwapsView() {
         {filteredSwaps.length > 0 && (
           <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
             <p className="text-sm text-gray-600">
-              Exibindo <span className="font-semibold">{filteredSwaps.length}</span> solicitacao(oes){' '}
+              Exibindo <span className="font-semibold">{filteredSwaps.length}</span> solicitação(ões){' '}
               <span className="font-semibold capitalize">
                 {selectedMonth ? `em ${formatMonthYear(selectedMonth)}` : 'no total'}
               </span>
@@ -729,7 +677,7 @@ export default function SwapsView() {
                       <span className="font-medium">Data:</span> {new Date(selectedSwap.original_shift.shift_date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
                     </p>
                     <p className="text-gray-600">
-                      <span className="font-medium">Horario:</span> {formatTime(selectedSwap.original_shift.start_time)} - {formatTime(selectedSwap.original_shift.end_time)}
+                      <span className="font-medium">Horário:</span> {formatTime(selectedSwap.original_shift.start_time)} - {formatTime(selectedSwap.original_shift.end_time)}
                     </p>
                     <p className="text-gray-600">
                       <span className="font-medium">Setor:</span> {selectedSwap.original_shift.department?.name || 'Sem setor'}
@@ -753,17 +701,17 @@ export default function SwapsView() {
                   </div>
                   {selectedSwap.offered_shift && (
                     <div className="mt-3 text-sm">
-                      <p className="text-xs font-semibold text-blue-700 mb-1">Plantao oferecido em troca:</p>
+                      <p className="text-xs font-semibold text-blue-700 mb-1">Plantão oferecido em troca:</p>
                       <p className="text-gray-600">
                         <span className="font-medium">Data:</span> {new Date(selectedSwap.offered_shift.shift_date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
                       </p>
                       <p className="text-gray-600">
-                        <span className="font-medium">Horario:</span> {formatTime(selectedSwap.offered_shift.start_time)} - {formatTime(selectedSwap.offered_shift.end_time)}
+                        <span className="font-medium">Horário:</span> {formatTime(selectedSwap.offered_shift.start_time)} - {formatTime(selectedSwap.offered_shift.end_time)}
                       </p>
                     </div>
                   )}
                   {!selectedSwap.offered_shift && (
-                    <p className="text-xs text-gray-500 mt-3 italic">Sem plantao oferecido em troca</p>
+                    <p className="text-xs text-gray-500 mt-3 italic">Sem plantão oferecido em troca</p>
                   )}
                 </div>
               </div>
@@ -773,10 +721,10 @@ export default function SwapsView() {
                 <p className="text-sm text-gray-700">{selectedSwap.reason}</p>
               </div>
 
-              {selectedSwap.admin_notes && (
+              {selectedSwap.notes && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <p className="text-xs font-semibold text-amber-700 mb-1">OBSERVACOES DO ADMINISTRADOR</p>
-                  <p className="text-sm text-gray-700">{selectedSwap.admin_notes}</p>
+                  <p className="text-xs font-semibold text-amber-700 mb-1">OBSERVAÇÕES DO ADMINISTRADOR</p>
+                  <p className="text-sm text-gray-700">{selectedSwap.notes}</p>
                 </div>
               )}
 
@@ -820,7 +768,7 @@ export default function SwapsView() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-bold text-gray-900">Recusar Solicitacao</h3>
+              <h3 className="text-xl font-bold text-gray-900">Recusar Solicitação</h3>
               <p className="text-sm text-gray-600 mt-1">Informe o motivo da recusa</p>
             </div>
             <div className="p-6">
