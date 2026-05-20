@@ -76,7 +76,7 @@ export default function MealScheduleView({ onBack }: MealScheduleViewProps = {})
         .from('meal_schedules')
         .select(`
           *,
-          professional:professionals (
+          professional:professionals!professional_id (
             full_name,
             category:professional_categories!category_id (
               name
@@ -206,7 +206,7 @@ export default function MealScheduleView({ onBack }: MealScheduleViewProps = {})
         .from('shifts')
         .select(`
           *,
-          professional:professionals (
+          professional:professionals!professional_id (
             id,
             full_name,
             category_id,

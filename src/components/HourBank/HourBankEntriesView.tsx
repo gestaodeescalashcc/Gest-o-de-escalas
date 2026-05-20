@@ -102,7 +102,7 @@ export function HourBankEntriesView() {
       .from('hour_bank_entries')
       .select(`
         *,
-        professional:professionals(full_name, department_id),
+        professional:professionals!professional_id(full_name, department_id),
         created_by_user:system_users!hour_bank_entries_created_by_fkey(full_name),
         approved_by_user:system_users!hour_bank_entries_approved_by_fkey(full_name)
       `, { count: 'exact' })

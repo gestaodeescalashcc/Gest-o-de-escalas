@@ -53,7 +53,7 @@ describe('Meal Schedules - List', () => {
 
     const { data, error } = await supabase
       .from('meal_schedules')
-      .select('*, professional:professionals(full_name)')
+      .select('*, professional:professionals!professional_id(full_name)')
       .eq('meal_date', '2025-06-01') as unknown as { data: typeof entries; error: null };
 
     expect(mockFrom).toHaveBeenCalledWith('meal_schedules');

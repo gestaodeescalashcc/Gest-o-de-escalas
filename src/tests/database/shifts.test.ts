@@ -44,7 +44,7 @@ describe('Shifts - List by date', () => {
 
     const { data, error } = await supabase
       .from('shifts')
-      .select('*, professional:professionals(full_name), department:departments!department_id(name)')
+      .select('*, professional:professionals!professional_id(full_name), department:departments!department_id(name)')
       .eq('shift_date', '2025-06-01') as unknown as { data: typeof shifts; error: null };
 
     expect(mockFrom).toHaveBeenCalledWith('shifts');

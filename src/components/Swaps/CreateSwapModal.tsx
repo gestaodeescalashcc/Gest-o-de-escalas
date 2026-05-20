@@ -80,7 +80,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
           .select(`
             id, shift_date, start_time, end_time, shift_type,
             department:departments!department_id (id, name),
-            professional:professionals (
+            professional:professionals!professional_id (
               id, full_name,
               category:professional_categories!category_id (name, color)
             )
@@ -135,7 +135,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
           .select(`
             id, shift_date, start_time, end_time, shift_type,
             department:departments!department_id (id, name),
-            professional:professionals (
+            professional:professionals!professional_id (
               id, full_name,
               category:professional_categories!category_id (name, color)
             )

@@ -124,7 +124,7 @@ export function HourBankCompensationsView() {
       .from('hour_bank_compensations')
       .select(`
         *,
-        professional:professionals(full_name, department_id),
+        professional:professionals!professional_id(full_name, department_id),
         requested_by_user:system_users!hour_bank_compensations_requested_by_fkey(full_name),
         approved_by_user:system_users!hour_bank_compensations_approved_by_fkey(full_name)
       `, { count: 'exact' })

@@ -85,7 +85,7 @@ export default function PunchAdjustmentsView() {
         .from('punch_adjustments')
         .select(`
           *,
-          professional:professionals(full_name),
+          professional:professionals!professional_id(full_name),
           original_punch:punch_records(nsr, punch_datetime, punch_type)
         `)
         .order('requested_at', { ascending: false }),
@@ -130,7 +130,7 @@ export default function PunchAdjustmentsView() {
 
     const { data, error } = await supabase
       .from('punch_records')
-      .select('id, nsr, punch_type, punch_datetime, record_hash, professional:professionals(full_name)')
+      .select('id, nsr, punch_type, punch_datetime, record_hash, professional:professionals!professional_id(full_name)')
       .eq('professional_id', professionalId)
       .eq('establishment_id', establishmentId)
       .gte('punch_datetime', thirtyDaysAgo.toISOString())

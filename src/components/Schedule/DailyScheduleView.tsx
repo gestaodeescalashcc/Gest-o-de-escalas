@@ -110,7 +110,7 @@ export default function DailyScheduleView() {
         .from('shifts')
         .select(`
           *,
-          professional:professionals (
+          professional:professionals!professional_id (
             id,
             full_name,
             registration_number,

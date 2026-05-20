@@ -131,7 +131,7 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
         .from('shifts')
         .select(`
           *,
-          professional:professionals (
+          professional:professionals!professional_id (
             full_name,
             category:professional_categories!category_id (
               name,

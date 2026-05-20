@@ -82,7 +82,7 @@ export default function TimesheetReportView() {
         .from('timesheet_records')
         .select(`
           *,
-          professional:professionals(
+          professional:professionals!professional_id(
             id,
             full_name,
             registration_number,

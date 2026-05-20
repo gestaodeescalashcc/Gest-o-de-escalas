@@ -37,7 +37,7 @@ export default function HistoryView() {
           shift:shifts (
             shift_date,
             shift_type,
-            professional:professionals (
+            professional:professionals!professional_id (
               full_name
             )
           )
