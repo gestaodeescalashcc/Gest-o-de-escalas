@@ -155,7 +155,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
   const getSelectedShift = () => shifts.find(s => s.id === formData.original_shift_id);
   const getOfferedShift = () => shifts.find(s => s.id === formData.offered_shift_id);
   const getTargetProfessional = () => professionals.find(p => p.id === formData.target_professional_id);
-  const getRequestingProfessionalId = () => getSelectedShift()?.professional.id || '';
+  const getRequestingProfessionalId = () => getSelectedShift()?.professional?.id || '';
   // Médico: regra especial — pode fazer cessão simples e a troca fica Pendente
   // até aprovação da Diretoria Médica.
   const isDoctorFlow = (() => {
@@ -172,7 +172,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
     const targetId = formData.target_professional_id;
     if (!targetId) return [];
     return shifts.filter(s =>
-      s.professional.id === targetId &&
+      s.professional?.id === targetId &&
       s.id !== formData.original_shift_id
     );
   };
@@ -183,7 +183,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
   useEffect(() => {
     if (formData.offered_shift_id && formData.target_professional_id) {
       const off = shifts.find(s => s.id === formData.offered_shift_id);
-      if (off && off.professional.id !== formData.target_professional_id) {
+      if (off && off.professional?.id !== formData.target_professional_id) {
         setFormData(prev => ({ ...prev, offered_shift_id: '' }));
       }
     }
@@ -506,7 +506,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                       </>
                     ) : (
                       <>
-                        <p className="font-semibold mb-1">Qual plantão de {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'destinatário'} será assumido por {getSelectedShift()?.professional.full_name?.split(' ')[0] ?? 'solicitante'}?</p>
+                        <p className="font-semibold mb-1">Qual plantão de {getTargetProfessional()?.full_name?.split(' ')[0] ?? 'destinatário'} será assumido por {getSelectedShift()?.professional?.full_name?.split(' ')[0] ?? 'solicitante'}?</p>
                         <p className="text-xs">
                           A troca é sempre <strong>recíproca</strong>: cada um troca de dia,
                           todos mantêm o mesmo número de plantões.
@@ -559,7 +559,7 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                               <span>{formatTime(shift.start_time)}-{formatTime(shift.end_time)}</span>
                               <span className="px-2 py-0.5 bg-gray-100 rounded text-xs">{shift.shift_type}</span>
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">{shift.department.name}</div>
+                            <div className="text-xs text-gray-500 mt-1">{shift.department?.name ?? 'Sem setor'}</div>
                           </div>
                           {formData.offered_shift_id === shift.id && (
                             <CheckCircle className="w-6 h-6 text-emerald-600" />
@@ -622,13 +622,13 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                     <div className="flex items-center gap-2 mb-2">
                       <div
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold"
-                        style={{ backgroundColor: selectedShift.professional.category?.color }}
+                        style={{ backgroundColor: selectedShift.professional?.category?.color ?? '#6B7280' }}
                       >
-                        {selectedShift.professional.full_name.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                        {(selectedShift.professional?.full_name ?? 'NA').split(' ').map(n => n[0]).slice(0, 2).join('')}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-gray-900 truncate">{selectedShift.professional.full_name}</p>
-                        <p className="text-xs text-gray-600">{selectedShift.professional.category?.name}</p>
+                        <p className="font-semibold text-sm text-gray-900 truncate">{selectedShift.professional?.full_name ?? 'N/A'}</p>
+                        <p className="text-xs text-gray-600">{selectedShift.professional?.category?.name ?? ''}</p>
                       </div>
                     </div>
                     <div className="text-xs text-gray-700 space-y-1">
@@ -701,8 +701,8 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
                       <p className="text-xs font-semibold text-emerald-800 mb-2">✓ TROCA RECÍPROCA</p>
                       <div className="text-xs text-emerald-900 space-y-1.5">
                         <p>Após aprovação:</p>
-                        <p>• <strong>{selectedShift.professional.full_name.split(' ')[0]}</strong> trabalhará {formatDate(offeredShift.shift_date)}</p>
-                        <p>• <strong>{targetProf.full_name.split(' ')[0]}</strong> trabalhará {formatDate(selectedShift.shift_date)}</p>
+                        <p>• <strong>{(selectedShift.professional?.full_name ?? 'Solicitante').split(' ')[0]}</strong> trabalhará {formatDate(offeredShift.shift_date)}</p>
+                        <p>• <strong>{(targetProf.full_name ?? 'Destinatário').split(' ')[0]}</strong> trabalhará {formatDate(selectedShift.shift_date)}</p>
                         <p className="text-emerald-700 mt-1">Ambos mantêm o mesmo número de plantões.</p>
                       </div>
                     </div>
