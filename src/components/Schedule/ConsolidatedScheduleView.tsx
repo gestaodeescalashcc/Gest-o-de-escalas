@@ -646,12 +646,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
     const shift = shiftsCache.get(professionalId)?.get(date);
     if (!shift) return '';
-    // Original (Planejada) é IMUTÁVEL — não respeita soft-delete da Realizada
-    const name = isPublished && (shift as any).original_shift_type
-      ? (shift as any).original_shift_type
-      : (shift as any).deleted_in_realizada_at
-        ? '' // se não há original e foi soft-deletado, nada a mostrar
-        : shift.shift_type;
+    // Escala finalizada: Planejada = original_shift_type. Se NÃO existe
+    // (shift adicionado pós-finalização), retorna '' — esse plantão não
+    // faz parte da Planejada e a comparação para detectar divergência
+    // (isOverridden) não deve disparar.
+    let name = '';
+    if (isPublished) {
+      name = (shift as any).original_shift_type || '';
+    } else {
+      if ((shift as any).deleted_in_realizada_at) return '';
+      name = shift.shift_type;
+    }
     if (!name) return '';
     return SHIFT_TYPES.find(st => st.name === name)?.code || '';
   };
