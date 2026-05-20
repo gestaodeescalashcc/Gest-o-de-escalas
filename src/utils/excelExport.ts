@@ -1,58 +1,91 @@
 import ExcelJS, { Worksheet, Cell, Style } from 'exceljs';
 import JSZip from 'jszip';
 
-// ExcelJS produz XLSX com algumas inconsistências que fazem o Excel pedir
-// recovery ao abrir o arquivo:
-//   1. <Default Extension="vml"> em [Content_Types].xml sem nenhum .vml no pacote
-//   2. <sheetPr> com filhos em ordem inválida (pageSetUpPr antes de outlinePr)
-//      — OOXML CT_SheetPr exige: tabColor, outlinePr, pageSetUpPr
-// Pós-processamos o zip antes do download para limpar isso.
+// ExcelJS produz XLSX com inconsistências que fazem o Excel pedir recovery
+// ao abrir o arquivo. Pós-processamos o zip antes do download para limpar.
 async function sanitizeXlsxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
   const zip = await JSZip.loadAsync(buffer);
-  let touched = false;
 
+  // 1) [Content_Types].xml: remover <Default Extension="vml"> órfão
   const ctFile = zip.file('[Content_Types].xml');
   if (ctFile) {
     const ct = await ctFile.async('string');
     const hasVmlFile = Object.keys(zip.files).some(name => name.toLowerCase().endsWith('.vml'));
     if (!hasVmlFile) {
       const cleaned = ct.replace(/<Default Extension="vml"[^>]*\/>/g, '');
-      if (cleaned !== ct) {
-        zip.file('[Content_Types].xml', cleaned);
-        touched = true;
-      }
+      if (cleaned !== ct) zip.file('[Content_Types].xml', cleaned);
     }
   }
 
-  // Reordenar filhos de <sheetPr> em todos os worksheets
+  // 2) xl/workbook.xml: limpar inconsistências
+  const wbFile = zip.file('xl/workbook.xml');
+  if (wbFile) {
+    const wb = await wbFile.async('string');
+    const cleaned = sanitizeWorkbookXml(wb);
+    if (cleaned !== wb) zip.file('xl/workbook.xml', cleaned);
+  }
+
+  // 3) Cada worksheet: reordenar <sheetPr> children + limpar
   const sheetFiles = Object.keys(zip.files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/i.test(n));
   for (const name of sheetFiles) {
     const xml = await zip.file(name)!.async('string');
-    const fixed = reorderSheetPrChildren(xml);
-    if (fixed !== xml) {
-      zip.file(name, fixed);
-      touched = true;
-    }
+    const fixed = sanitizeSheetXml(xml);
+    if (fixed !== xml) zip.file(name, fixed);
   }
 
-  if (!touched) return buffer;
   return zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' });
 }
 
-function reorderSheetPrChildren(xml: string): string {
-  // Procura <sheetPr ...>...</sheetPr> e reordena filhos para a ordem do schema:
-  // tabColor, outlinePr, pageSetUpPr
-  return xml.replace(/<sheetPr(\s[^>]*)?>([\s\S]*?)<\/sheetPr>/g, (_full, attrs, inner) => {
+function sanitizeWorkbookXml(xml: string): string {
+  let out = xml;
+  // filterPrivacy="1" em workbookPr sem filtros é o ponto que aciona o recovery
+  // em alguns Excels. Removemos.
+  out = out.replace(/(\s)filterPrivacy="[^"]*"/g, '');
+  // Print_Area com referência mista ($A1:$AN12) — Excel é mais feliz com tudo
+  // absoluto ($A$1:$AN$12). Normaliza qualquer ref no <definedName>.
+  out = out.replace(/<definedName([^>]*)>([^<]+)<\/definedName>/g, (_m, attrs, ref) => {
+    // Adiciona $ antes de números de linha que não tenham
+    const fixed = ref.replace(/(\$?[A-Z]+)(\d+)/g, (_mm: string, col: string, row: string) => {
+      const fixedCol = col.startsWith('$') ? col : '$' + col;
+      return `${fixedCol}$${row}`;
+    });
+    return `<definedName${attrs}>${fixed}</definedName>`;
+  });
+  // Remove <fileVersion .../> (opcional, e às vezes problemático com appName/rupBuild fake)
+  out = out.replace(/<fileVersion[^>]*\/>/g, '');
+  // Remove namespaces mc:Ignorable + xmlns:x15 se não houver nenhum elemento x15:
+  if (!/<x15:|x15:[a-zA-Z]/.test(out)) {
+    out = out.replace(/\s+mc:Ignorable="x15"/g, '');
+    out = out.replace(/\s+xmlns:x15="[^"]*"/g, '');
+    // Se mc:Ignorable ficou vazio, remove namespace mc também
+    if (!/mc:Ignorable=/.test(out) && !/<mc:/.test(out)) {
+      out = out.replace(/\s+xmlns:mc="[^"]*"/g, '');
+    }
+  }
+  return out;
+}
+
+function sanitizeSheetXml(xml: string): string {
+  let out = xml;
+  // Reordenar filhos de <sheetPr>: tabColor, outlinePr, pageSetUpPr
+  out = out.replace(/<sheetPr(\s[^>]*)?>([\s\S]*?)<\/sheetPr>/g, (_full, attrs, inner) => {
     const tabColor = (inner.match(/<tabColor[^>]*\/>/) || [''])[0];
     const outlinePr = (inner.match(/<outlinePr[^>]*\/>/) || [''])[0];
     const pageSetUpPr = (inner.match(/<pageSetUpPr[^>]*\/>/) || [''])[0];
-    // Demais filhos preservados na ordem original (entre os 3 conhecidos e o fim)
-    const known = [tabColor, outlinePr, pageSetUpPr].filter(Boolean);
     let rest = inner;
-    for (const k of known) rest = rest.replace(k, '');
+    for (const k of [tabColor, outlinePr, pageSetUpPr]) if (k) rest = rest.replace(k, '');
     rest = rest.trim();
     return `<sheetPr${attrs || ''}>${tabColor}${outlinePr}${pageSetUpPr}${rest}</sheetPr>`;
   });
+  // Remove namespaces órfãos no <worksheet> root também
+  if (!/<x14ac:|x14ac:[a-zA-Z]/.test(out.replace(/^<\?xml[^>]*\?>/, ''))) {
+    // ainda pode estar referenciado em x14ac:dyDescent etc — verifica
+    if (!/\sx14ac:[a-zA-Z]+=/.test(out)) {
+      out = out.replace(/\s+mc:Ignorable="x14ac"/g, '');
+      out = out.replace(/\s+xmlns:x14ac="[^"]*"/g, '');
+    }
+  }
+  return out;
 }
 
 export interface ProfessionalInfo {
