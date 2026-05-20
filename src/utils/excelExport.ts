@@ -1,22 +1,58 @@
 import ExcelJS, { Worksheet, Cell, Style } from 'exceljs';
 import JSZip from 'jszip';
 
-// ExcelJS sempre adiciona <Default Extension="vml"> em [Content_Types].xml
-// mesmo quando não há nenhum arquivo .vml no pacote. Esse content type órfão
-// faz o Excel pedir recovery ao abrir. Esta função reescreve o zip removendo
-// a entrada órfã.
-async function stripOrphanVmlContentType(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+// ExcelJS produz XLSX com algumas inconsistências que fazem o Excel pedir
+// recovery ao abrir o arquivo:
+//   1. <Default Extension="vml"> em [Content_Types].xml sem nenhum .vml no pacote
+//   2. <sheetPr> com filhos em ordem inválida (pageSetUpPr antes de outlinePr)
+//      — OOXML CT_SheetPr exige: tabColor, outlinePr, pageSetUpPr
+// Pós-processamos o zip antes do download para limpar isso.
+async function sanitizeXlsxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
   const zip = await JSZip.loadAsync(buffer);
+  let touched = false;
+
   const ctFile = zip.file('[Content_Types].xml');
-  if (!ctFile) return buffer;
-  const ct = await ctFile.async('string');
-  // Só remove se de fato não há nenhum arquivo .vml dentro do pacote
-  const hasVmlFile = Object.keys(zip.files).some(name => name.toLowerCase().endsWith('.vml'));
-  if (hasVmlFile) return buffer;
-  const cleaned = ct.replace(/<Default Extension="vml"[^>]*\/>/g, '');
-  if (cleaned === ct) return buffer;
-  zip.file('[Content_Types].xml', cleaned);
+  if (ctFile) {
+    const ct = await ctFile.async('string');
+    const hasVmlFile = Object.keys(zip.files).some(name => name.toLowerCase().endsWith('.vml'));
+    if (!hasVmlFile) {
+      const cleaned = ct.replace(/<Default Extension="vml"[^>]*\/>/g, '');
+      if (cleaned !== ct) {
+        zip.file('[Content_Types].xml', cleaned);
+        touched = true;
+      }
+    }
+  }
+
+  // Reordenar filhos de <sheetPr> em todos os worksheets
+  const sheetFiles = Object.keys(zip.files).filter(n => /^xl\/worksheets\/sheet\d+\.xml$/i.test(n));
+  for (const name of sheetFiles) {
+    const xml = await zip.file(name)!.async('string');
+    const fixed = reorderSheetPrChildren(xml);
+    if (fixed !== xml) {
+      zip.file(name, fixed);
+      touched = true;
+    }
+  }
+
+  if (!touched) return buffer;
   return zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' });
+}
+
+function reorderSheetPrChildren(xml: string): string {
+  // Procura <sheetPr ...>...</sheetPr> e reordena filhos para a ordem do schema:
+  // tabColor, outlinePr, pageSetUpPr
+  return xml.replace(/<sheetPr(\s[^>]*)?>([\s\S]*?)<\/sheetPr>/g, (_full, attrs, inner) => {
+    const tabColor = (inner.match(/<tabColor[^>]*\/>/) || [''])[0];
+    const outlinePr = (inner.match(/<outlinePr[^>]*\/>/) || [''])[0];
+    const pageSetUpPr = (inner.match(/<pageSetUpPr[^>]*\/>/) || [''])[0];
+    // Demais filhos preservados na ordem original (entre os 3 conhecidos e o fim)
+    const known = [tabColor, outlinePr, pageSetUpPr].filter(Boolean);
+    let rest = inner;
+    for (const k of known) rest = rest.replace(k, '');
+    rest = rest.trim();
+    return `<sheetPr${attrs || ''}>${tabColor}${outlinePr}${pageSetUpPr}${rest}</sheetPr>`;
+  });
 }
 
 export interface ProfessionalInfo {
@@ -171,7 +207,7 @@ async function tryExportFromTemplate(data: ExportData): Promise<boolean> {
 
     // Download
     const rawBuffer = await workbook.xlsx.writeBuffer();
-    const outBuffer = await stripOrphanVmlContentType(rawBuffer as ArrayBuffer);
+    const outBuffer = await sanitizeXlsxBuffer(rawBuffer as ArrayBuffer);
     const filename = `${sanitizeFilename(data.scheduleName)}.xlsx`;
     downloadBuffer(outBuffer, filename);
     return true;
@@ -642,7 +678,7 @@ async function exportGeneric(data: ExportData) {
   });
 
   const rawBuffer = await workbook.xlsx.writeBuffer();
-  const outBuffer = await stripOrphanVmlContentType(rawBuffer as ArrayBuffer);
+  const outBuffer = await sanitizeXlsxBuffer(rawBuffer as ArrayBuffer);
   const filename = `${sanitizeFilename(data.scheduleName)}.xlsx`;
   downloadBuffer(outBuffer, filename);
 }
