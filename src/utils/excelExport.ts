@@ -1,4 +1,23 @@
 import ExcelJS, { Worksheet, Cell, Style } from 'exceljs';
+import JSZip from 'jszip';
+
+// ExcelJS sempre adiciona <Default Extension="vml"> em [Content_Types].xml
+// mesmo quando não há nenhum arquivo .vml no pacote. Esse content type órfão
+// faz o Excel pedir recovery ao abrir. Esta função reescreve o zip removendo
+// a entrada órfã.
+async function stripOrphanVmlContentType(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+  const zip = await JSZip.loadAsync(buffer);
+  const ctFile = zip.file('[Content_Types].xml');
+  if (!ctFile) return buffer;
+  const ct = await ctFile.async('string');
+  // Só remove se de fato não há nenhum arquivo .vml dentro do pacote
+  const hasVmlFile = Object.keys(zip.files).some(name => name.toLowerCase().endsWith('.vml'));
+  if (hasVmlFile) return buffer;
+  const cleaned = ct.replace(/<Default Extension="vml"[^>]*\/>/g, '');
+  if (cleaned === ct) return buffer;
+  zip.file('[Content_Types].xml', cleaned);
+  return zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' });
+}
 
 export interface ProfessionalInfo {
   id: string;
@@ -151,9 +170,10 @@ async function tryExportFromTemplate(data: ExportData): Promise<boolean> {
     fillData(sourceWs, layout, data, year, monthNum);
 
     // Download
-    const outBuffer = await workbook.xlsx.writeBuffer();
+    const rawBuffer = await workbook.xlsx.writeBuffer();
+    const outBuffer = await stripOrphanVmlContentType(rawBuffer as ArrayBuffer);
     const filename = `${sanitizeFilename(data.scheduleName)}.xlsx`;
-    downloadBuffer(outBuffer as ArrayBuffer, filename);
+    downloadBuffer(outBuffer, filename);
     return true;
   } catch (err) {
     console.error('Erro ao exportar usando template:', err);
@@ -621,9 +641,10 @@ async function exportGeneric(data: ExportData) {
     ws.getCell(lr, lc + 1).font = { name: 'Arial', size: 9 };
   });
 
-  const outBuffer = await workbook.xlsx.writeBuffer();
+  const rawBuffer = await workbook.xlsx.writeBuffer();
+  const outBuffer = await stripOrphanVmlContentType(rawBuffer as ArrayBuffer);
   const filename = `${sanitizeFilename(data.scheduleName)}.xlsx`;
-  downloadBuffer(outBuffer as ArrayBuffer, filename);
+  downloadBuffer(outBuffer, filename);
 }
 
 /**
