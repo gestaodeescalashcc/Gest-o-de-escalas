@@ -243,39 +243,53 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     return cache;
   }, [shifts]);
 
+  // Helper: retorna o shift_type "efetivo" do shift de acordo com o modo atual
+  // de visualização. Crucial para totais (horas/dias) baterem com a grade.
+  const getEffectiveShiftType = (shift: any): string | null => {
+    if (viewMode === 'planejada' && isPublished) {
+      // Planejada: usa snapshot original. Se NULL (shift adicionado pós-finalização)
+      // → não faz parte da Planejada, ignorar nos totais.
+      return (shift.original_shift_type as string) || null;
+    }
+    // Realizada (ou rascunho): pula plantões soft-deletados
+    if (shift.deleted_in_realizada_at) return null;
+    return shift.shift_type;
+  };
+
   const totalHoursCache = useMemo(() => {
     const cache = new Map<string, number>();
-
     professionals.forEach(prof => {
       const professionalShifts = shifts.filter(s => s.professional_id === prof.id);
       let totalHours = 0;
-
       professionalShifts.forEach(shift => {
-        const shiftType = SHIFT_TYPES.find(st => st.name === shift.shift_type);
-        if (shiftType) {
-          totalHours += shiftType.hours;
-        }
+        const name = getEffectiveShiftType(shift);
+        if (!name) return;
+        const shiftType = SHIFT_TYPES.find(st => st.name === name);
+        if (shiftType) totalHours += shiftType.hours;
       });
-
       cache.set(prof.id, totalHours);
     });
-
     return cache;
-  }, [shifts, professionals]);
+  }, [shifts, professionals, viewMode, isPublished]);
+
+  const NON_WORK_TYPES = new Set([
+    'Folga', 'Feriado', 'Férias', 'Falta',
+    'Licença Prêmio', 'Licença Médica', 'Licença Gestação', 'Afastamento À Serviço',
+  ]);
 
   const workDaysCache = useMemo(() => {
     const cache = new Map<string, number>();
-
     professionals.forEach(prof => {
-      const workDays = shifts.filter(s =>
-        s.professional_id === prof.id &&
-        !['Folga', 'Feriado', 'Férias', 'Falta', 'Licença Prêmio', 'Licença Médica', 'Licença Gestação', 'Afastamento À Serviço'].includes(s.shift_type)
-      ).length;
-      cache.set(prof.id, workDays);
+      const days = shifts.filter(s => {
+        if (s.professional_id !== prof.id) return false;
+        const name = getEffectiveShiftType(s);
+        if (!name) return false;
+        return !NON_WORK_TYPES.has(name);
+      }).length;
+      cache.set(prof.id, days);
     });
-
     return cache;
-  }, [shifts, professionals]);
+  }, [shifts, professionals, viewMode, isPublished]);
 
   useEffect(() => {
     loadDepartments();
