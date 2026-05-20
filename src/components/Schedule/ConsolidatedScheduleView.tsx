@@ -2810,13 +2810,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             const code = getEffectiveShiftCode(prof.id, day);
                             const plannedCode = getShiftCode(prof.id, day);
                             const cellAbsence = findAbsenceForCell(prof.id, day);
-                            const originalCode = getOriginalShiftCode(prof.id, day);
-                            // Marca célula como divergente:
-                            // - Em realizada: quando o realizado (com ausências) difere do planejado/original
-                            // - Em planejada (publicada): quando o atual difere do original (alguém editou)
-                            const isOverridden =
-                              (viewMode === 'realizada' && code !== plannedCode && plannedCode !== '') ||
-                              (isPublished && originalCode !== '' && originalCode !== plannedCode);
+                            // Indicador visual de divergência DESATIVADO — a Planejada
+                            // e a Realizada são vistas independentes e INTACTAS. Sem
+                            // bordas vermelhas, sem pontos de aviso. Quem quiser ver
+                            // a diferença alterna entre as abas.
+                            const isOverridden = false;
                             const holidayForCell = getHolidayForDay(day);
                             const isWeekend = ['SAB', 'DOM'].includes(getDayOfWeek(day)) || !!holidayForCell;
                             // Tooltip: mostra info de ausência sempre que houver
@@ -2848,11 +2846,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             const holidayTooltip = holidayForCell
                               ? `Feriado ${holidayForCell.type}: ${holidayForCell.name}`
                               : '';
-                            const diffTooltip =
-                              isPublished && originalCode !== '' && originalCode !== plannedCode
-                                ? `Planejado original: ${originalCode}\nAtual: ${plannedCode || '—'}`
-                                : '';
-                            const finalTooltip = [tooltip, swapTooltip, coverageTooltip, holidayTooltip, diffTooltip].filter(Boolean).join('\n');
+                            const finalTooltip = [tooltip, swapTooltip, coverageTooltip, holidayTooltip].filter(Boolean).join('\n');
                             return (
                               <td
                                 key={day}
