@@ -146,6 +146,17 @@ const SHIFT_COLORS: Record<string, { bg: string; font: string }> = {
 
 const DEFAULT_COLOR = { bg: 'FFFFFFFF', font: 'FF000000' };
 
+// Cores para destacar SAB (azul) e DOM (rosa) nas colunas inteiras
+const SAT_BG = 'FFBFDBFE';
+const SUN_BG = 'FFFECDD3';
+
+function weekendBg(year: number, month: number, day: number): string | null {
+  const dow = new Date(year, month - 1, day).getDay();
+  if (dow === 6) return SAT_BG;
+  if (dow === 0) return SUN_BG;
+  return null;
+}
+
 function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
@@ -396,11 +407,11 @@ function updateWeekdayHeader(ws: Worksheet, layout: SheetLayout, year: number, m
       cell.value = DAY_OF_WEEK_PT[dow];
       // Distinguir SAB (azul claro) e DOM (rosa/salmão) — também no número do dia
       if (dow === 6) { // SAB
-        const fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFBFDBFE' } };
+        const fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: SAT_BG } };
         cell.fill = fill;
         dayCell.fill = fill;
       } else if (dow === 0) { // DOM
-        const fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFECDD3' } };
+        const fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: SUN_BG } };
         cell.fill = fill;
         dayCell.fill = fill;
       }
@@ -488,35 +499,27 @@ function fillData(
     const profShifts = data.shiftsByProf.get(prof.id);
     let workDays = 0;
     let totalHours = 0;
-    if (profShifts) {
-      for (let day = 1; day <= daysInMonth; day++) {
-        const code = profShifts.get(day);
-        const col = layout.firstDayCol + (day - 1);
-        const cell = targetRow.getCell(col);
-        if (code) {
-          cell.value = code;
-          // Aplicar cor baseada no código
-          const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
-          cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: colors.bg },
-          };
-          cell.font = {
-            ...(cell.font ?? {}),
-            color: { argb: colors.font },
-            bold: true,
-          };
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          // Contar horas trabalhadas (P=24, MT=8, SD/SN=12, M/T=6, M2=4)
-          const hours: Record<string, number> = {
-            P: 24, '24': 24, MT: 8, SD: 12, SN: 12, M: 6, T: 6, M2: 4,
-          };
-          if (hours[code]) {
-            workDays++;
-            totalHours += hours[code];
-          }
+    for (let day = 1; day <= daysInMonth; day++) {
+      const code = profShifts?.get(day);
+      const col = layout.firstDayCol + (day - 1);
+      const cell = targetRow.getCell(col);
+      const wkBg = weekendBg(year, month, day);
+      if (code) {
+        cell.value = code;
+        const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.bg } };
+        cell.font = { ...(cell.font ?? {}), color: { argb: colors.font }, bold: true };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        const hours: Record<string, number> = {
+          P: 24, '24': 24, MT: 8, SD: 12, SN: 12, M: 6, T: 6, M2: 4,
+        };
+        if (hours[code]) {
+          workDays++;
+          totalHours += hours[code];
         }
+      } else if (wkBg) {
+        // Célula vazia em fim de semana: aplicar tinta SAB/DOM
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: wkBg } };
       }
     }
 
@@ -580,9 +583,12 @@ function appendDailyTotals(
         top: { style: 'thin' }, bottom: { style: 'thin' },
         left: { style: 'thin' }, right: { style: 'thin' },
       };
+      const wkBg = weekendBg(year, month, day);
       if (count > 0) {
         const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.bg } };
+      } else if (wkBg) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: wkBg } };
       }
     }
   });
