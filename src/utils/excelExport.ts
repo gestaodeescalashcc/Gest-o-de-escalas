@@ -608,164 +608,304 @@ async function exportGeneric(data: ExportData) {
   const monthName = MONTH_NAMES_PT[monthNum - 1];
   const daysInMonth = getDaysInMonth(year, monthNum);
 
+  // Layout fixo: 1=MAT, 2=NOME, 3=FUNÇÃO, 4=DIAS TRAB., 5..(5+days-1)=dias, last=TOTAL HORAS
+  const firstDayCol = 5;
+  const lastDayCol = firstDayCol + daysInMonth - 1;
+  const totalCol = lastDayCol + 1;
+
   const ws = workbook.addWorksheet(`${monthName} ${String(year).slice(-2)}`, {
-    pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1 },
+    pageSetup: {
+      orientation: 'landscape',
+      paperSize: 9,
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      horizontalCentered: true,
+    },
     views: [{ state: 'frozen', xSplit: 4, ySplit: 4 }],
   });
 
-  // Linha 1: título
-  ws.mergeCells(1, 1, 1, 4 + daysInMonth + 1);
-  const titleCell = ws.getCell(1, 1);
-  titleCell.value = `ESCALA DE SERVIÇO - ${data.departmentName}`;
-  titleCell.font = { name: 'Arial', size: 14, bold: true };
-  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  titleCell.fill = {
-    type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' },
+  const HOURS_BY_CODE: Record<string, number> = {
+    P: 24, '24': 24, MT: 8, SD: 12, SN: 12, M: 6, T: 6, M2: 4,
   };
-  titleCell.font = { ...titleCell.font, color: { argb: 'FFFFFFFF' } };
-  ws.getRow(1).height = 28;
 
-  // Linha 2: setor / mês
-  ws.mergeCells(2, 1, 2, 4 + daysInMonth + 1);
+  // === Linha 1: título principal ===
+  ws.mergeCells(1, 1, 1, totalCol);
+  const titleCell = ws.getCell(1, 1);
+  titleCell.value = 'ESCALA DE SERVIÇO';
+  titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+  ws.getRow(1).height = 32;
+
+  // === Linha 2: setor / mês-ano ===
+  ws.mergeCells(2, 1, 2, totalCol);
   const subtitleCell = ws.getCell(2, 1);
-  subtitleCell.value = `Setor: ${data.departmentName}    |    Mês/Ano: ${monthName} / ${year}`;
+  subtitleCell.value = `${data.departmentName}    •    ${monthName} / ${year}`;
   subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-  subtitleCell.font = { name: 'Arial', size: 11, bold: true };
+  subtitleCell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF1F2937' } };
+  subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
   ws.getRow(2).height = 22;
 
-  // Linha 3: dias da semana
-  // Linha 4: números dos dias (header)
-  const headerRow = 4;
+  // === Linhas 3 e 4: cabeçalho (dias da semana + número do dia) ===
   const weekdayRow = 3;
+  const headerRow = 4;
 
-  ws.getCell(headerRow, 1).value = 'MATRÍCULA';
-  ws.getCell(headerRow, 2).value = 'NOME';
-  ws.getCell(headerRow, 3).value = 'FUNÇÃO';
-  ws.getCell(headerRow, 4).value = 'DIAS TRAB.';
+  // Rótulos das colunas fixas — merge vertical de weekdayRow+headerRow
+  const fixedLabels: Array<[number, string]> = [
+    [1, 'MATRÍCULA'],
+    [2, 'NOME'],
+    [3, 'FUNÇÃO'],
+    [4, 'DIAS\nTRAB.'],
+    [totalCol, 'TOTAL\nHORAS'],
+  ];
+  for (const [col, label] of fixedLabels) {
+    ws.mergeCells(weekdayRow, col, headerRow, col);
+    const c = ws.getCell(weekdayRow, col);
+    c.value = label;
+    c.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+    c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
+    c.border = {
+      top: { style: 'thin' }, bottom: { style: 'thin' },
+      left: { style: 'thin' }, right: { style: 'thin' },
+    };
+  }
 
+  // Dias da semana + número do dia
   for (let day = 1; day <= daysInMonth; day++) {
-    const col = 4 + day;
-    ws.getCell(headerRow, col).value = day;
+    const col = firstDayCol + (day - 1);
     const dow = new Date(year, monthNum - 1, day).getDay();
-    ws.getCell(weekdayRow, col).value = DAY_OF_WEEK_PT[dow];
-  }
-  const totalCol = 4 + daysInMonth + 1;
-  ws.getCell(headerRow, totalCol).value = 'TOTAL HORAS';
-
-  // Estilizar header
-  for (let c = 1; c <= totalCol; c++) {
-    const cell = ws.getCell(headerRow, c);
-    cell.font = { name: 'Arial', size: 9, bold: true };
-    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-    cell.fill = {
-      type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' },
+    const wkBg = dow === 6 ? SAT_BG : dow === 0 ? SUN_BG : null;
+    const wdCell = ws.getCell(weekdayRow, col);
+    wdCell.value = DAY_OF_WEEK_PT[dow];
+    wdCell.font = { name: 'Arial', size: 8, bold: true, color: { argb: 'FFFFFFFF' } };
+    wdCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    wdCell.fill = {
+      type: 'pattern', pattern: 'solid',
+      fgColor: { argb: wkBg ?? 'FF334155' },
     };
-    cell.border = {
+    if (wkBg) wdCell.font = { ...wdCell.font, color: { argb: 'FF1F2937' } };
+    wdCell.border = {
+      top: { style: 'thin' }, bottom: { style: 'thin' },
+      left: { style: 'thin' }, right: { style: 'thin' },
+    };
+
+    const dnCell = ws.getCell(headerRow, col);
+    dnCell.value = day;
+    dnCell.font = { name: 'Arial', size: 9, bold: true };
+    dnCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    dnCell.fill = {
+      type: 'pattern', pattern: 'solid',
+      fgColor: { argb: wkBg ?? 'FFE5E7EB' },
+    };
+    dnCell.border = {
       top: { style: 'thin' }, bottom: { style: 'thin' },
       left: { style: 'thin' }, right: { style: 'thin' },
     };
   }
-  for (let c = 5; c <= 4 + daysInMonth; c++) {
-    const cell = ws.getCell(weekdayRow, c);
-    cell.font = { name: 'Arial', size: 8, bold: true, color: { argb: 'FF6B7280' } };
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = {
-      top: { style: 'thin' }, bottom: { style: 'thin' },
-      left: { style: 'thin' }, right: { style: 'thin' },
-    };
-  }
+  ws.getRow(weekdayRow).height = 18;
+  ws.getRow(headerRow).height = 20;
 
-  // Larguras das colunas
-  ws.getColumn(1).width = 12;
-  ws.getColumn(2).width = 30;
-  ws.getColumn(3).width = 22;
-  ws.getColumn(4).width = 8;
-  for (let c = 5; c <= 4 + daysInMonth; c++) ws.getColumn(c).width = 4.5;
-  ws.getColumn(totalCol).width = 10;
+  // === Larguras das colunas ===
+  ws.getColumn(1).width = 10;   // matrícula
+  ws.getColumn(2).width = 32;   // nome
+  ws.getColumn(3).width = 22;   // função
+  ws.getColumn(4).width = 8;    // dias trab
+  for (let c = firstDayCol; c <= lastDayCol; c++) ws.getColumn(c).width = 4.8;
+  ws.getColumn(totalCol).width = 9;
 
-  // Dados
+  // === Dados dos profissionais ===
   const dataStartRow = headerRow + 1;
   data.professionals.forEach((prof, idx) => {
     const r = dataStartRow + idx;
     const row = ws.getRow(r);
-    row.height = 22;
+    row.height = prof.coren ? 30 : 22;
 
-    row.getCell(1).value = prof.registration_number ?? '';
+    // Zebra
+    const zebra = idx % 2 === 0 ? 'FFFFFFFF' : 'FFF9FAFB';
+
+    // Matrícula
+    const mCell = row.getCell(1);
+    mCell.value = prof.registration_number ?? '';
+    mCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    mCell.font = { name: 'Arial', size: 9 };
+    mCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: zebra } };
+
+    // Nome (com COREN se houver)
+    const nCell = row.getCell(2);
     if (prof.coren) {
-      row.getCell(2).value = {
+      nCell.value = {
         richText: [
-          { text: prof.full_name, font: { name: 'Arial', size: 9, bold: true } },
+          { text: prof.full_name ?? '', font: { name: 'Arial', size: 10, bold: true, color: { argb: 'FF111827' } } },
           { text: `\nCOREN: ${prof.coren}`, font: { name: 'Arial', size: 8, color: { argb: 'FF065F46' }, italic: true } },
         ],
       };
     } else {
-      row.getCell(2).value = prof.full_name;
+      nCell.value = prof.full_name ?? '';
+      nCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF111827' } };
     }
-    row.getCell(2).alignment = { wrapText: true, vertical: 'middle' };
-    row.getCell(3).value = prof.category_name ?? '';
+    nCell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'left', indent: 1 };
+    nCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: zebra } };
 
+    // Função
+    const fCell = row.getCell(3);
+    fCell.value = prof.category_name ?? '';
+    fCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+    fCell.font = { name: 'Arial', size: 9, color: { argb: 'FF374151' } };
+    fCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: zebra } };
+
+    // Turnos por dia + cômputo de dias trabalhados e horas
     let workDays = 0;
     let totalHours = 0;
     const profShifts = data.shiftsByProf.get(prof.id);
-    if (profShifts) {
-      for (let day = 1; day <= daysInMonth; day++) {
-        const code = profShifts.get(day);
-        const col = 4 + day;
-        const cell = row.getCell(col);
-        if (code) {
-          cell.value = code;
-          const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
-          cell.fill = {
-            type: 'pattern', pattern: 'solid', fgColor: { argb: colors.bg },
-          };
-          cell.font = {
-            name: 'Arial', size: 9, bold: true, color: { argb: colors.font },
-          };
-          const hours: Record<string, number> = {
-            P: 24, '24': 24, MT: 8, SD: 12, SN: 12, M: 6, T: 6, M2: 4,
-          };
-          if (hours[code]) {
-            workDays++;
-            totalHours += hours[code];
-          }
-        }
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-          bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-          left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-          right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        };
-      }
-    }
-    row.getCell(4).value = workDays;
-    row.getCell(totalCol).value = totalHours > 0 ? `${totalHours}h` : '';
+    for (let day = 1; day <= daysInMonth; day++) {
+      const code = profShifts?.get(day);
+      const col = firstDayCol + (day - 1);
+      const cell = row.getCell(col);
+      const wkBg = weekendBg(year, monthNum, day);
 
-    // Bordas e estilo das células fixas
+      if (code) {
+        cell.value = code;
+        const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.bg } };
+        cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: colors.font } };
+        if (HOURS_BY_CODE[code]) {
+          workDays++;
+          totalHours += HOURS_BY_CODE[code];
+        }
+      } else if (wkBg) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: wkBg } };
+      } else {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: zebra } };
+      }
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+      };
+    }
+
+    // Dias Trabalhados (calculado de verdade)
+    const dtCell = row.getCell(4);
+    dtCell.value = workDays;
+    dtCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF1E3A8A' } };
+    dtCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    dtCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } };
+
+    // Total Horas
+    const thCell = row.getCell(totalCol);
+    thCell.value = totalHours > 0 ? `${totalHours}h` : '';
+    thCell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF1F2937' } };
+    thCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    thCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+
+    // Bordas em todas as células fixas
     for (const c of [1, 2, 3, 4, totalCol]) {
       const cell = row.getCell(c);
-      cell.alignment = { horizontal: c === 2 || c === 3 ? 'left' : 'center', vertical: 'middle' };
-      cell.font = { name: 'Arial', size: 9 };
       cell.border = {
-        top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+        right: { style: 'thin', color: { argb: 'FFE5E7EB' } },
       };
     }
   });
 
-  // Legenda no fim
-  const legendRow = dataStartRow + data.professionals.length + 2;
-  ws.getCell(legendRow, 1).value = 'LEGENDA';
-  ws.getCell(legendRow, 1).font = { name: 'Arial', size: 10, bold: true };
+  // === Linhas de TOTAL por código de turno ===
+  const codesPresent = new Set<string>();
+  data.shiftsByProf.forEach(byDay => byDay.forEach(c => c && codesPresent.add(c)));
+  const orderedCodes = ['SD', 'SN', 'P', 'MT', 'M', 'M2', 'T']
+    .filter(c => codesPresent.has(c))
+    .concat([...codesPresent].filter(c => !['SD', 'SN', 'P', 'MT', 'M', 'M2', 'T'].includes(c)).sort());
+
+  const totalsStartRow = dataStartRow + data.professionals.length;
+  orderedCodes.forEach((code, idx) => {
+    const r = totalsStartRow + idx;
+    const row = ws.getRow(r);
+    row.height = 18;
+
+    const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
+
+    // Rótulo "TOTAL <CODE>" — mesclar colunas 1-3 (matrícula, nome, função)
+    ws.mergeCells(r, 1, r, 3);
+    const lblCell = ws.getCell(r, 1);
+    lblCell.value = `TOTAL ${code}`;
+    lblCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: colors.font } };
+    lblCell.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
+    lblCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.bg } };
+    lblCell.border = {
+      top: { style: 'thin' }, bottom: { style: 'thin' },
+      left: { style: 'thin' }, right: { style: 'thin' },
+    };
+
+    // Total geral do código (col 4 — dias trab/total)
+    let grandTotal = 0;
+    const perDayCounts: number[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      let count = 0;
+      data.shiftsByProf.forEach(byDay => { if (byDay.get(day) === code) count++; });
+      perDayCounts.push(count);
+      grandTotal += count;
+    }
+
+    const totalCell = row.getCell(4);
+    totalCell.value = grandTotal || null;
+    totalCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: colors.font } };
+    totalCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.bg } };
+    totalCell.border = {
+      top: { style: 'thin' }, bottom: { style: 'thin' },
+      left: { style: 'thin' }, right: { style: 'thin' },
+    };
+
+    // Contagem por dia
+    for (let day = 1; day <= daysInMonth; day++) {
+      const col = firstDayCol + (day - 1);
+      const cell = row.getCell(col);
+      const count = perDayCounts[day - 1];
+      cell.value = count || null;
+      cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: colors.font } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      const wkBg = weekendBg(year, monthNum, day);
+      cell.fill = {
+        type: 'pattern', pattern: 'solid',
+        fgColor: { argb: count > 0 ? colors.bg : (wkBg ?? 'FFFFFFFF') },
+      };
+      cell.border = {
+        top: { style: 'thin' }, bottom: { style: 'thin' },
+        left: { style: 'thin' }, right: { style: 'thin' },
+      };
+    }
+
+    // Célula vazia na coluna TOTAL HORAS
+    const thCell = row.getCell(totalCol);
+    thCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.bg } };
+    thCell.border = {
+      top: { style: 'thin' }, bottom: { style: 'thin' },
+      left: { style: 'thin' }, right: { style: 'thin' },
+    };
+  });
+
+  // === Legenda no rodapé ===
+  const legendStartRow = totalsStartRow + orderedCodes.length + 2;
+  ws.mergeCells(legendStartRow, 1, legendStartRow, totalCol);
+  const legendTitle = ws.getCell(legendStartRow, 1);
+  legendTitle.value = 'LEGENDA';
+  legendTitle.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+  legendTitle.alignment = { horizontal: 'center', vertical: 'middle' };
+  legendTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
+  ws.getRow(legendStartRow).height = 22;
+
   const legends: Array<[string, string]> = [
     ['P', 'Plantão 24h (7h às 7h)'],
     ['SD', 'Serviço Diurno (7h às 19h)'],
-    ['D', 'Diarista'],
     ['SN', 'Serviço Noturno (19h às 7h)'],
     ['MT', 'Manhã e Tarde (8h às 17h)'],
     ['M', 'Manhã (7h às 13h)'],
+    ['M2', 'Manhã (8h às 12h)'],
     ['T', 'Tarde (12h às 18h)'],
     ['FG', 'Folga'],
     ['FE', 'Férias'],
@@ -776,9 +916,10 @@ async function exportGeneric(data: ExportData) {
     ['FR', 'Feriado'],
     ['AS', 'Afastamento à Serviço'],
   ];
+  const legPerRow = Math.max(3, Math.floor(totalCol / 5));
   legends.forEach(([code, desc], i) => {
-    const lr = legendRow + 1 + Math.floor(i / 4);
-    const lc = 1 + (i % 4) * 2;
+    const lr = legendStartRow + 1 + Math.floor(i / legPerRow);
+    const lc = 1 + (i % legPerRow) * 5;
     const codeCell = ws.getCell(lr, lc);
     codeCell.value = code;
     const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
@@ -789,8 +930,12 @@ async function exportGeneric(data: ExportData) {
       top: { style: 'thin' }, bottom: { style: 'thin' },
       left: { style: 'thin' }, right: { style: 'thin' },
     };
-    ws.getCell(lr, lc + 1).value = desc;
-    ws.getCell(lr, lc + 1).font = { name: 'Arial', size: 9 };
+
+    ws.mergeCells(lr, lc + 1, lr, lc + 4);
+    const descCell = ws.getCell(lr, lc + 1);
+    descCell.value = desc;
+    descCell.font = { name: 'Arial', size: 9 };
+    descCell.alignment = { vertical: 'middle', indent: 1 };
   });
 
   const rawBuffer = await workbook.xlsx.writeBuffer();
@@ -806,8 +951,14 @@ async function exportGeneric(data: ExportData) {
  * 2. Caso contrário, gera Excel formatado por código (fallback genérico)
  */
 export async function exportScheduleToExcel(data: ExportData): Promise<void> {
-  const usedTemplate = await tryExportFromTemplate(data);
-  if (!usedTemplate) {
-    await exportGeneric(data);
-  }
+  // Gerador limpo é sempre usado. O template antigo (.xlsx) tinha células
+  // mescladas, colunas escondidas e headers rotacionados — gerava saídas
+  // bagunçadas após inserir os dados. Agora montamos o arquivo do zero,
+  // com layout consistente, dias trabalhados calculados de fato, tinta
+  // de SAB/DOM em toda a coluna e linhas de total por código.
+  await exportGeneric(data);
 }
+
+// Função tryExportFromTemplate ainda existe acima mas não é mais chamada,
+// mantida temporariamente caso queiramos reativar com outro template.
+void tryExportFromTemplate;
