@@ -915,10 +915,78 @@ async function exportGeneric(data: ExportData) {
     thCell.border = allBorder;
   });
 
-  // === Linhas em branco até a linha 29 (modelo tem espaço fixo de 20 profissionais) ===
-  const lastDataRow = Math.max(dataStartRow + data.professionals.length - 1, 26);
+  // === Linhas de TOTAL por código de turno, logo após o último profissional ===
+  const codesPresent = new Set<string>();
+  data.shiftsByProf.forEach(byDay => byDay.forEach(c => c && codesPresent.add(c)));
+  const orderedCodes = ['SD', 'SN', 'P', 'MT', 'M', 'M2', 'T']
+    .filter(c => codesPresent.has(c))
+    .concat([...codesPresent].filter(c => !['SD', 'SN', 'P', 'MT', 'M', 'M2', 'T'].includes(c)).sort());
 
-  // === Legenda do modelo (linhas 30-35) ===
+  const totalsStartRow = dataStartRow + data.professionals.length;
+  orderedCodes.forEach((code, idx) => {
+    const r = totalsStartRow + idx;
+    const row = ws.getRow(r);
+    row.height = 18;
+    const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
+    const totalFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: colors.bg } };
+
+    // Mescla colunas A..E para o rótulo "TOTAL <CODE>"
+    ws.mergeCells(r, 1, r, 5);
+    const lblCell = ws.getCell(r, 1);
+    lblCell.value = `TOTAL ${code}`;
+    lblCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: colors.font } };
+    lblCell.alignment = { horizontal: 'right', vertical: 'middle', indent: 1 };
+    lblCell.fill = totalFill;
+    lblCell.border = allBorder;
+
+    // F: grand total do código no mês
+    let grandTotal = 0;
+    const perDayCounts: number[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      let count = 0;
+      data.shiftsByProf.forEach(byDay => { if (byDay.get(day) === code) count++; });
+      perDayCounts.push(count);
+      grandTotal += count;
+    }
+    const gtCell = row.getCell(6);
+    gtCell.value = grandTotal || null;
+    gtCell.font = { name: 'Arial', size: 10, bold: true, color: { argb: colors.font } };
+    gtCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    gtCell.fill = totalFill;
+    gtCell.border = allBorder;
+
+    // G..AK: contagem por dia
+    for (let day = 1; day <= 31; day++) {
+      const col = firstDayCol + (day - 1);
+      const cell = row.getCell(col);
+      const wkBg = day <= daysInMonth ? weekendBg(year, monthNum, day) : null;
+      if (day <= daysInMonth) {
+        const count = perDayCounts[day - 1];
+        cell.value = count || null;
+      }
+      cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: colors.font } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.fill = totalFill;
+      cell.border = wkBg ? {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'medium', color: { argb: wkBg === SAT_BG ? 'FF3B82F6' : 'FFE11D48' } },
+        right: { style: 'medium', color: { argb: wkBg === SAT_BG ? 'FF3B82F6' : 'FFE11D48' } },
+      } : allBorder;
+    }
+
+    // AL, AM, AN: vazias mas com borda + fill
+    ws.getCell(r, subDayCol1).fill = totalFill;
+    ws.getCell(r, subDayCol1).border = allBorder;
+    ws.getCell(r, subDayCol2).fill = totalFill;
+    ws.getCell(r, subDayCol2).border = allBorder;
+    const totHorasCell = row.getCell(totalCol);
+    totHorasCell.fill = totalFill;
+    totHorasCell.border = allBorder;
+  });
+
+  // === Após os totais, a legenda do modelo ===
+  const lastDataRow = Math.max(totalsStartRow + orderedCodes.length - 1, dataStartRow + data.professionals.length - 1, 26);
   const legendBaseRow = lastDataRow + 3;
 
   // A30: 'DATA:    /    /'  (Arial 10 bold)
