@@ -29,19 +29,40 @@ export default function LoginForm({ onSignupClick }: LoginFormProps = {}) {
     emailRef.current?.focus();
   }, []);
 
+  // Médicos logam com CPF. Detecta se o input é CPF (11 dígitos, com ou sem
+  // máscara) e converte para o email sintético usado nas contas dos médicos.
+  // Outros usuários (admin, coordenadores, diretoria) continuam usando email normalmente.
+  const resolveLoginIdentifier = (raw: string): string => {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 11 && !raw.includes('@')) {
+      return `${digits}@medico.medscale.local`;
+    }
+    return raw.trim();
+  };
+
+  const looksLikeCPF = (raw: string) => {
+    const digits = raw.replace(/\D/g, '');
+    return digits.length === 11 && !raw.includes('@');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    const { error } = await signIn(email, password);
+    const identifier = resolveLoginIdentifier(email);
+    const { error } = await signIn(identifier, password);
 
     if (error) {
       const msg = (error.message || '').toLowerCase();
       if (msg.includes('invalid login') || msg.includes('invalid credentials')) {
-        setError('Email ou senha incorretos. Verifique seus dados e tente novamente.');
+        setError(
+          looksLikeCPF(email)
+            ? 'CPF ou senha incorretos. Verifique seus dados.'
+            : 'Email ou senha incorretos. Verifique seus dados.'
+        );
       } else if (msg.includes('email not confirmed')) {
-        setError('Email ainda não confirmado. Procure o administrador.');
+        setError('Conta ainda não confirmada. Procure o administrador.');
       } else if (msg.includes('network') || msg.includes('failed to fetch')) {
         setError('Sem conexão. Verifique sua internet.');
       } else {
@@ -137,7 +158,7 @@ export default function LoginForm({ onSignupClick }: LoginFormProps = {}) {
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Email
+                  CPF ou Email
                 </label>
                 <div className="relative">
                   <Mail
@@ -148,17 +169,20 @@ export default function LoginForm({ onSignupClick }: LoginFormProps = {}) {
                     ref={emailRef}
                     id="email"
                     name="email"
-                    type="email"
-                    autoComplete="email"
+                    type="text"
+                    autoComplete="username"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
                     aria-required="true"
                     aria-invalid={!!error}
-                    placeholder="seu@email.com"
+                    placeholder="CPF (médicos) ou email"
                     className="w-full min-h-[48px] pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   />
                 </div>
+                <p className="mt-1.5 text-xs text-gray-500">
+                  Médicos: use seu CPF (apenas números) e a senha padrão informada.
+                </p>
               </div>
 
               <div>
