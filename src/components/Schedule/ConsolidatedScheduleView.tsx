@@ -218,8 +218,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         if (aOrder !== bOrder) return aOrder - bOrder;
         return (a.full_name ?? '').localeCompare(b.full_name ?? '', 'pt-BR');
       };
+      // Collator com numeric:true para "COLABORADOR 2" vir antes de "COLABORADOR 10"
+      // (sem isso, ordenação lexicográfica põe 10 antes de 2).
+      const collator = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
       const byAlpha = (a: Professional, b: Professional) =>
-        (a.full_name ?? '').localeCompare(b.full_name ?? '', 'pt-BR');
+        collator.compare((a.full_name ?? '').trim(), (b.full_name ?? '').trim());
       const byCreated = (a: Professional, b: Professional) => {
         const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
         const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
