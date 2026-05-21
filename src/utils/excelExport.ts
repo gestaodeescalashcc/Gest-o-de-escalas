@@ -386,12 +386,24 @@ function updateWeekdayHeader(ws: Worksheet, layout: SheetLayout, year: number, m
   if (layout.weekdayRow === layout.headerRow) return;
   const daysInMonth = getDaysInMonth(year, month);
   const row = ws.getRow(layout.weekdayRow);
+  const dayNumRow = ws.getRow(layout.headerRow);
   for (let day = 1; day <= 31; day++) {
     const col = layout.firstDayCol + (day - 1);
     const cell = row.getCell(col);
+    const dayCell = dayNumRow.getCell(col);
     if (day <= daysInMonth) {
       const dow = new Date(year, month - 1, day).getDay();
       cell.value = DAY_OF_WEEK_PT[dow];
+      // Distinguir SAB (azul claro) e DOM (rosa/salmão) — também no número do dia
+      if (dow === 6) { // SAB
+        const fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFBFDBFE' } };
+        cell.fill = fill;
+        dayCell.fill = fill;
+      } else if (dow === 0) { // DOM
+        const fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFECDD3' } };
+        cell.fill = fill;
+        dayCell.fill = fill;
+      }
     } else {
       cell.value = null;
     }
@@ -467,6 +479,8 @@ function fillData(
           ] }
         : prof.full_name;
       nameCell.alignment = { ...(nameCell.alignment ?? {}), wrapText: true, vertical: 'middle' };
+      // Linha mais alta para acomodar nome + COREN sem sobreposição
+      if (prof.coren) targetRow.height = 28;
     }
     if (layout.funcaoCol) targetRow.getCell(layout.funcaoCol).value = prof.category_name ?? '';
 
@@ -508,6 +522,69 @@ function fillData(
 
     if (layout.diasTrabCol) targetRow.getCell(layout.diasTrabCol).value = workDays;
     if (layout.totalHorasCol) targetRow.getCell(layout.totalHorasCol).value = totalHours;
+  });
+
+  // Linha(s) de TOTAL por dia, para cada código de turno que aparece nos dados
+  appendDailyTotals(ws, layout, data, year, month);
+}
+
+function appendDailyTotals(
+  ws: Worksheet,
+  layout: SheetLayout,
+  data: ExportData,
+  year: number,
+  month: number,
+) {
+  const daysInMonth = getDaysInMonth(year, month);
+  // Coletar todos os códigos usados
+  const codesPresent = new Set<string>();
+  data.shiftsByProf.forEach(byDay => byDay.forEach(c => c && codesPresent.add(c)));
+  // Ordem preferida: SD, SN, P, MT, M, M2, T — depois resto
+  const orderedCodes = ['SD', 'SN', 'P', 'MT', 'M', 'M2', 'T']
+    .filter(c => codesPresent.has(c))
+    .concat([...codesPresent].filter(c => !['SD', 'SN', 'P', 'MT', 'M', 'M2', 'T'].includes(c)).sort());
+
+  if (orderedCodes.length === 0) return;
+
+  const startRow = layout.modelDataRow + data.professionals.length;
+
+  orderedCodes.forEach((code, idx) => {
+    const r = startRow + idx;
+    const row = ws.getRow(r);
+    row.height = 18;
+
+    // Rótulo "TOTAL <CODE>" — ocupa colunas de matricula+nome (ou só nome)
+    if (layout.matriculaCol && layout.nameCol) {
+      const labelCell = row.getCell(layout.matriculaCol);
+      labelCell.value = `TOTAL ${code}`;
+      labelCell.font = { name: 'Arial', size: 9, bold: true };
+      labelCell.alignment = { horizontal: 'right', vertical: 'middle' };
+      const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
+      labelCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.bg } };
+      labelCell.border = {
+        top: { style: 'thin' }, bottom: { style: 'thin' },
+        left: { style: 'thin' }, right: { style: 'thin' },
+      };
+    }
+
+    // Contar por dia e preencher
+    for (let day = 1; day <= daysInMonth; day++) {
+      let count = 0;
+      data.shiftsByProf.forEach(byDay => { if (byDay.get(day) === code) count++; });
+      const col = layout.firstDayCol + (day - 1);
+      const cell = row.getCell(col);
+      cell.value = count || null;
+      cell.font = { name: 'Arial', size: 9, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = {
+        top: { style: 'thin' }, bottom: { style: 'thin' },
+        left: { style: 'thin' }, right: { style: 'thin' },
+      };
+      if (count > 0) {
+        const colors = SHIFT_COLORS[code] ?? DEFAULT_COLOR;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors.bg } };
+      }
+    }
   });
 }
 
