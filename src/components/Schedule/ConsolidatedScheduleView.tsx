@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -460,14 +460,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     }
   };
 
+  // Aplicar initialScheduleId APENAS na primeira vez que as escalas carregam
+  // (ou quando o initialScheduleId muda — i.e., usuário navegou para uma URL
+  // diferente). Sem o guard, qualquer recarga de `schedules` (toda volta de
+  // janela / refetch) jogava o usuário de volta pra escala original da URL.
+  const appliedInitialIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (initialScheduleId && schedules.length > 0) {
-      const schedule = schedules.find(s => s.id === initialScheduleId);
-      if (schedule) {
-        setSelectedSchedule(schedule.id);
-        setSelectedDepartment(schedule.department_id);
-        setSelectedMonth(schedule.month.slice(0, 7));
-      }
+    if (!initialScheduleId || schedules.length === 0) return;
+    if (appliedInitialIdRef.current === initialScheduleId) return;
+    const schedule = schedules.find(s => s.id === initialScheduleId);
+    if (schedule) {
+      setSelectedSchedule(schedule.id);
+      setSelectedDepartment(schedule.department_id);
+      setSelectedMonth(schedule.month.slice(0, 7));
+      appliedInitialIdRef.current = initialScheduleId;
     }
   }, [initialScheduleId, schedules]);
 
