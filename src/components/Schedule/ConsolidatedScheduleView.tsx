@@ -2497,24 +2497,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 <Download className="w-4 h-4 text-gray-500" aria-hidden="true" />
                 Exportar Excel
               </button>
-              {/* Seletor de ordenação dos profissionais */}
-              <div className="inline-flex items-center gap-1.5 min-h-[36px] px-2 py-1.5 bg-white border border-gray-200 rounded-md text-sm">
-                <ArrowUpDown className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                <label htmlFor="prof-sort" className="sr-only">Ordenar profissionais</label>
-                <select
-                  id="prof-sort"
-                  value={profSort}
-                  onChange={(e) => setProfSort(e.target.value as SortMode)}
-                  className="bg-transparent text-gray-700 focus:outline-none cursor-pointer"
-                  title="Ordenar profissionais na grade"
-                >
-                  <option value="custom">Ordem personalizada</option>
-                  <option value="alpha_asc">Nome A → Z</option>
-                  <option value="alpha_desc">Nome Z → A</option>
-                  <option value="created_asc">Mais antigos primeiro</option>
-                  <option value="created_desc">Mais recentes primeiro</option>
-                </select>
-              </div>
               {currentSchedule && (
                 <button
                   onClick={() => setShowAuditLog(true)}
@@ -2694,7 +2676,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           />
         ) : (
           <>
-            <div className="mb-6">
+            <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+              <div>
               <h2 className="text-lg font-semibold text-gray-900 capitalize">
                 Mês/Ano: {monthName}
               </h2>
@@ -2742,6 +2725,28 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                       Rascunho
                     </span>
                   )}
+                </div>
+              )}
+              </div>
+
+              {/* Seletor de ordenação — próximo da grade, à direita */}
+              {currentSchedule && professionals.length > 0 && (
+                <div className="inline-flex items-center gap-1.5 min-h-[34px] px-2.5 py-1 bg-white border border-gray-200 rounded-md text-xs shadow-sm">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
+                  <label htmlFor="prof-sort" className="text-gray-600 font-medium">Ordenar:</label>
+                  <select
+                    id="prof-sort"
+                    value={profSort}
+                    onChange={(e) => setProfSort(e.target.value as SortMode)}
+                    className="bg-transparent text-gray-700 font-medium focus:outline-none cursor-pointer"
+                    title="Ordenar profissionais na grade"
+                  >
+                    <option value="custom">Ordem personalizada</option>
+                    <option value="alpha_asc">Nome A → Z</option>
+                    <option value="alpha_desc">Nome Z → A</option>
+                    <option value="created_asc">Mais antigos primeiro</option>
+                    <option value="created_desc">Mais recentes primeiro</option>
+                  </select>
                 </div>
               )}
             </div>
