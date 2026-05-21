@@ -9,6 +9,7 @@ import {
   useLocation,
 } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { usePermissions } from './hooks/usePermissions';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import LoginForm from './components/Auth/LoginForm';
 import DoctorSignupForm from './components/Auth/DoctorSignupForm';
@@ -40,6 +41,7 @@ const TimesheetClockView = lazy(() => import('./components/Timesheet/TimesheetCl
 const TimesheetReportView = lazy(() => import('./components/Timesheet/TimesheetReportView'));
 const PunchMirrorView = lazy(() => import('./components/Timesheet/PunchMirrorView'));
 const PunchAdjustmentsView = lazy(() => import('./components/Timesheet/PunchAdjustmentsView'));
+const MyScheduleView = lazy(() => import('./components/Schedule/MyScheduleView'));
 
 function AppLoadingScreen() {
   return (
@@ -97,8 +99,19 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <AppLoadingScreen />;
-  if (user) return <Navigate to="/escala" replace />;
+  if (user) return <Navigate to="/" replace />;
   return <>{children}</>;
+}
+
+// Redireciona para a tela inicial certa baseada na role:
+// - Médico → /minha-escala (foco em ver os próprios plantões e trocar)
+// - Demais → /escala (visão de gestão)
+function RoleBasedRedirect() {
+  const { user, loading: authLoading } = useAuth();
+  const { roleName, loading: permLoading } = usePermissions();
+  if (authLoading || permLoading) return <AppLoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  return <Navigate to={roleName === 'Médico' ? '/minha-escala' : '/escala'} replace />;
 }
 
 function AppRoutes() {
@@ -109,6 +122,7 @@ function AppRoutes() {
       <Route path="/cadastro-medico" element={<PublicOnly><SignupRoute /></PublicOnly>} />
 
       {/* Protected */}
+      <Route path="/minha-escala" element={<ProtectedLayout><ViewSuspense><MyScheduleView /></ViewSuspense></ProtectedLayout>} />
       <Route path="/escala" element={<ProtectedLayout><ScheduleListRoute /></ProtectedLayout>} />
       <Route path="/escala/:scheduleId" element={<ProtectedLayout><ScheduleDetailRoute /></ProtectedLayout>} />
       <Route path="/escala-diaria" element={<ProtectedLayout><DailyScheduleView /></ProtectedLayout>} />
@@ -134,8 +148,8 @@ function AppRoutes() {
       <Route path="/relatorios" element={<ProtectedLayout><ViewSuspense><ReportsView /></ViewSuspense></ProtectedLayout>} />
 
       {/* Legacy / fallback */}
-      <Route path="/" element={<Navigate to="/escala" replace />} />
-      <Route path="*" element={<Navigate to="/escala" replace />} />
+      <Route path="/" element={<RoleBasedRedirect />} />
+      <Route path="*" element={<RoleBasedRedirect />} />
     </Routes>
   );
 }

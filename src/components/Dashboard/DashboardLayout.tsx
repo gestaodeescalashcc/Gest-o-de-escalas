@@ -54,6 +54,8 @@ interface MenuItem {
   module: Module;
   group: string;
   keywords?: string;
+  /** Quando definido, item só aparece para usuários com essa role. */
+  onlyForRole?: string;
 }
 
 const MENU_GROUPS = [
@@ -64,6 +66,8 @@ const MENU_GROUPS = [
 ] as const;
 
 const MENU_ITEMS: MenuItem[] = [
+  // Médico: tela pessoal — primeiro item, exclusivo da role Médico
+  { id: 'my-schedule', path: '/minha-escala', label: 'Minha Escala', icon: Calendar, module: 'schedules', group: 'schedule', onlyForRole: 'Médico' },
   // Schedule group
   { id: 'consolidated', path: '/escala', label: 'Escala do Mês', icon: LayoutGrid, module: 'schedules', group: 'schedule' },
   { id: 'daily', path: '/escala-diaria', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule' },
@@ -218,10 +222,11 @@ export default function DashboardLayout({
   const visibleItems = useMemo(() => {
     if (permissionsLoading) return [];
     return MENU_ITEMS.filter(item => {
+      if (item.onlyForRole && item.onlyForRole !== roleName) return false;
       if (ADMIN_ONLY.has(item.id)) return isAdmin();
       return canRead(item.module);
     });
-  }, [permissionsLoading, isAdmin, canRead]);
+  }, [permissionsLoading, isAdmin, canRead, roleName]);
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) return visibleItems;
