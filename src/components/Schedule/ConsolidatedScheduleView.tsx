@@ -2676,8 +2676,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           />
         ) : (
           <>
-            <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
-              <div>
+            <div className="mb-6">
               <h2 className="text-lg font-semibold text-gray-900 capitalize">
                 Mês/Ano: {monthName}
               </h2>
@@ -2725,28 +2724,27 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                       Rascunho
                     </span>
                   )}
-                </div>
-              )}
-              </div>
 
-              {/* Seletor de ordenação — próximo da grade, à direita */}
-              {currentSchedule && professionals.length > 0 && (
-                <div className="inline-flex items-center gap-1.5 min-h-[34px] px-2.5 py-1 bg-white border border-gray-200 rounded-md text-xs shadow-sm">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
-                  <label htmlFor="prof-sort" className="text-gray-600 font-medium">Ordenar:</label>
-                  <select
-                    id="prof-sort"
-                    value={profSort}
-                    onChange={(e) => setProfSort(e.target.value as SortMode)}
-                    className="bg-transparent text-gray-700 font-medium focus:outline-none cursor-pointer"
-                    title="Ordenar profissionais na grade"
-                  >
-                    <option value="custom">Ordem personalizada</option>
-                    <option value="alpha_asc">Nome A → Z</option>
-                    <option value="alpha_desc">Nome Z → A</option>
-                    <option value="created_asc">Mais antigos primeiro</option>
-                    <option value="created_desc">Mais recentes primeiro</option>
-                  </select>
+                  {/* Seletor de ordenação — inline com os chips de status */}
+                  {professionals.length > 0 && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold bg-indigo-50 text-indigo-800 ring-1 ring-inset ring-indigo-200">
+                      <ArrowUpDown className="w-3.5 h-3.5" aria-hidden="true" />
+                      <label htmlFor="prof-sort" className="font-semibold">Ordenar:</label>
+                      <select
+                        id="prof-sort"
+                        value={profSort}
+                        onChange={(e) => setProfSort(e.target.value as SortMode)}
+                        className="bg-transparent text-indigo-800 font-semibold focus:outline-none cursor-pointer"
+                        title="Ordenar profissionais na grade"
+                      >
+                        <option value="custom">Ordem personalizada</option>
+                        <option value="alpha_asc">Nome A → Z</option>
+                        <option value="alpha_desc">Nome Z → A</option>
+                        <option value="created_asc">Mais antigos primeiro</option>
+                        <option value="created_desc">Mais recentes primeiro</option>
+                      </select>
+                    </span>
+                  )}
                 </div>
               )}
             </div>
