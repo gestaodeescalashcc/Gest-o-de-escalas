@@ -4,12 +4,13 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Mail,
+  User,
   Lock,
   Loader2,
   ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 interface LoginFormProps {
   onSignupClick?: () => void;
@@ -29,15 +30,22 @@ export default function LoginForm({ onSignupClick }: LoginFormProps = {}) {
     emailRef.current?.focus();
   }, []);
 
-  // Médicos logam com CPF. Detecta se o input é CPF (11 dígitos, com ou sem
-  // máscara) e converte para o email sintético usado nas contas dos médicos.
-  // Outros usuários (admin, coordenadores, diretoria) continuam usando email normalmente.
-  const resolveLoginIdentifier = (raw: string): string => {
-    const digits = raw.replace(/\D/g, '');
-    if (digits.length === 11 && !raw.includes('@')) {
-      return `${digits}@medico.medscale.local`;
-    }
-    return raw.trim();
+  // Resolve o usuário digitado (CPF ou email) para o email canônico do banco.
+  // Tenta primeiro a RPC resolve_login_identifier (autoritativa); cai em
+  // fallback local se a RPC falhar (rede, RPC ausente, etc).
+  const resolveLoginIdentifier = async (raw: string): Promise<string> => {
+    const trimmed = raw.trim();
+    if (!trimmed) return trimmed;
+    // Email completo: passa direto, sem chamar RPC
+    if (trimmed.includes('@')) return trimmed;
+    try {
+      const { data, error } = await supabase.rpc('resolve_login_identifier', { p_identifier: trimmed });
+      if (!error && typeof data === 'string' && data) return data;
+    } catch { /* fallback abaixo */ }
+    // Fallback local: 11 dígitos → email sintético
+    const digits = trimmed.replace(/\D/g, '');
+    if (digits.length === 11) return `${digits}@medico.medscale.local`;
+    return trimmed;
   };
 
   const looksLikeCPF = (raw: string) => {
@@ -50,7 +58,7 @@ export default function LoginForm({ onSignupClick }: LoginFormProps = {}) {
     setError('');
     setLoading(true);
 
-    const identifier = resolveLoginIdentifier(email);
+    const identifier = await resolveLoginIdentifier(email);
     const { error } = await signIn(identifier, password);
 
     if (error) {
@@ -59,7 +67,7 @@ export default function LoginForm({ onSignupClick }: LoginFormProps = {}) {
         setError(
           looksLikeCPF(email)
             ? 'CPF ou senha incorretos. Verifique seus dados.'
-            : 'Email ou senha incorretos. Verifique seus dados.'
+            : 'Usuário ou senha incorretos. Verifique seus dados.'
         );
       } else if (msg.includes('email not confirmed')) {
         setError('Conta ainda não confirmada. Procure o administrador.');
@@ -157,18 +165,18 @@ export default function LoginForm({ onSignupClick }: LoginFormProps = {}) {
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                  CPF ou Email
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Usuário
                 </label>
                 <div className="relative">
-                  <Mail
+                  <User
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
                     aria-hidden="true"
                   />
                   <input
                     ref={emailRef}
-                    id="email"
-                    name="email"
+                    id="username"
+                    name="username"
                     type="text"
                     autoComplete="username"
                     value={email}
@@ -176,12 +184,12 @@ export default function LoginForm({ onSignupClick }: LoginFormProps = {}) {
                     required
                     aria-required="true"
                     aria-invalid={!!error}
-                    placeholder="CPF (médicos) ou email"
+                    placeholder="CPF ou email"
                     className="w-full min-h-[48px] pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   />
                 </div>
                 <p className="mt-1.5 text-xs text-gray-500">
-                  Médicos: use seu CPF (apenas números) e a senha padrão informada.
+                  Médicos do HECC: use seu CPF (só números).
                 </p>
               </div>
 
