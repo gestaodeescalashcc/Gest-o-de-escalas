@@ -2766,15 +2766,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 />
               </div>
             ) : (
-            <div className="overflow-auto -mx-6 px-6" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-              <div className="inline-block min-w-full">
-                <div
-                  className="origin-top-left"
-                  style={{
-                    transform: 'scale(0.85)',
-                    transformOrigin: 'top left',
-                  }}
-                >
+            <div
+              className="origin-top-left -mx-6 px-6"
+              style={{
+                transform: 'scale(0.85)',
+                transformOrigin: 'top left',
+                width: 'calc(100% / 0.85)',
+              }}
+            >
+              <div className="overflow-auto" style={{ maxHeight: 'calc((100vh - 280px) / 0.85)' }}>
+                <div className="inline-block min-w-full">
                   <table className="border-collapse" style={{ fontSize: '11px', width: 'max-content' }}>
                     <thead>
                       <tr className="bg-gray-100">
