@@ -554,13 +554,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const startDate = `${year}-${month}-01`;
       const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().slice(0, 10);
 
-      const [allProfsData, shiftsData, linksData] = await Promise.all([
+      // Busca profissionais via professional_department_links (multi-setor).
+      // Antes filtrávamos só pelo professionals.department_id (primary), o que
+      // escondia médicos vinculados a setores secundários. Agora todo profissional
+      // com vínculo (primary ou secundário) ao setor selecionado aparece.
+      const [primaryProfsData, linkedProfsData, shiftsData, linksData] = await Promise.all([
         supabase
           .from('professionals')
           .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, category:professional_categories!category_id(name), department:departments!department_id(name)')
           .eq('department_id', selectedDepartment)
-          .eq('active', true)
-          .order('full_name'),
+          .eq('active', true),
+        supabase
+          .from('professional_department_links')
+          .select('professional_id, professionals!inner(id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, active, category:professional_categories!category_id(name), department:departments!department_id(name))')
+          .eq('department_id', selectedDepartment)
+          .eq('professionals.active', true),
         supabase
           .from('shifts')
           .select('id, professional_id, shift_date, shift_type, start_time, end_time, original_shift_type, original_start_time, original_end_time, published_at, company_id, original_company_id, deleted_in_realizada_at')
@@ -574,6 +582,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           .select('professional_id')
           .eq('schedule_id', selectedSchedule),
       ]);
+
+      // Une primary + links e deduplica por id
+      const allProfsMap = new Map<string, any>();
+      (primaryProfsData.data ?? []).forEach((p: any) => allProfsMap.set(p.id, p));
+      (linkedProfsData.data ?? []).forEach((row: any) => {
+        const p = row.professionals;
+        if (p && !allProfsMap.has(p.id)) allProfsMap.set(p.id, p);
+      });
+      const allProfsList = Array.from(allProfsMap.values())
+        .sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''));
+      const allProfsData = {
+        data: allProfsList,
+        error: primaryProfsData.error || linkedProfsData.error,
+      };
 
       if (allProfsData.error) {
         console.error('Erro ao carregar profissionais:', allProfsData.error);
