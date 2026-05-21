@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -26,6 +26,7 @@ interface Professional {
   leave_reason?: string | null;
   display_order?: number | null;
   block_separator_after?: boolean;
+  created_at?: string | null;
 }
 
 interface Shift {
@@ -116,6 +117,22 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const [showAddProfessionalModal, setShowAddProfessionalModal] = useState(false);
   const [showCreateScheduleModal, setShowCreateScheduleModal] = useState(false);
   const [allProfessionals, setAllProfessionals] = useState<Professional[]>([]);
+
+  // Ordenação da lista de profissionais na grade.
+  // 'custom' = display_order (padrão atual); 'alpha' = nome A→Z;
+  // 'created' = data de cadastro. Suffix _desc para ordem inversa.
+  type SortMode = 'custom' | 'alpha_asc' | 'alpha_desc' | 'created_asc' | 'created_desc';
+  const SORT_STORAGE_KEY = 'medscale.schedule.profSort';
+  const [profSort, setProfSort] = useState<SortMode>(() => {
+    try {
+      const saved = localStorage.getItem(SORT_STORAGE_KEY);
+      if (saved === 'custom' || saved === 'alpha_asc' || saved === 'alpha_desc' || saved === 'created_asc' || saved === 'created_desc') return saved;
+    } catch { /* noop */ }
+    return 'custom';
+  });
+  useEffect(() => {
+    try { localStorage.setItem(SORT_STORAGE_KEY, profSort); } catch { /* noop */ }
+  }, [profSort]);
   const [professionalIdsInSchedule, setProfessionalIdsInSchedule] = useState<Set<string>>(new Set());
   const [addProfessionalSuccess, setAddProfessionalSuccess] = useState<string | null>(null);
   const [showActionsMenu, setShowActionsMenu] = useState<string | null>(null);
@@ -193,15 +210,29 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const list = allProfessionals.filter(
         p => professionalIdsInSchedule.has(p.id) && !p.on_leave
       );
-      // Ordena por display_order (custom). Quem não tem ordem custom vai pro fim, alfabético.
-      return [...list].sort((a, b) => {
+      const byCustom = (a: Professional, b: Professional) => {
         const aOrder = a.display_order ?? Number.MAX_SAFE_INTEGER;
         const bOrder = b.display_order ?? Number.MAX_SAFE_INTEGER;
         if (aOrder !== bOrder) return aOrder - bOrder;
-        return a.full_name.localeCompare(b.full_name, 'pt-BR');
-      });
+        return (a.full_name ?? '').localeCompare(b.full_name ?? '', 'pt-BR');
+      };
+      const byAlpha = (a: Professional, b: Professional) =>
+        (a.full_name ?? '').localeCompare(b.full_name ?? '', 'pt-BR');
+      const byCreated = (a: Professional, b: Professional) => {
+        const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return ta - tb;
+      };
+      const cmpMap: Record<SortMode, (a: Professional, b: Professional) => number> = {
+        custom: byCustom,
+        alpha_asc: byAlpha,
+        alpha_desc: (a, b) => -byAlpha(a, b),
+        created_asc: byCreated,
+        created_desc: (a, b) => -byCreated(a, b),
+      };
+      return [...list].sort(cmpMap[profSort]);
     },
-    [allProfessionals, professionalIdsInSchedule]
+    [allProfessionals, professionalIdsInSchedule, profSort]
   );
   // Afastados do setor da escala — mostrados automaticamente no rodapé.
   // Não dependem de ter shifts, basta estarem ativos no setor e marcados
@@ -561,12 +592,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const [primaryProfsData, linkedProfsData, shiftsData, linksData] = await Promise.all([
         supabase
           .from('professionals')
-          .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, category:professional_categories!category_id(name), department:departments!department_id(name)')
+          .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, created_at, category:professional_categories!category_id(name), department:departments!department_id(name)')
           .eq('department_id', selectedDepartment)
           .eq('active', true),
         supabase
           .from('professional_department_links')
-          .select('professional_id, professionals!inner(id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, active, category:professional_categories!category_id(name), department:departments!department_id(name))')
+          .select('professional_id, professionals!inner(id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, created_at, active, category:professional_categories!category_id(name), department:departments!department_id(name))')
           .eq('department_id', selectedDepartment)
           .eq('professionals.active', true),
         supabase
@@ -2460,6 +2491,24 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 <Download className="w-4 h-4 text-gray-500" aria-hidden="true" />
                 Exportar Excel
               </button>
+              {/* Seletor de ordenação dos profissionais */}
+              <div className="inline-flex items-center gap-1.5 min-h-[36px] px-2 py-1.5 bg-white border border-gray-200 rounded-md text-sm">
+                <ArrowUpDown className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                <label htmlFor="prof-sort" className="sr-only">Ordenar profissionais</label>
+                <select
+                  id="prof-sort"
+                  value={profSort}
+                  onChange={(e) => setProfSort(e.target.value as SortMode)}
+                  className="bg-transparent text-gray-700 focus:outline-none cursor-pointer"
+                  title="Ordenar profissionais na grade"
+                >
+                  <option value="custom">Ordem personalizada</option>
+                  <option value="alpha_asc">Nome A → Z</option>
+                  <option value="alpha_desc">Nome Z → A</option>
+                  <option value="created_asc">Mais antigos primeiro</option>
+                  <option value="created_desc">Mais recentes primeiro</option>
+                </select>
+              </div>
               {currentSchedule && (
                 <button
                   onClick={() => setShowAuditLog(true)}
@@ -2717,7 +2766,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 />
               </div>
             ) : (
-            <div className="overflow-x-auto -mx-6 px-6">
+            <div className="overflow-auto -mx-6 px-6" style={{ maxHeight: 'calc(100vh - 280px)' }}>
               <div className="inline-block min-w-full">
                 <div
                   className="origin-top-left"
@@ -2729,21 +2778,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                   <table className="border-collapse" style={{ fontSize: '11px', width: 'max-content' }}>
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky left-0 bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '70px' }}>
+                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky left-0 top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '70px' }}>
                           MATRÍCULA
                         </th>
-                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '180px', left: '70px' }}>
+                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '180px', left: '70px' }}>
                           NOME
                         </th>
-                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '120px', left: '250px' }}>
+                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '120px', left: '250px' }}>
                           FUNÇÃO
                         </th>
                         {showCorenColumn && (
-                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '80px', left: '370px' }}>
+                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '80px', left: '370px' }}>
                             COREN
                           </th>
                         )}
-                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky bg-gray-100 z-20 whitespace-nowrap" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px' }}>
+                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px' }}>
                           DIAS<br/>TRAB.
                         </th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
@@ -2754,8 +2803,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             <th
                               key={day}
                               title={holiday ? `${holiday.name} (${holiday.type})` : undefined}
-                              className={`border border-gray-300 px-1 py-2 text-center font-semibold ${
-                                highlight ? 'bg-amber-200 text-amber-900' : ''
+                              className={`border border-gray-300 px-1 py-2 text-center font-semibold sticky top-0 z-30 ${
+                                highlight ? 'bg-amber-200 text-amber-900' : 'bg-gray-100'
                               }`}
                               style={{ minWidth: '32px', maxWidth: '32px' }}
                             >
@@ -2767,7 +2816,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                         {uniqueShiftCodes.map(code => (
                           <th
                             key={`hcol-${code}`}
-                            className={`border border-gray-300 px-1 py-1 text-center font-bold whitespace-nowrap ${getCellColorClass(code)}`}
+                            className={`border border-gray-300 px-1 py-1 text-center font-bold whitespace-nowrap sticky top-0 z-30 ${getCellColorClass(code)}`}
                             style={{ minWidth: '38px' }}
                             title={`Total de ${code} no mês`}
                           >
@@ -2775,23 +2824,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             <span className="block text-[11px] leading-tight">{code}</span>
                           </th>
                         ))}
-                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold whitespace-nowrap" style={{ minWidth: '70px' }}>
+                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold whitespace-nowrap sticky top-0 bg-gray-100 z-30" style={{ minWidth: '70px' }}>
                           TOTAL<br/>HORAS
                         </th>
                         {editMode && (
-                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold bg-gray-100 whitespace-nowrap" style={{ minWidth: '50px' }}>
+                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold bg-gray-100 whitespace-nowrap sticky top-0 z-30" style={{ minWidth: '50px' }}>
                             AÇÕES
                           </th>
                         )}
                       </tr>
                       <tr className="bg-gray-50">
-                        <th className="border border-gray-300 px-2 py-1 sticky left-0 bg-gray-50 z-20" style={{ minWidth: '70px' }}></th>
-                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '180px', left: '70px' }}></th>
-                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '120px', left: '250px' }}></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky left-0 bg-gray-50 z-40" style={{ minWidth: '70px', top: '36px' }}></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '180px', left: '70px', top: '36px' }}></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '120px', left: '250px', top: '36px' }}></th>
                         {showCorenColumn && (
-                          <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '80px', left: '370px' }}></th>
+                          <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '80px', left: '370px', top: '36px' }}></th>
                         )}
-                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-20" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px' }}></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px', top: '36px' }}></th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                           const dow = getDayOfWeek(day);
                           const isWeekendHeader = ['SAB', 'DOM'].includes(dow);
@@ -2801,23 +2850,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             <th
                               key={day}
                               title={holiday ? `${holiday.name} (${holiday.type})` : undefined}
-                              className={`border border-gray-300 px-1 py-1 text-center font-medium ${
+                              className={`border border-gray-300 px-1 py-1 text-center font-medium sticky z-30 ${
                                 highlight
                                   ? 'bg-amber-200 text-amber-900 font-bold'
-                                  : 'text-gray-600'
+                                  : 'bg-gray-50 text-gray-600'
                               }`}
-                              style={{ fontSize: '9px' }}
+                              style={{ fontSize: '9px', top: '36px' }}
                             >
                               {holiday ? 'FER' : dow}
                             </th>
                           );
                         })}
                         {uniqueShiftCodes.map(code => (
-                          <th key={`hcol2-${code}`} className="border border-gray-300 bg-gray-50"></th>
+                          <th key={`hcol2-${code}`} className="border border-gray-300 bg-gray-50 sticky z-30" style={{ top: '36px' }}></th>
                         ))}
-                        <th className="border border-gray-300 px-2 py-1"></th>
+                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-30" style={{ top: '36px' }}></th>
                         {editMode && (
-                          <th className="border border-gray-300 px-2 py-1 bg-gray-50"></th>
+                          <th className="border border-gray-300 px-2 py-1 bg-gray-50 sticky z-30" style={{ top: '36px' }}></th>
                         )}
                       </tr>
                     </thead>
