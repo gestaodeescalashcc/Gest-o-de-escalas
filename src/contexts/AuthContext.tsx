@@ -68,7 +68,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('[signOut] erro ao chamar supabase.auth.signOut:', err);
+    }
+    // Limpeza explícita: garante que mesmo se onAuthStateChange não disparar
+    // (rede offline, supabase indisponível, token já expirado), o app sai do
+    // estado autenticado e o ProtectedLayout redireciona para /login.
+    setUser(null);
+    setSession(null);
+    try {
+      // Remove qualquer resíduo do storage (sb-* tokens, refresh tokens, etc)
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('sb-') || k.includes('supabase'))
+        .forEach(k => localStorage.removeItem(k));
+    } catch { /* storage indisponível: tudo bem */ }
   };
 
   return (
