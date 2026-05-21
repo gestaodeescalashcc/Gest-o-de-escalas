@@ -120,13 +120,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
 
   // Ordenação da lista de profissionais na grade.
   // 'custom' = display_order (padrão atual); 'alpha' = nome A→Z;
-  // 'created' = data de cadastro. Suffix _desc para ordem inversa.
-  type SortMode = 'custom' | 'alpha_asc' | 'alpha_desc' | 'created_asc' | 'created_desc';
+  // 'created' = data de cadastro; 'alpha_colab_last' = alfabética
+  // com nomes "COLABORADOR ..." sempre no fim. Suffix _desc para ordem inversa.
+  type SortMode = 'custom' | 'alpha_asc' | 'alpha_desc' | 'created_asc' | 'created_desc' | 'alpha_colab_last';
   const SORT_STORAGE_KEY = 'medscale.schedule.profSort';
+  const VALID_SORT_MODES: SortMode[] = ['custom', 'alpha_asc', 'alpha_desc', 'created_asc', 'created_desc', 'alpha_colab_last'];
   const [profSort, setProfSort] = useState<SortMode>(() => {
     try {
-      const saved = localStorage.getItem(SORT_STORAGE_KEY);
-      if (saved === 'custom' || saved === 'alpha_asc' || saved === 'alpha_desc' || saved === 'created_asc' || saved === 'created_desc') return saved;
+      const saved = localStorage.getItem(SORT_STORAGE_KEY) as SortMode | null;
+      if (saved && VALID_SORT_MODES.includes(saved)) return saved;
     } catch { /* noop */ }
     return 'custom';
   });
@@ -223,12 +225,22 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
         return ta - tb;
       };
+      // "Colaborador" identificado por nome — qualquer profissional cujo
+      // full_name contenha "colaborador" (case-insensitive, com ou sem espaço
+      // inicial, masculino ou feminino) vai pro fim da lista.
+      const isColab = (p: Professional) => /colaborador/i.test((p.full_name ?? '').trim());
+      const byAlphaColabLast = (a: Professional, b: Professional) => {
+        const ca = isColab(a), cb = isColab(b);
+        if (ca !== cb) return ca ? 1 : -1;
+        return byAlpha(a, b);
+      };
       const cmpMap: Record<SortMode, (a: Professional, b: Professional) => number> = {
         custom: byCustom,
         alpha_asc: byAlpha,
         alpha_desc: (a, b) => -byAlpha(a, b),
         created_asc: byCreated,
         created_desc: (a, b) => -byCreated(a, b),
+        alpha_colab_last: byAlphaColabLast,
       };
       return [...list].sort(cmpMap[profSort]);
     },
@@ -2740,6 +2752,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                         <option value="custom">Ordem personalizada</option>
                         <option value="alpha_asc">Nome A → Z</option>
                         <option value="alpha_desc">Nome Z → A</option>
+                        <option value="alpha_colab_last">Nome A → Z (colaboradores no fim)</option>
                         <option value="created_asc">Mais antigos primeiro</option>
                         <option value="created_desc">Mais recentes primeiro</option>
                       </select>
