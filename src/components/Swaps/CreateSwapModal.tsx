@@ -226,10 +226,12 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
       if (!originalShift?.department?.id) return true;
       return p.department?.id === originalShift.department.id;
     })
-    .filter(prof =>
-      prof.full_name.toLowerCase().includes(searchProfessional.toLowerCase()) ||
-      prof.registration_number.toLowerCase().includes(searchProfessional.toLowerCase())
-    );
+    .filter(prof => {
+      const q = searchProfessional.toLowerCase();
+      const name = (prof.full_name ?? '').toLowerCase();
+      const reg = (prof.registration_number ?? '').toLowerCase();
+      return name.includes(q) || reg.includes(q);
+    });
 
   const handleSubmit = async () => {
     setLoading(true);

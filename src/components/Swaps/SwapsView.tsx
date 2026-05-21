@@ -144,12 +144,13 @@ export default function SwapsView() {
     if (!isDiretoriaMedica && !isAdmin() && roleName === 'Coordenador' && isMedical) return false;
     const matchesStatus = filterStatus === 'all' || swap.status === filterStatus;
     const matchesDepartment = filterDepartment === 'all' ||
-      swap.original_shift.department.id === filterDepartment ||
-      (swap.offered_shift && swap.offered_shift.department.id === filterDepartment);
+      swap.original_shift?.department?.id === filterDepartment ||
+      (swap.offered_shift && swap.offered_shift.department?.id === filterDepartment);
+    const q = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm ||
-      swap.requesting_professional.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      swap.target_professional.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      swap.reason.toLowerCase().includes(searchTerm.toLowerCase());
+      (swap.requesting_professional?.full_name ?? '').toLowerCase().includes(q) ||
+      (swap.target_professional?.full_name ?? '').toLowerCase().includes(q) ||
+      (swap.reason ?? '').toLowerCase().includes(q);
 
     let matchesMonth = true;
     if (selectedMonth) {
