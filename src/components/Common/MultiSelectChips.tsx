@@ -50,7 +50,7 @@ export default function MultiSelectChips({
     .filter((o): o is Option => !!o);
 
   const availableOptions = options.filter(
-    o => !selectedIds.includes(o.id) && o.name.toLowerCase().includes(query.toLowerCase())
+    o => !selectedIds.includes(o.id) && (o.name ?? '').toLowerCase().includes(query.toLowerCase())
   );
 
   const addOption = (id: string) => {

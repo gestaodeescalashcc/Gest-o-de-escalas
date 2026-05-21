@@ -155,10 +155,10 @@ export function HourBankBalanceView() {
 
   const filteredBalances = balances
     .filter(b => {
-      if (searchTerm && !b.professional.full_name.toLowerCase().includes(searchTerm.toLowerCase())) {
+      if (searchTerm && !(b.professional?.full_name ?? '').toLowerCase().includes(searchTerm.toLowerCase())) {
         return false;
       }
-      if (selectedDepartment !== 'all' && b.professional.department_id !== selectedDepartment) {
+      if (selectedDepartment !== 'all' && b.professional?.department_id !== selectedDepartment) {
         return false;
       }
       if (balanceFilter === 'positive' && b.totalBalance <= 0) return false;

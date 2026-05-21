@@ -175,7 +175,7 @@ export default function DailyScheduleView() {
     if (exact) return exact;
     // 2. Match por palavra-chave dentro do nome completo do banco
     //    (ex: "Plantão 24h (7h às 7h) 24h" → P; "Serviço Noturno (19h às 7h) 12h" → SN)
-    const normalized = type.toLowerCase();
+    const normalized = (type ?? '').toLowerCase();
     const keywordMap: Array<[string, string]> = [
       ['plantão 24h', 'P'],
       ['servico noturno', 'SN'],

@@ -3991,7 +3991,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       <ConfirmDialog
         isOpen={undoingAbsence !== null}
         title="Desfazer ausência?"
-        message={`Remove o registro de "${undoingAbsence?.reason_name ?? ''}" de ${undoingAbsence?.professional_name ?? ''} no dia ${undoingAbsence?.date.split('-').reverse().join('/') ?? ''}. Se a ausência cobre mais de um dia, todos eles serão removidos. Esta ação não pode ser desfeita.`}
+        message={`Remove o registro de "${undoingAbsence?.reason_name ?? ''}" de ${undoingAbsence?.professional_name ?? ''} no dia ${(undoingAbsence?.date ?? '').split('-').reverse().join('/')}. Se a ausência cobre mais de um dia, todos eles serão removidos. Esta ação não pode ser desfeita.`}
         variant="danger"
         confirmLabel="Desfazer"
         loading={undoAbsenceLoading}

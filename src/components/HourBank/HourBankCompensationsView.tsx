@@ -150,7 +150,7 @@ export function HourBankCompensationsView() {
 
       if (searchTerm) {
         filtered = filtered.filter(c =>
-          c.professional?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+          (c.professional?.full_name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
 

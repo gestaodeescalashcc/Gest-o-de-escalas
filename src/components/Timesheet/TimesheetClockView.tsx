@@ -613,10 +613,11 @@ export default function TimesheetClockView() {
     setCurrentStep('capture-photo');
   };
 
-  const filteredProfessionals = professionals.filter(p =>
-    p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.registration_number?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProfessionals = professionals.filter(p => {
+    const q = searchTerm.toLowerCase();
+    return (p.full_name ?? '').toLowerCase().includes(q) ||
+      (p.registration_number ?? '').toLowerCase().includes(q);
+  });
 
   const getPunchTypeLabel = (type: string) => {
     const types: Record<string, string> = {

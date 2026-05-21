@@ -144,7 +144,7 @@ export function HourBankEntriesView() {
 
       if (searchTerm) {
         filtered = filtered.filter(e =>
-          e.professional?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+          (e.professional?.full_name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
 
