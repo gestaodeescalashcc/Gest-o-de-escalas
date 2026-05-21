@@ -718,15 +718,21 @@ async function exportGeneric(data: ExportData) {
   for (let day = 1; day <= 31; day++) {
     const col = firstDayCol + (day - 1);
     const cell = ws.getCell(weekdayRow, col);
+    let wkBg: string | null = null;
     if (day <= daysInMonth) {
       const dow = new Date(year, monthNum - 1, day).getDay();
       cell.value = DAY_OF_WEEK_PT[dow];
-      const wkBg = dow === 6 ? SAT_BG : dow === 0 ? SUN_BG : null;
+      wkBg = dow === 6 ? SAT_BG : dow === 0 ? SUN_BG : null;
       if (wkBg) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: wkBg } };
     }
     cell.font = { name: 'Arial', size: 10, bold: true };
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = allBorder;
+    cell.border = wkBg ? {
+      top: { style: 'thin', color: { argb: 'FF000000' } },
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      left: { style: 'medium', color: { argb: wkBg === SAT_BG ? 'FF3B82F6' : 'FFE11D48' } },
+      right: { style: 'medium', color: { argb: wkBg === SAT_BG ? 'FF3B82F6' : 'FFE11D48' } },
+    } : allBorder;
   }
   // AL5='S', AM5='D', AN5='TOTAL'
   for (const [col, label] of [[subDayCol1, 'S'], [subDayCol2, 'D'], [totalCol, 'TOTAL']] as Array<[number, string]>) {
@@ -760,15 +766,21 @@ async function exportGeneric(data: ExportData) {
   for (let day = 1; day <= 31; day++) {
     const col = firstDayCol + (day - 1);
     const cell = ws.getCell(headerRow, col);
+    let wkBg: string | null = null;
     if (day <= daysInMonth) {
       cell.value = day;
       const dow = new Date(year, monthNum - 1, day).getDay();
-      const wkBg = dow === 6 ? SAT_BG : dow === 0 ? SUN_BG : null;
+      wkBg = dow === 6 ? SAT_BG : dow === 0 ? SUN_BG : null;
       if (wkBg) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: wkBg } };
     }
     cell.font = { name: 'Arial', size: 10, bold: true };
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = allBorder;
+    cell.border = wkBg ? {
+      top: { style: 'thin', color: { argb: 'FF000000' } },
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      left: { style: 'medium', color: { argb: wkBg === SAT_BG ? 'FF3B82F6' : 'FFE11D48' } },
+      right: { style: 'medium', color: { argb: wkBg === SAT_BG ? 'FF3B82F6' : 'FFE11D48' } },
+    } : allBorder;
   }
   // AL6, AM6 vazias (sub-totais ocultos); AN6 = 'HORAS'
   ws.getCell(headerRow, subDayCol1).border = allBorder;
@@ -869,7 +881,19 @@ async function exportGeneric(data: ExportData) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: wkBg } };
       }
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.border = allBorder;
+
+      // Bordas laterais coloridas em SAB/DOM mesmo quando há código:
+      // mantém a coluna visualmente marcada do topo ao fim da grade
+      if (wkBg) {
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF000000' } },
+          bottom: { style: 'thin', color: { argb: 'FF000000' } },
+          left: { style: 'medium', color: { argb: wkBg === SAT_BG ? 'FF3B82F6' : 'FFE11D48' } },
+          right: { style: 'medium', color: { argb: wkBg === SAT_BG ? 'FF3B82F6' : 'FFE11D48' } },
+        };
+      } else {
+        cell.border = allBorder;
+      }
     }
 
     // F: DIAS TRAB. — calculado
