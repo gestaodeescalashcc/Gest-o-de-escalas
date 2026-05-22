@@ -96,7 +96,8 @@ const ADMIN_ONLY = new Set([
   'history',
   'departments',
   'categories',
-  'companies',
+  // 'companies' removido: agora qualquer role com permissão de read+create/update
+  // pode acessar (controle real fica na permission, não no menu).
   'establishments',
   'timesheet-clock',
   'punch-mirror',
