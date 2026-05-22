@@ -56,6 +56,8 @@ interface MenuItem {
   keywords?: string;
   /** Quando definido, item só aparece para usuários com essa role. */
   onlyForRole?: string;
+  /** Quando definido, item NÃO aparece para usuários com essas roles. */
+  hiddenForRoles?: string[];
 }
 
 const MENU_GROUPS = [
@@ -68,12 +70,12 @@ const MENU_GROUPS = [
 const MENU_ITEMS: MenuItem[] = [
   // Médico: tela pessoal — primeiro item, exclusivo da role Médico
   { id: 'my-schedule', path: '/minha-escala', label: 'Minha Escala', icon: Calendar, module: 'schedules', group: 'schedule', onlyForRole: 'Médico' },
-  // Schedule group
-  { id: 'consolidated', path: '/escala', label: 'Escala do Mês', icon: LayoutGrid, module: 'schedules', group: 'schedule' },
-  { id: 'daily', path: '/escala-diaria', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule' },
-  { id: 'professionals', path: '/profissionais', label: 'Profissionais', icon: Users, module: 'professionals', group: 'schedule' },
+  // Schedule group — médico já tem 'Minha Escala' focada, demais itens são de gestão
+  { id: 'consolidated', path: '/escala', label: 'Escala do Mês', icon: LayoutGrid, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'] },
+  { id: 'daily', path: '/escala-diaria', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'] },
+  { id: 'professionals', path: '/profissionais', label: 'Profissionais', icon: Users, module: 'professionals', group: 'schedule', hiddenForRoles: ['Médico'] },
   { id: 'swaps', path: '/trocas', label: 'Trocas de Plantões', icon: ArrowLeftRight, module: 'swaps', group: 'schedule', keywords: 'plantoes plantões' },
-  { id: 'absenteeism', path: '/absenteismo', label: 'Absenteísmo', icon: CalendarX, module: 'absences', group: 'schedule', keywords: 'absenteismo faltas atestados' },
+  { id: 'absenteeism', path: '/absenteismo', label: 'Absenteísmo', icon: CalendarX, module: 'absences', group: 'schedule', keywords: 'absenteismo faltas atestados', hiddenForRoles: ['Médico'] },
   // REP-P group
   { id: 'timesheet-clock', path: '/ponto/registro', label: 'Registro de Ponto', icon: Fingerprint, module: 'schedules', group: 'rep-p' },
   { id: 'punch-mirror', path: '/ponto/espelho', label: 'Espelho de Ponto', icon: FileText, module: 'reports', group: 'rep-p' },
@@ -224,6 +226,7 @@ export default function DashboardLayout({
     if (permissionsLoading) return [];
     return MENU_ITEMS.filter(item => {
       if (item.onlyForRole && item.onlyForRole !== roleName) return false;
+      if (item.hiddenForRoles && roleName && item.hiddenForRoles.includes(roleName)) return false;
       if (ADMIN_ONLY.has(item.id)) return isAdmin();
       return canRead(item.module);
     });
