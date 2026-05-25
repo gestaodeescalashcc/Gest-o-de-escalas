@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── Mobile responsiveness helpers ─── */
+@layer utilities {
+  /* Hide columns on mobile in schedule tables */
+  @media (max-width: 767px) {
+    .schedule-table .col-matricula,
+    .schedule-table .col-funcao,
+    .schedule-table .col-coren {
+      display: none !important;
+    }
+    /* Remove hardcoded sticky left positions on mobile — just let it scroll */
+    .schedule-table .sticky-name {
+      position: sticky;
+      left: 0 !important;
+      z-index: 20;
+    }
+    .schedule-table .sticky-dias {
+      position: sticky;
+      left: var(--name-col-w, 120px) !important;
+      z-index: 20;
+    }
+  }
+}
+
+/* Smoother touch scrolling */
+.overflow-auto,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* iOS safe area for bottom sheets */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
