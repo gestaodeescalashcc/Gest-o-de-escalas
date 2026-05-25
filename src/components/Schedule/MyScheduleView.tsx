@@ -131,17 +131,17 @@ export default function MyScheduleView() {
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Minha Escala</h2>
-          <p className="text-gray-600 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Minha Escala</h2>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             {professionalName
-              ? <>Olá, <strong>{professionalName.split(' ')[0]}</strong> — clique em um plantão para solicitar troca.</>
+              ? <>Olá, <strong>{professionalName.split(' ')[0]}</strong> — toque num plantão para trocar.</>
               : 'Seus plantões deste mês.'}
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm border border-gray-200 px-3 py-2">
+        <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm border border-gray-200 px-3 py-2 self-start sm:self-auto">
           <button
             onClick={() => changeMonth(-1)}
             className="p-1.5 hover:bg-gray-100 rounded-lg transition"
@@ -149,9 +149,9 @@ export default function MyScheduleView() {
           >
             <ChevronLeft className="w-5 h-5 text-gray-600" />
           </button>
-          <div className="flex items-center gap-2 px-2">
-            <Calendar className="w-5 h-5 text-blue-600" />
-            <span className="font-semibold text-gray-900 capitalize min-w-[140px] text-center">{monthLabel}</span>
+          <div className="flex items-center gap-2 px-1 sm:px-2">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+            <span className="font-semibold text-gray-900 capitalize min-w-[120px] sm:min-w-[140px] text-center text-sm sm:text-base">{monthLabel}</span>
           </div>
           <button
             onClick={() => changeMonth(1)}
@@ -202,9 +202,12 @@ export default function MyScheduleView() {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase">
-              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
-                <div key={d} className="px-2 py-2 text-center">{d}</div>
+            <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200 text-[10px] sm:text-xs font-semibold text-gray-600 uppercase">
+              {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
+                <div key={i} className="px-1 sm:px-2 py-1.5 sm:py-2 text-center">
+                  <span className="sm:hidden">{d}</span>
+                  <span className="hidden sm:inline">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][i]}</span>
+                </div>
               ))}
             </div>
             <div className="grid grid-cols-7 auto-rows-fr">
@@ -218,9 +221,9 @@ export default function MyScheduleView() {
                 return (
                   <div
                     key={cell.date}
-                    className={`border-r border-b border-gray-100 p-2 min-h-[88px] flex flex-col gap-1 ${isToday ? 'bg-blue-50/40 ring-1 ring-inset ring-blue-200' : ''}`}
+                    className={`border-r border-b border-gray-100 p-1 sm:p-2 min-h-[64px] sm:min-h-[88px] flex flex-col gap-0.5 sm:gap-1 ${isToday ? 'bg-blue-50/40 ring-1 ring-inset ring-blue-200' : ''}`}
                   >
-                    <div className={`text-xs font-semibold ${isToday ? 'text-blue-700' : isPast ? 'text-gray-400' : 'text-gray-700'}`}>
+                    <div className={`text-[10px] sm:text-xs font-semibold ${isToday ? 'text-blue-700' : isPast ? 'text-gray-400' : 'text-gray-700'}`}>
                       {cell.day}
                     </div>
                     {dayShifts.map(s => {
@@ -236,14 +239,14 @@ export default function MyScheduleView() {
                             }
                             setSwapShiftId(s.id);
                           }}
-                          className={`text-left px-2 py-1 rounded-md ring-1 ring-inset transition hover:shadow-sm ${style.classes} ${isFuture ? 'cursor-pointer hover:scale-[1.02]' : 'opacity-60 cursor-not-allowed'}`}
+                          className={`text-left px-1.5 sm:px-2 py-1 rounded-md ring-1 ring-inset transition hover:shadow-sm ${style.classes} ${isFuture ? 'cursor-pointer active:scale-95 sm:hover:scale-[1.02]' : 'opacity-60 cursor-not-allowed'}`}
                           title={`${style.label} — ${s.department?.name || ''} · ${formatTime(s.start_time)}-${formatTime(s.end_time)}`}
                         >
-                          <div className="flex items-center gap-1.5">
-                            <span className="inline-flex items-center justify-center min-w-[22px] h-5 px-1.5 rounded text-[10px] font-bold">{style.code}</span>
-                            <span className="text-[11px] truncate flex-1">{s.department?.name || 'Plantão'}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="inline-flex items-center justify-center min-w-[18px] sm:min-w-[22px] h-4 sm:h-5 px-1 sm:px-1.5 rounded text-[9px] sm:text-[10px] font-bold">{style.code}</span>
+                            <span className="text-[9px] sm:text-[11px] truncate flex-1 hidden sm:inline">{s.department?.name || 'Plantão'}</span>
                           </div>
-                          <div className="text-[10px] opacity-80 mt-0.5">{formatTime(s.start_time)}-{formatTime(s.end_time)}</div>
+                          <div className="text-[9px] sm:text-[10px] opacity-80 mt-0.5 hidden sm:block">{formatTime(s.start_time)}-{formatTime(s.end_time)}</div>
                         </button>
                       );
                     })}
