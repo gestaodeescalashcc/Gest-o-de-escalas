@@ -708,22 +708,22 @@ Portaria MTP 671/2021 (REP-P)
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center">
-            <Fingerprint className="w-7 h-7 text-white" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Fingerprint className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Registro de Ponto REP-P</h1>
-            <p className="text-gray-600">Conforme Portaria MTP 671/2021</p>
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Registro de Ponto</h1>
+            <p className="text-xs sm:text-base text-gray-600">Conforme Portaria MTP 671/2021</p>
           </div>
         </div>
-        <div className="text-right">
-          <div className="text-4xl font-bold text-gray-900 font-mono">
+        <div className="text-left sm:text-right">
+          <div className="text-2xl sm:text-4xl font-bold text-gray-900 font-mono">
             {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
-          <div className="text-sm text-gray-600 font-medium">
+          <div className="text-xs sm:text-sm text-gray-600 font-medium">
             {currentTime.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
         </div>
@@ -755,9 +755,9 @@ Portaria MTP 671/2021 (REP-P)
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-8">
             {currentStep === 'select-mode' && (
               <>
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Registro de Ponto</h2>
