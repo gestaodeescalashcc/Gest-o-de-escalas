@@ -313,36 +313,38 @@ export default function DailyScheduleView() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Calendar className="w-8 h-8 text-blue-600" />
+          <Calendar className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Escala do Dia</h1>
-            <p className="text-sm text-gray-600">Visualize todos os profissionais escalados</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Escala do Dia</h1>
+            <p className="text-xs sm:text-sm text-gray-600">Profissionais escalados</p>
           </div>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setViewMode('meals')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm"
           >
-            <Coffee className="w-5 h-5" />
-            Escala de Refeições
+            <Coffee className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden sm:inline">Escala de Refeições</span>
+            <span className="sm:hidden">Refeições</span>
           </button>
           {shifts.length > 0 && (
             <button
               onClick={handleExportPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm"
             >
-              <Download className="w-5 h-5" />
-              Exportar PDF
+              <Download className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Exportar PDF</span>
+              <span className="sm:hidden">PDF</span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-6">
         <div className="flex items-center gap-3 mb-6">
           <Filter className="w-5 h-5 text-gray-600" />
           <h2 className="text-lg font-semibold text-gray-900">Filtros</h2>
@@ -441,7 +443,7 @@ export default function DailyScheduleView() {
                 <div key={deptId} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                   <button
                     onClick={() => toggleDepartment(deptId)}
-                    className="w-full px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 border-b border-gray-200 flex items-center justify-between transition"
+                    className="w-full px-3 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 border-b border-gray-200 flex items-center justify-between transition"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -466,19 +468,19 @@ export default function DailyScheduleView() {
                       <table className="w-full">
                         <thead className="bg-gray-50 border-b border-gray-200">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                               Profissional
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider hidden sm:table-cell">
                               Categoria
                             </th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider hidden md:table-cell">
                               Matrícula
                             </th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                               Turno
                             </th>
-                            <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                            <th className="px-3 sm:px-6 py-2 sm:py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider hidden sm:table-cell">
                               Horário
                             </th>
                           </tr>
@@ -488,16 +490,17 @@ export default function DailyScheduleView() {
                             const shiftInfo = getShiftTypeInfo(shift.shift_type);
                             return (
                               <tr key={shift.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="font-semibold text-gray-900">{shift.professional?.full_name || 'N/A'}</div>
+                                <td className="px-3 sm:px-6 py-2.5 sm:py-4 whitespace-nowrap">
+                                  <div className="font-semibold text-gray-900 text-sm">{shift.professional?.full_name || 'N/A'}</div>
+                                  <div className="text-xs text-gray-500 sm:hidden">{shift.professional?.category?.name || ''}</div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                <td className="px-3 sm:px-6 py-2.5 sm:py-4 whitespace-nowrap text-sm text-gray-600 hidden sm:table-cell">
                                   {shift.professional?.category?.name || 'N/A'}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">
+                                <td className="px-3 sm:px-6 py-2.5 sm:py-4 whitespace-nowrap text-center text-sm text-gray-600 hidden md:table-cell">
                                   {shift.professional?.registration_number || 'N/A'}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <td className="px-3 sm:px-6 py-2.5 sm:py-4 whitespace-nowrap text-center">
                                   <span
                                     title={shift.shift_type}
                                     className={`inline-flex items-center justify-center min-w-[40px] h-7 px-2.5 rounded-md text-xs font-bold text-white ${shiftInfo.color}`}
@@ -505,7 +508,7 @@ export default function DailyScheduleView() {
                                     {shiftInfo.code}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-600">
+                                <td className="px-3 sm:px-6 py-2.5 sm:py-4 whitespace-nowrap text-center text-sm text-gray-600 hidden sm:table-cell">
                                   {shiftInfo.time}
                                 </td>
                               </tr>
