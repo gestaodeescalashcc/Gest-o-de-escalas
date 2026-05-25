@@ -145,6 +145,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const [clearingAll, setClearingAll] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [showDeleteScheduleModal, setShowDeleteScheduleModal] = useState(false);
+  const [mobileToolbarOpen, setMobileToolbarOpen] = useState(false);
   const [deleteScheduleConfirm, setDeleteScheduleConfirm] = useState('');
   const [deletingSchedule, setDeletingSchedule] = useState(false);
   const [auditEntries, setAuditEntries] = useState<Array<{
@@ -169,6 +170,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const [swapInitialShiftId, setSwapInitialShiftId] = useState<string | null>(null);
   // Modo de visualização da escala (planejada vs realizada)
   const [viewMode, setViewMode] = useState<'planejada' | 'realizada'>('planejada');
+  // Responsive: detect mobile viewport
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   // Lista de absences do mês atual (com reason → shift_code)
   const [scheduleAbsences, setScheduleAbsences] = useState<
     Array<{
@@ -2389,8 +2397,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               <ChevronLeft className="w-5 h-5" />
             </button>
           )}
-          <Calendar className="w-7 h-7 text-blue-600 flex-shrink-0" aria-hidden="true" />
-          <h1 className="text-2xl font-bold text-gray-900">Escala do Mês</h1>
+          <Calendar className="w-7 h-7 text-blue-600 flex-shrink-0 hidden sm:block" aria-hidden="true" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Escala do Mês</h1>
           {/* Badge de status removido — fluxo simplificado, todas as escalas
               são editáveis. Histórico é registrado em schedule_audit_log. */}
           {/* Toggle Planejada / Realizada — segmented control limpo */}
@@ -2447,101 +2455,156 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         <div className="flex flex-wrap gap-2">
           {!editMode ? (
             <>
-              <button
-                onClick={() => setShowCreateScheduleModal(true)}
-                className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-              >
-                <Plus className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                Nova Escala
-              </button>
-
-              {/* Finalizar Planejamento — congela a Planejada e separa novas alterações para a Realizada */}
-              {currentSchedule && !isPublished && canEditSchedule && (
+              {/* Desktop: show all buttons. Mobile: show primary + dropdown */}
+              {/* Primary buttons — always visible */}
+              {canEditSchedule && (
                 <button
-                  onClick={requestPublish}
-                  title="Congela a Planejada atual. A partir daqui, novos plantões e edições só afetam a Realizada."
-                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1"
+                  onClick={() => setEditMode(true)}
+                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 >
-                  <Lock className="w-4 h-4" aria-hidden="true" />
-                  Finalizar Planejamento
-                </button>
-              )}
-
-              {/* Reabrir Planejamento — admin only */}
-              {currentSchedule && isPublished && isAdmin() && (
-                <button
-                  onClick={requestReopen}
-                  title="Reabre o planejamento (apenas Administrador)"
-                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                >
-                  <Unlock className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                  Reabrir
-                </button>
-              )}
-
-              {currentSchedule && (
-                <button
-                  onClick={() => {
-                    setAbsenceInitialData({
-                      department_id: selectedDepartment,
-                      schedule_id: currentSchedule.id,
-                      start_date: new Date().toISOString().slice(0, 10),
-                    });
-                    setShowAbsenceModal(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                >
-                  <CalendarX className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                  Registrar Ausência
-                </button>
-              )}
-              {!isLocked && (
-                <button
-                  onClick={copyPreviousMonth}
-                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                >
-                  <Copy className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                  Copiar Mês Anterior
+                  <Edit3 className="w-4 h-4" aria-hidden="true" />
+                  {isMobile ? 'Editar' : 'Modo Edição'}
                 </button>
               )}
               <button
                 onClick={handleExportExcel}
                 title={`Exporta a escala ${viewMode === 'realizada' ? 'Realizada (com ausências aplicadas)' : 'Planejada'}`}
-                className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                className="inline-flex items-center gap-1.5 min-h-[40px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
               >
                 <Download className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                Exportar Excel
+                Excel
               </button>
-              {currentSchedule && (
-                <button
-                  onClick={() => setShowAuditLog(true)}
-                  title="Ver histórico de alterações desta escala"
-                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                >
-                  <Clock className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                  Histórico
-                </button>
-              )}
-              {/* Excluir Escala — agrupado por último, ghost vermelho discreto */}
-              {currentSchedule && (isAdmin() || canDelete('schedules')) && (
-                <button
-                  onClick={() => setShowDeleteScheduleModal(true)}
-                  title="Excluir esta escala por completo"
-                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-red-600 border border-gray-200 rounded-md hover:bg-red-50 hover:border-red-200 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-                >
-                  <Trash2 className="w-4 h-4" aria-hidden="true" />
-                  Excluir
-                </button>
-              )}
-              {/* Modo Edição — único botão primário (azul sólido) do toolbar */}
-              {canEditSchedule && (
-                <button
-                  onClick={() => setEditMode(true)}
-                  className="inline-flex items-center gap-1.5 min-h-[36px] px-3.5 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                >
-                  <Edit3 className="w-4 h-4" aria-hidden="true" />
-                  Modo Edição
-                </button>
+
+              {/* Mobile: more actions dropdown */}
+              {isMobile ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setMobileToolbarOpen(prev => !prev)}
+                    className="inline-flex items-center gap-1.5 min-h-[40px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                    aria-label="Mais ações"
+                  >
+                    <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                  {mobileToolbarOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setMobileToolbarOpen(false)} />
+                      <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-xl border border-gray-200 py-1 w-56 max-h-[60vh] overflow-y-auto">
+                        <button onClick={() => { setShowCreateScheduleModal(true); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                          <Plus className="w-4 h-4 text-gray-400" /> Nova Escala
+                        </button>
+                        {currentSchedule && !isPublished && canEditSchedule && (
+                          <button onClick={() => { requestPublish(); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50">
+                            <Lock className="w-4 h-4" /> Finalizar Planejamento
+                          </button>
+                        )}
+                        {currentSchedule && isPublished && isAdmin() && (
+                          <button onClick={() => { requestReopen(); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                            <Unlock className="w-4 h-4 text-gray-400" /> Reabrir
+                          </button>
+                        )}
+                        {currentSchedule && (
+                          <button onClick={() => { setAbsenceInitialData({ department_id: selectedDepartment, schedule_id: currentSchedule.id, start_date: new Date().toISOString().slice(0, 10) }); setShowAbsenceModal(true); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                            <CalendarX className="w-4 h-4 text-gray-400" /> Registrar Ausência
+                          </button>
+                        )}
+                        {!isLocked && (
+                          <button onClick={() => { copyPreviousMonth(); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                            <Copy className="w-4 h-4 text-gray-400" /> Copiar Mês Anterior
+                          </button>
+                        )}
+                        {currentSchedule && (
+                          <button onClick={() => { setShowAuditLog(true); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                            <Clock className="w-4 h-4 text-gray-400" /> Histórico
+                          </button>
+                        )}
+                        {currentSchedule && (isAdmin() || canDelete('schedules')) && (
+                          <>
+                            <div className="border-t border-gray-100 my-1" />
+                            <button onClick={() => { setShowDeleteScheduleModal(true); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
+                              <Trash2 className="w-4 h-4" /> Excluir Escala
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                /* Desktop: all buttons inline */
+                <>
+                  <button
+                    onClick={() => setShowCreateScheduleModal(true)}
+                    className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  >
+                    <Plus className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                    Nova Escala
+                  </button>
+                  {currentSchedule && !isPublished && canEditSchedule && (
+                    <button
+                      onClick={requestPublish}
+                      title="Congela a Planejada atual. A partir daqui, novos plantões e edições só afetam a Realizada."
+                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1"
+                    >
+                      <Lock className="w-4 h-4" aria-hidden="true" />
+                      Finalizar Planejamento
+                    </button>
+                  )}
+                  {currentSchedule && isPublished && isAdmin() && (
+                    <button
+                      onClick={requestReopen}
+                      title="Reabre o planejamento (apenas Administrador)"
+                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                    >
+                      <Unlock className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                      Reabrir
+                    </button>
+                  )}
+                  {currentSchedule && (
+                    <button
+                      onClick={() => {
+                        setAbsenceInitialData({
+                          department_id: selectedDepartment,
+                          schedule_id: currentSchedule.id,
+                          start_date: new Date().toISOString().slice(0, 10),
+                        });
+                        setShowAbsenceModal(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                    >
+                      <CalendarX className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                      Registrar Ausência
+                    </button>
+                  )}
+                  {!isLocked && (
+                    <button
+                      onClick={copyPreviousMonth}
+                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                    >
+                      <Copy className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                      Copiar Mês Anterior
+                    </button>
+                  )}
+                  {currentSchedule && (
+                    <button
+                      onClick={() => setShowAuditLog(true)}
+                      title="Ver histórico de alterações desta escala"
+                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                    >
+                      <Clock className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                      Histórico
+                    </button>
+                  )}
+                  {currentSchedule && (isAdmin() || canDelete('schedules')) && (
+                    <button
+                      onClick={() => setShowDeleteScheduleModal(true)}
+                      title="Excluir esta escala por completo"
+                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-red-600 border border-gray-200 rounded-md hover:bg-red-50 hover:border-red-200 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                    >
+                      <Trash2 className="w-4 h-4" aria-hidden="true" />
+                      Excluir
+                    </button>
+                  )}
+                </>
               )}
             </>
           ) : (
@@ -2644,10 +2707,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
 
       {/* Banner vermelho duplicado removido — info consolidada no header. */}
 
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
         {schedules.length > 0 && (
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-6">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Filter className="w-5 h-5 text-gray-500" />
               <span className="text-sm font-medium text-gray-700">Escala:</span>
             </div>
@@ -2792,34 +2855,38 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               </div>
             ) : (
             <div
-              className="origin-top-left -mx-6 px-6"
-              style={{
+              className={`origin-top-left ${isMobile ? '' : '-mx-6 px-6'}`}
+              style={isMobile ? {} : {
                 transform: 'scale(0.85)',
                 transformOrigin: 'top left',
                 width: 'calc(100% / 0.85)',
               }}
             >
-              <div className="overflow-auto" style={{ maxHeight: 'calc((100vh - 280px) / 0.85)' }}>
+              <div className="overflow-auto" style={{ maxHeight: isMobile ? 'calc(100vh - 260px)' : 'calc((100vh - 280px) / 0.85)' }}>
                 <div className="inline-block min-w-full">
-                  <table className="border-collapse" style={{ fontSize: '11px', width: 'max-content' }}>
+                  <table className="schedule-table border-collapse" style={{ fontSize: isMobile ? '10px' : '11px', width: 'max-content' }}>
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky left-0 top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '70px' }}>
-                          MATRÍCULA
-                        </th>
-                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '180px', left: '70px' }}>
+                        {!isMobile && (
+                          <th className="col-matricula border border-gray-300 px-2 py-2 text-left font-semibold sticky left-0 top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '70px' }}>
+                            MATRÍCULA
+                          </th>
+                        )}
+                        <th className="sticky-name border border-gray-300 px-2 py-2 text-left font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: isMobile ? '100px' : '180px', left: isMobile ? 0 : '70px' }}>
                           NOME
                         </th>
-                        <th className="border border-gray-300 px-2 py-2 text-left font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '120px', left: '250px' }}>
-                          FUNÇÃO
-                        </th>
-                        {showCorenColumn && (
-                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '80px', left: '370px' }}>
+                        {!isMobile && (
+                          <th className="col-funcao border border-gray-300 px-2 py-2 text-left font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '120px', left: '250px' }}>
+                            FUNÇÃO
+                          </th>
+                        )}
+                        {showCorenColumn && !isMobile && (
+                          <th className="col-coren border border-gray-300 px-2 py-2 text-center font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '80px', left: '370px' }}>
                             COREN
                           </th>
                         )}
-                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px' }}>
-                          DIAS<br/>TRAB.
+                        <th className="sticky-dias border border-gray-300 px-1 py-2 text-center font-semibold sticky top-0 bg-gray-100 z-40 whitespace-nowrap" style={{ minWidth: isMobile ? '36px' : '60px', left: isMobile ? '100px' : (showCorenColumn ? '450px' : '370px') }}>
+                          {isMobile ? 'DT' : <>DIAS<br/>TRAB.</>}
                         </th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                           const isWeekendHeader = ['SAB', 'DOM'].includes(getDayOfWeek(day));
@@ -2832,7 +2899,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                               className={`border border-gray-300 px-1 py-2 text-center font-semibold sticky top-0 z-30 ${
                                 highlight ? 'bg-amber-200 text-amber-900' : 'bg-gray-100'
                               }`}
-                              style={{ minWidth: '32px', maxWidth: '32px' }}
+                              style={{ minWidth: isMobile ? '28px' : '32px', maxWidth: isMobile ? '28px' : '32px' }}
                             >
                               {day}
                             </th>
@@ -2860,13 +2927,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                         )}
                       </tr>
                       <tr className="bg-gray-50">
-                        <th className="border border-gray-300 px-2 py-1 sticky left-0 bg-gray-50 z-40" style={{ minWidth: '70px', top: '36px' }}></th>
-                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '180px', left: '70px', top: '36px' }}></th>
-                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '120px', left: '250px', top: '36px' }}></th>
-                        {showCorenColumn && (
-                          <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '80px', left: '370px', top: '36px' }}></th>
+                        {!isMobile && (
+                          <th className="col-matricula border border-gray-300 px-2 py-1 sticky left-0 bg-gray-50 z-40" style={{ minWidth: '70px', top: '36px' }}></th>
                         )}
-                        <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '60px', left: showCorenColumn ? '450px' : '370px', top: '36px' }}></th>
+                        <th className="sticky-name border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: isMobile ? '100px' : '180px', left: isMobile ? 0 : '70px', top: '36px' }}></th>
+                        {!isMobile && (
+                          <th className="col-funcao border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '120px', left: '250px', top: '36px' }}></th>
+                        )}
+                        {showCorenColumn && !isMobile && (
+                          <th className="col-coren border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: '80px', left: '370px', top: '36px' }}></th>
+                        )}
+                        <th className="sticky-dias border border-gray-300 px-2 py-1 sticky bg-gray-50 z-40" style={{ minWidth: isMobile ? '36px' : '60px', left: isMobile ? '100px' : (showCorenColumn ? '450px' : '370px'), top: '36px' }}></th>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                           const dow = getDayOfWeek(day);
                           const isWeekendHeader = ['SAB', 'DOM'].includes(dow);
@@ -2900,21 +2971,25 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                       {professionals.map((prof) => (
                         <Fragment key={prof.id}>
                         <tr className={`hover:bg-gray-50 ${isOverWorkload(prof.id) ? 'bg-red-50' : ''}`}>
-                          <td className={`border border-gray-300 px-2 py-2 text-center sticky left-0 z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}>
-                            {prof.registration_number || '-'}
+                          {!isMobile && (
+                            <td className={`col-matricula border border-gray-300 px-2 py-2 text-center sticky left-0 z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}>
+                              {prof.registration_number || '-'}
+                            </td>
+                          )}
+                          <td className={`sticky-name border border-gray-300 px-2 py-1.5 font-medium sticky z-10 whitespace-nowrap truncate ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: isMobile ? 0 : '70px', maxWidth: isMobile ? '100px' : '180px' }} title={prof.full_name}>
+                            {isMobile ? (prof.full_name.length > 12 ? prof.full_name.slice(0, 12) + '…' : prof.full_name) : prof.full_name}
                           </td>
-                          <td className={`border border-gray-300 px-3 py-2 font-medium sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '70px' }}>
-                            {prof.full_name}
-                          </td>
-                          <td className={`border border-gray-300 px-2 py-2 sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '250px' }}>
-                            {prof.category?.name}
-                          </td>
-                          {showCorenColumn && (
-                            <td className={`border border-gray-300 px-2 py-2 text-center sticky z-10 whitespace-nowrap text-xs ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'} ${prof.coren ? 'text-emerald-700 font-semibold' : 'text-gray-300'}`} style={{ left: '370px' }}>
+                          {!isMobile && (
+                            <td className={`col-funcao border border-gray-300 px-2 py-2 sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: '250px' }}>
+                              {prof.category?.name}
+                            </td>
+                          )}
+                          {showCorenColumn && !isMobile && (
+                            <td className={`col-coren border border-gray-300 px-2 py-2 text-center sticky z-10 whitespace-nowrap text-xs ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'} ${prof.coren ? 'text-emerald-700 font-semibold' : 'text-gray-300'}`} style={{ left: '370px' }}>
                               {prof.coren || '—'}
                             </td>
                           )}
-                          <td className={`border border-gray-300 px-2 py-2 text-center font-semibold sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: showCorenColumn ? '450px' : '370px' }}>
+                          <td className={`sticky-dias border border-gray-300 px-1 py-1.5 text-center font-semibold sticky z-10 whitespace-nowrap ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: isMobile ? '100px' : (showCorenColumn ? '450px' : '370px') }}>
                             {calculateWorkDays(prof.id)}
                           </td>
                           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
@@ -2973,7 +3048,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                 } ${
                                   'cursor-pointer hover:ring-2 hover:ring-blue-400'
                                 } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''}`}
-                                style={{ minWidth: '32px', maxWidth: '32px' }}
+                                style={{ minWidth: isMobile ? '28px' : '32px', maxWidth: isMobile ? '28px' : '32px' }}
                               >
                                 {code}
                                 {/* Indicador em modo Realizada: ponto vermelho quando célula foi sobrescrita */}
@@ -3078,7 +3153,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                         {prof.block_separator_after && (
                           <tr aria-hidden="true">
                             <td
-                              colSpan={(showCorenColumn ? 5 : 4) + daysInMonth + uniqueShiftCodes.length + 1 + (editMode ? 1 : 0)}
+                              colSpan={(isMobile ? 2 : (showCorenColumn ? 5 : 4)) + daysInMonth + uniqueShiftCodes.length + 1 + (editMode ? 1 : 0)}
                               className="bg-gray-100"
                               style={{ height: '14px', padding: 0, border: 0 }}
                             ></td>
@@ -3091,7 +3166,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                       <tfoot>
                         {/* Separador grosso antes dos totais — evita "embolar" com a última linha */}
                         <tr aria-hidden="true">
-                          <td colSpan={(showCorenColumn ? 5 : 4) + daysInMonth + uniqueShiftCodes.length + 1 + (editMode ? 1 : 0)}
+                          <td colSpan={(isMobile ? 2 : (showCorenColumn ? 5 : 4)) + daysInMonth + uniqueShiftCodes.length + 1 + (editMode ? 1 : 0)}
                               className="bg-gray-800"
                               style={{ height: '4px', padding: 0, border: 0 }}
                           ></td>
@@ -3107,10 +3182,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                               {/* Rótulo "TOTAL <SIGLA>" sticky à esquerda — fundo opaco branco
                                   para não vazar conteúdo do scroll horizontal por trás */}
                               <th
-                                colSpan={showCorenColumn ? 5 : 4}
-                                className="border border-gray-300 px-3 py-1.5 text-right sticky left-0 z-30"
+                                colSpan={isMobile ? 2 : (showCorenColumn ? 5 : 4)}
+                                className="border border-gray-300 px-2 sm:px-3 py-1.5 text-right sticky left-0 z-30"
                                 style={{
-                                  minWidth: showCorenColumn ? '510px' : '430px',
+                                  minWidth: isMobile ? '136px' : (showCorenColumn ? '510px' : '430px'),
                                   backgroundColor: '#ffffff',
                                 }}
                               >
@@ -3130,7 +3205,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                     className={`border border-gray-200 px-1 py-1.5 text-center text-xs ${
                                       count > 0 ? 'text-gray-900 font-bold' : 'text-gray-300 font-normal'
                                     }`}
-                                    style={{ minWidth: '32px', maxWidth: '32px' }}
+                                    style={{ minWidth: isMobile ? '28px' : '32px', maxWidth: isMobile ? '28px' : '32px' }}
                                   >
                                     {count > 0 ? count : '·'}
                                   </td>
@@ -3255,14 +3330,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             }}
           />
           <div
-            className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 w-[260px] flex flex-col"
-            style={{
+            className={`fixed z-50 bg-white shadow-xl border border-gray-200 flex flex-col ${
+              isMobile
+                ? 'inset-x-0 bottom-0 rounded-t-2xl max-h-[70vh] w-full'
+                : 'rounded-lg w-[260px]'
+            }`}
+            style={isMobile ? {} : {
               left: menuPosition.x,
               top: menuPosition.y,
               maxHeight: `calc(100vh - ${menuPosition.y}px - 16px)`,
             }}
           >
-            <div className="py-2 space-y-1 overflow-y-auto flex-1">
+            {isMobile && (
+              <div className="flex justify-center py-2 flex-shrink-0">
+                <div className="w-10 h-1 bg-gray-300 rounded-full" />
+              </div>
+            )}
+            <div className={`py-2 space-y-1 overflow-y-auto flex-1 ${isMobile ? 'pb-6' : ''}`}>
               {/* Header informativo quando em modo visualização ou escala bloqueada */}
               {(!editMode || isLocked) && (
                 <div className="px-3 py-1.5 mx-2 mb-1 bg-gray-50 rounded text-xs text-gray-600">
@@ -3468,19 +3552,28 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             onClick={() => setShowActionsMenu(null)}
           />
           <div
-            className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 w-[280px] flex flex-col"
-            style={{
+            className={`fixed z-50 bg-white shadow-xl border border-gray-200 flex flex-col ${
+              isMobile
+                ? 'inset-x-0 bottom-0 rounded-t-2xl max-h-[70vh] w-full'
+                : 'rounded-lg w-[280px]'
+            }`}
+            style={isMobile ? {} : {
               left: actionsMenuPosition.x,
               top: actionsMenuPosition.y,
               maxHeight: `calc(100vh - ${actionsMenuPosition.y}px - 16px)`,
             }}
           >
+            {isMobile && (
+              <div className="flex justify-center py-2 flex-shrink-0">
+                <div className="w-10 h-1 bg-gray-300 rounded-full" />
+              </div>
+            )}
             <div className="px-3 py-2 border-b border-gray-200 flex items-center gap-2 flex-shrink-0">
               <Zap className="w-4 h-4 text-blue-600" />
               <span className="text-sm font-semibold text-gray-900">Ações Rápidas</span>
             </div>
 
-            <div className="py-2 space-y-1 overflow-y-auto flex-1">
+            <div className={`py-2 space-y-1 overflow-y-auto flex-1 ${isMobile ? 'pb-6' : ''}`}>
               <div className="px-3 py-1 bg-gray-50">
                 <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">✓ Preencher Dias</p>
               </div>
