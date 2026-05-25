@@ -70,6 +70,22 @@ export default function SwapsView() {
   const [confirmCancelSwap, setConfirmCancelSwap] = useState<ShiftSwap | null>(null);
   const { toasts, toast, removeToast } = useToast();
 
+  // Médico: identifica o professional_id vinculado ao user para filtrar trocas
+  const isMedico = roleName === 'Médico';
+  const [myProfessionalId, setMyProfessionalId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isMedico || !user) return;
+    (async () => {
+      const { data } = await supabase
+        .from('professionals')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (data) setMyProfessionalId(data.id);
+    })();
+  }, [isMedico, user]);
+
   useEffect(() => {
     loadSwaps();
     loadDepartments();
@@ -136,6 +152,13 @@ export default function SwapsView() {
   };
 
   const filteredSwaps = swaps.filter(swap => {
+    // Médico: só vê trocas onde ele é solicitante ou alvo
+    if (isMedico && myProfessionalId) {
+      const isInvolved =
+        swap.requesting_professional?.id === myProfessionalId ||
+        swap.target_professional?.id === myProfessionalId;
+      if (!isInvolved) return false;
+    }
     const catName = swap.requesting_professional?.category?.name ?? '';
     const isMedical = /m[eé]dic/i.test(catName);
     // Diretoria Médica → só trocas de médicos
@@ -338,22 +361,22 @@ export default function SwapsView() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Trocas de Plantões</h2>
-          <p className="text-gray-600 mt-1">Gerencie solicitações de troca de plantões</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Trocas de Plantões</h2>
+          <p className="text-sm text-gray-600 mt-1">Gerencie solicitações de troca</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base self-start sm:self-auto"
         >
           <Plus className="w-5 h-5" />
           Nova Solicitação
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             {selectedMonth && (
