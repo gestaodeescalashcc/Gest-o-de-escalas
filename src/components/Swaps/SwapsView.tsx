@@ -73,6 +73,8 @@ export default function SwapsView() {
   // Médico: identifica o professional_id vinculado ao user para filtrar trocas
   const isMedico = roleName === 'Médico';
   const [myProfessionalId, setMyProfessionalId] = useState<string | null>(null);
+  // Apenas coordenadores, admins e diretoria podem aprovar/recusar trocas
+  const canApproveReject = !isMedico;
 
   useEffect(() => {
     if (!isMedico || !user) return;
@@ -605,7 +607,7 @@ export default function SwapsView() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          {isPending && (
+                          {isPending && canApproveReject && (
                             <>
                               <button
                                 onClick={() => handleApproveRequest(swap)}
@@ -761,26 +763,30 @@ export default function SwapsView() {
                   >
                     Cancelar
                   </button>
-                  <button
-                    onClick={() => {
-                      setShowDetailsModal(false);
-                      handleReject(selectedSwap);
-                    }}
-                    disabled={actionLoading}
-                    className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition disabled:opacity-50"
-                  >
-                    Recusar
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowDetailsModal(false);
-                      handleApproveRequest(selectedSwap);
-                    }}
-                    disabled={actionLoading}
-                    className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition disabled:opacity-50"
-                  >
-                    Aprovar
-                  </button>
+                  {canApproveReject && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setShowDetailsModal(false);
+                          handleReject(selectedSwap);
+                        }}
+                        disabled={actionLoading}
+                        className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition disabled:opacity-50"
+                      >
+                        Recusar
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowDetailsModal(false);
+                          handleApproveRequest(selectedSwap);
+                        }}
+                        disabled={actionLoading}
+                        className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition disabled:opacity-50"
+                      >
+                        Aprovar
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
