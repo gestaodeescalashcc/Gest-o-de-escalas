@@ -302,11 +302,11 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gestão de Escalas</h2>
-          <p className="text-gray-600 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Gestão de Escalas</h2>
+          <p className="text-sm text-gray-600 mt-1">
             {viewMode === 'schedules'
               ? `${filteredSchedules.length} ${filteredSchedules.length === 1 ? 'escala' : 'escalas'}`
               : `${filteredShifts.length} ${filteredShifts.length === 1 ? 'plantão' : 'plantões'}`
@@ -314,29 +314,31 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
             {viewMode === 'schedules' && filteredSchedules.length !== schedules.length && ` de ${schedules.length}`}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           {viewMode === 'schedules' && (
             <button
               onClick={() => setShowCreateScheduleModal(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base"
             >
               <Plus className="w-5 h-5" />
-              Nova Escala Mensal
+              <span className="hidden sm:inline">Nova Escala Mensal</span>
+              <span className="sm:hidden">Nova Escala</span>
             </button>
           )}
           {viewMode === 'shifts' && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base"
             >
               <Plus className="w-5 h-5" />
-              Novo Plantão Avulso
+              <span className="hidden sm:inline">Novo Plantão Avulso</span>
+              <span className="sm:hidden">Novo Plantão</span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-6">
         <div className="space-y-4 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
