@@ -284,14 +284,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   // Admins can always edit; others only when status is Rascunho
   const canEditSchedule = isAdmin() ? true : !isLocked && canUpdate('schedules');
 
+  // Cache armazena ARRAY de shifts por profissional/dia — permite plantão duplo
+  // (ex: SD + SN no mesmo dia quando alguém cobre depois do próprio plantão).
   const shiftsCache = useMemo(() => {
-    const cache = new Map<string, Map<string, Shift>>();
+    const cache = new Map<string, Map<string, Shift[]>>();
 
     shifts.forEach(shift => {
       if (!cache.has(shift.professional_id)) {
         cache.set(shift.professional_id, new Map());
       }
-      cache.get(shift.professional_id)!.set(shift.shift_date, shift);
+      const dayMap = cache.get(shift.professional_id)!;
+      const arr = dayMap.get(shift.shift_date) || [];
+      arr.push(shift);
+      dayMap.set(shift.shift_date, arr);
     });
 
     return cache;
@@ -334,13 +339,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const workDaysCache = useMemo(() => {
     const cache = new Map<string, number>();
     professionals.forEach(prof => {
-      const days = shifts.filter(s => {
-        if (s.professional_id !== prof.id) return false;
+      // Conta DIAS ÚNICOS de trabalho (não shifts). Plantão duplo (SD+SN) no
+      // mesmo dia conta como 1 dia trabalhado, não 2.
+      const uniqueWorkDates = new Set<string>();
+      shifts.forEach(s => {
+        if (s.professional_id !== prof.id) return;
         const name = getEffectiveShiftType(s);
-        if (!name) return false;
-        return !NON_WORK_TYPES.has(name);
-      }).length;
-      cache.set(prof.id, days);
+        if (!name) return;
+        if (NON_WORK_TYPES.has(name)) return;
+        uniqueWorkDates.add(s.shift_date);
+      });
+      cache.set(prof.id, uniqueWorkDates.size);
     });
     return cache;
   }, [shifts, professionals, viewMode, isPublished]);
@@ -703,33 +712,38 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     return new Date(parseInt(year), parseInt(month), 0).getDate();
   };
 
-  const getShiftCode = (professionalId: string, day: number) => {
+  // Retorna ARRAY de códigos válidos no dia/profissional (pode ser 1 ou 2).
+  // Usado para renderizar célula diagonal quando há plantão duplo.
+  const getShiftCodes = (professionalId: string, day: number): string[] => {
     const [year, month] = selectedMonth.split('-');
     const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
-    const shift = shiftsCache.get(professionalId)?.get(date);
+    const arr = shiftsCache.get(professionalId)?.get(date) || [];
+    if (arr.length === 0) return [];
 
-    if (!shift) return '';
-
-    // Lógica:
-    // - Modo Planejada + escala finalizada:
-    //     * Shift tem original_shift_type → mostra ele (snapshot da planejada)
-    //     * Shift NÃO tem original_shift_type → é um plantão adicionado APÓS a
-    //       finalização → não pertence à planejada, retorna vazio.
-    // - Modo Realizada (ou escala ainda em rascunho):
-    //     * Sempre mostra o valor atual.
-    if (viewMode === 'planejada' && isPublished) {
-      // Planejada: ignora o soft-delete da Realizada — mostra o original imutável.
-      const orig = (shift as any).original_shift_type;
-      if (!orig) return '';  // plantão pós-finalização: invisível na planejada
-      const shiftType = SHIFT_TYPES.find(st => st.name === orig);
-      return shiftType?.code || '';
+    const codes: string[] = [];
+    for (const shift of arr) {
+      let name: string | null;
+      if (viewMode === 'planejada' && isPublished) {
+        // Planejada: usa snapshot original. Sem original → invisível na planejada.
+        name = (shift as any).original_shift_type || null;
+      } else {
+        // Realizada/rascunho: pula soft-deletados
+        if ((shift as any).deleted_in_realizada_at) continue;
+        name = shift.shift_type;
+      }
+      if (!name) continue;
+      const found = SHIFT_TYPES.find(st => st.name === name)?.code;
+      if (found) codes.push(found);
     }
+    // Ordena pra "primeiro horário" vir antes (start_time crescente)
+    // — usa o array original já que `arr` está na ordem do banco; manter
+    return codes;
+  };
 
-    // Realizada: se foi soft-deletado, célula fica vazia
-    if ((shift as any).deleted_in_realizada_at) return '';
-
-    const shiftType = SHIFT_TYPES.find(st => st.name === shift.shift_type);
-    return shiftType?.code || '';
+  // Compat: retorna o PRIMEIRO código (1º plantão do dia) ou ''
+  const getShiftCode = (professionalId: string, day: number): string => {
+    const codes = getShiftCodes(professionalId, day);
+    return codes[0] || '';
   };
 
   /**
@@ -740,18 +754,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const getOriginalShiftCode = (professionalId: string, day: number): string => {
     const [year, month] = selectedMonth.split('-');
     const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
-    const shift = shiftsCache.get(professionalId)?.get(date);
-    if (!shift) return '';
-    // Escala finalizada: Planejada = original_shift_type. Se NÃO existe
-    // (shift adicionado pós-finalização), retorna '' — esse plantão não
-    // faz parte da Planejada e a comparação para detectar divergência
-    // (isOverridden) não deve disparar.
+    const arr = shiftsCache.get(professionalId)?.get(date) || [];
+    if (arr.length === 0) return '';
+    const first = arr[0];
     let name = '';
     if (isPublished) {
-      name = (shift as any).original_shift_type || '';
+      name = (first as any).original_shift_type || '';
     } else {
-      if ((shift as any).deleted_in_realizada_at) return '';
-      name = shift.shift_type;
+      if ((first as any).deleted_in_realizada_at) return '';
+      name = first.shift_type;
     }
     if (!name) return '';
     return SHIFT_TYPES.find(st => st.name === name)?.code || '';
@@ -764,28 +775,22 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
    * - realizada: aplica absences sobre o planejado (faltas, atestados, etc.
    *   sobrescrevem o código original)
    */
-  const getEffectiveShiftCode = (professionalId: string, day: number): string => {
-    const planned = getShiftCode(professionalId, day);
+  // Retorna ARRAY de códigos efetivos (com overlays de ausência/cobertura aplicados na Realizada)
+  const getEffectiveShiftCodes = (professionalId: string, day: number): string[] => {
+    const planned = getShiftCodes(professionalId, day);
     if (viewMode === 'planejada') return planned;
 
     const [year, month] = selectedMonth.split('-');
     const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
 
-    // Procurar absence ativa nesse dia
     const absence = scheduleAbsences.find(
       a =>
         a.professional_id === professionalId &&
         date >= a.start_date &&
         date <= a.end_date
     );
+    if (absence) return [absence.shift_code || 'FA'];
 
-    if (absence) {
-      // Códigos válidos do sistema; se não bater, exibe FA como fallback
-      return absence.shift_code || 'FA';
-    }
-
-    // Se este profissional COBRIU a falta de outro nesse dia,
-    // mostra o turno original do ausente (em modo Realizada)
     const coverage = scheduleAbsences.find(
       a =>
         a.coverage_professional_id === professionalId &&
@@ -793,11 +798,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         date <= a.end_date
     );
     if (coverage) {
-      const coveredShift = getShiftCode(coverage.professional_id, day);
-      if (coveredShift) return coveredShift;
+      const coveredCodes = getShiftCodes(coverage.professional_id, day);
+      if (coveredCodes.length) return coveredCodes;
     }
-
     return planned;
+  };
+
+  // Compat: 1º código
+  const getEffectiveShiftCode = (professionalId: string, day: number): string => {
+    return getEffectiveShiftCodes(professionalId, day)[0] || '';
   };
 
   // Tooltip helper para célula em modo realizada (override)
@@ -1037,12 +1046,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const [year, month] = selectedMonth.split('-');
       const date = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
 
-      const existingShift = shifts.find(
-        s => s.professional_id === selectedCell.profId && s.shift_date === date
+      // Todos os shifts existentes nesse dia/profissional (até 2, ativos)
+      const existingShifts = shifts.filter(
+        s => s.professional_id === selectedCell.profId &&
+             s.shift_date === date &&
+             !(s as any).deleted_in_realizada_at
       );
 
-      if (existingShift) {
-        // Se o shift estava soft-deletado da Realizada, reativa
+      // Se já tem 2 shifts ativos: substituir o primeiro (mantém a regra simples)
+      // — pode evoluir depois pra perguntar qual.
+      if (existingShifts.length >= 2) {
+        const target = existingShifts[0];
         const { error } = await supabase
           .from('shifts')
           .update({
@@ -1051,29 +1065,85 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             end_time: shiftType.end,
             deleted_in_realizada_at: null,
           } as any)
-          .eq('id', existingShift.id);
-
+          .eq('id', target.id);
         if (error) {
-          console.error('Erro ao atualizar turno:', error);
           toast.error('Erro ao atualizar turno: ' + error.message);
           return;
         }
-
         setShifts(prev => prev.map(s =>
-          s.id === existingShift.id
+          s.id === target.id
             ? ({ ...s, shift_type: shiftType.name, start_time: shiftType.start, end_time: shiftType.end, deleted_in_realizada_at: null } as any)
             : s
         ));
+      } else if (existingShifts.length === 1) {
+        const existing = existingShifts[0];
+        // Se o tipo escolhido é o MESMO do existente, ignora (no-op)
+        if (existing.shift_type === shiftType.name) {
+          setShowQuickMenu(false);
+          setSelectedCell(null);
+          return;
+        }
+        // Verifica se existe shift INATIVO (soft-deletado) que poderia ser reativado
+        const inactive = shifts.find(s =>
+          s.professional_id === selectedCell.profId &&
+          s.shift_date === date &&
+          (s as any).deleted_in_realizada_at
+        );
+        if (inactive) {
+          // Reativa o inativo com o novo tipo (vira o 2º plantão)
+          const { error } = await supabase
+            .from('shifts')
+            .update({
+              shift_type: shiftType.name,
+              start_time: shiftType.start,
+              end_time: shiftType.end,
+              deleted_in_realizada_at: null,
+            } as any)
+            .eq('id', inactive.id);
+          if (error) {
+            toast.error('Erro ao reativar turno: ' + error.message);
+            return;
+          }
+          setShifts(prev => prev.map(s =>
+            s.id === inactive.id
+              ? ({ ...s, shift_type: shiftType.name, start_time: shiftType.start, end_time: shiftType.end, deleted_in_realizada_at: null } as any)
+              : s
+          ));
+        } else {
+          // INSERT como 2º plantão do dia (plantão duplo via troca/cobertura)
+          const profForShift = professionals.find(p => p.id === selectedCell.profId);
+          const shiftCompanyId = (profForShift as any)?.company_id || null;
+          const { data, error } = await supabase
+            .from('shifts')
+            .insert({
+              professional_id: selectedCell.profId,
+              department_id: selectedDepartment,
+              schedule_id: selectedSchedule,
+              shift_date: date,
+              shift_type: shiftType.name,
+              start_time: shiftType.start,
+              end_time: shiftType.end,
+              status: 'Agendado',
+              company_id: shiftCompanyId,
+              created_by: user?.id,
+            })
+            .select()
+            .maybeSingle();
+          if (error) {
+            if (error.code === '23505') {
+              toast.warning('Já existe um plantão com esse horário neste dia.');
+            } else {
+              toast.error('Erro ao inserir 2º plantão: ' + error.message);
+            }
+            return;
+          }
+          if (data) setShifts(prev => [...prev, data]);
+          toast.success(`Plantão duplo: ${existing.shift_type.split('(')[0].trim()} + ${shiftType.name.split('(')[0].trim()}`);
+        }
       } else {
-        // Captura a empresa do profissional no momento da criação do plantão
+        // 0 shifts ativos → INSERT normal
         const profForShift = professionals.find(p => p.id === selectedCell.profId);
         const shiftCompanyId = (profForShift as any)?.company_id || null;
-
-        // IMPORTANTE: NÃO setar original_* aqui — o trigger do banco
-        // (shifts_auto_original_snapshot) decide se popula ou deixa NULL
-        // com base em monthly_schedules.published_at:
-        //   - Escala em rascunho: trigger popula original_* = atual (Planejada acompanha)
-        //   - Escala finalizada: trigger deixa original_* NULL (só aparece na Realizada)
         const { data, error } = await supabase
           .from('shifts')
           .insert({
@@ -1090,26 +1160,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           })
           .select()
           .maybeSingle();
-
         if (error) {
-          console.error('Erro ao inserir turno:', error);
-
-          if (error.message?.includes('duplicate') || error.message?.includes('unique') ||
-              error.code === '23505') {
-            toast.warning('Este profissional já possui um plantão agendado para esta data nesta escala.');
+          if (error.code === '23505') {
+            toast.warning('Já existe um plantão com esse horário neste dia.');
           } else {
             toast.error('Erro ao inserir turno: ' + error.message);
           }
           return;
         }
-
-        if (!data) {
-          console.error('Nenhum turno foi criado');
-          toast.error('Erro: Nenhum turno foi criado');
-          return;
-        }
-
-        setShifts(prev => [...prev, data]);
+        if (data) setShifts(prev => [...prev, data]);
       }
 
       setShowQuickMenu(false);
@@ -1117,7 +1176,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       setHasChanges(true);
     } catch (err) {
       console.error('Erro inesperado ao salvar turno:', err);
-      toast.error('Erro inesperado ao salvar turno. Verifique o console para detalhes.');
+      toast.error('Erro inesperado ao salvar turno.');
     }
   };
 
@@ -1128,14 +1187,24 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const [year, month] = selectedMonth.split('-');
       const date = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
 
-      const existingShift = shifts.find(
-        s => s.professional_id === selectedCell.profId && s.shift_date === date
-      );
+      // Pega shifts ATIVOS do dia. Se houver mais de 1 (plantão duplo),
+      // remove o MAIS RECENTE primeiro (último inserido) — assume que ele é
+      // o "extra" que entrou via troca/cobertura.
+      const activeShifts = shifts
+        .filter(s =>
+          s.professional_id === selectedCell.profId &&
+          s.shift_date === date &&
+          !(s as any).deleted_in_realizada_at
+        )
+        .sort((a, b) => {
+          const ta = (a as any).created_at || '';
+          const tb = (b as any).created_at || '';
+          return tb.localeCompare(ta);  // mais recente primeiro
+        });
+
+      const existingShift = activeShifts[0];
 
       if (existingShift) {
-        // Se a escala foi finalizada, NUNCA deletar a linha (perderia o snapshot
-        // da Planejada original). Faz soft delete: marca deleted_in_realizada_at.
-        // Caso a Planejada nunca tenha sido finalizada → DELETE real.
         const hasPlanejada = (existingShift as any).original_shift_type;
         if (isPublished && hasPlanejada) {
           const { error } = await supabase
@@ -1143,7 +1212,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             .update({ deleted_in_realizada_at: new Date().toISOString() } as any)
             .eq('id', existingShift.id);
           if (error) {
-            console.error('Erro ao excluir turno (soft):', error);
             toast.error('Erro ao excluir turno: ' + error.message);
             return;
           }
@@ -1157,13 +1225,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         } else {
           const { error } = await supabase.from('shifts').delete().eq('id', existingShift.id);
           if (error) {
-            console.error('Erro ao deletar turno:', error);
             toast.error('Erro ao deletar turno: ' + error.message);
             return;
           }
           setShifts(prev => prev.filter(s => s.id !== existingShift.id));
         }
         setHasChanges(true);
+        if (activeShifts.length > 1) {
+          toast.info(`2º plantão removido. O plantão "${activeShifts[1].shift_type.split('(')[0].trim()}" permanece.`);
+        }
       }
 
       setShowQuickMenu(false);
@@ -2993,7 +3063,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             {calculateWorkDays(prof.id)}
                           </td>
                           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
-                            const code = getEffectiveShiftCode(prof.id, day);
+                            const codes = getEffectiveShiftCodes(prof.id, day);
+                            const code = codes[0] || '';
+                            const code2 = codes[1] || '';  // 2º turno (plantão duplo)
+                            const hasDouble = !!code2;
                             const plannedCode = getShiftCode(prof.id, day);
                             const cellAbsence = findAbsenceForCell(prof.id, day);
                             // Indicador visual de divergência DESATIVADO — a Planejada
@@ -3033,24 +3106,54 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                               ? `Feriado ${holidayForCell.type}: ${holidayForCell.name}`
                               : '';
                             const finalTooltip = [tooltip, swapTooltip, coverageTooltip, holidayTooltip].filter(Boolean).join('\n');
+                            // Quando há 2 plantões no mesmo dia (plantão duplo via troca/cobertura)
+                            // renderiza a célula dividida na diagonal, cada triângulo com sua cor + sigla.
+                            const doubleTooltip = hasDouble ? `${code} + ${code2} (plantão duplo)` : '';
                             return (
                               <td
                                 key={day}
                                 onClick={(e) => handleCellClick(prof.id, day, e)}
-                                title={finalTooltip || undefined}
-                                className={`border border-gray-300 px-1 py-2 text-center font-semibold relative ${
-                                  // Prioridade: troca (verde) > absence (vermelho) > código planejado
+                                title={[finalTooltip, doubleTooltip].filter(Boolean).join('\n') || undefined}
+                                className={`border border-gray-300 text-center font-semibold relative p-0 overflow-hidden ${
+                                  // Prioridade: troca (verde) > absence (vermelho) > código planejado (1 só) > weekend
                                   isSwapped ? 'bg-emerald-600 text-white ring-2 ring-inset ring-emerald-800' :
                                   hasAbsenceMarkPlanned ? 'bg-red-200 text-red-900 ring-2 ring-inset ring-red-500' :
+                                  hasDouble ? '' :
                                   code ? getCellColorClass(code) : ''
-                                } ${!isSwapped && !hasAbsenceMarkPlanned && isWeekend && !code ? 'bg-amber-100' : ''} ${
-                                  isWeekend && code && !isSwapped && !hasAbsenceMarkPlanned ? 'ring-1 ring-inset ring-amber-400' : ''
+                                } ${!isSwapped && !hasAbsenceMarkPlanned && isWeekend && !code && !hasDouble ? 'bg-amber-100' : ''} ${
+                                  isWeekend && (code || hasDouble) && !isSwapped && !hasAbsenceMarkPlanned ? 'ring-1 ring-inset ring-amber-400' : ''
                                 } ${
                                   'cursor-pointer hover:ring-2 hover:ring-blue-400'
                                 } ${isOverridden ? 'ring-1 ring-inset ring-red-400' : ''}`}
-                                style={{ minWidth: isMobile ? '28px' : '32px', maxWidth: isMobile ? '28px' : '32px' }}
+                                style={{ minWidth: isMobile ? '28px' : '32px', maxWidth: isMobile ? '28px' : '32px', height: isMobile ? '28px' : '32px' }}
                               >
-                                {code}
+                                {hasDouble ? (
+                                  <div className="relative w-full h-full">
+                                    {/* Triângulo superior-esquerdo: 1º plantão */}
+                                    <div
+                                      className={`absolute inset-0 flex items-start justify-start ${getCellColorClass(code)}`}
+                                      style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)' }}
+                                    >
+                                      <span className="text-[9px] font-bold leading-none pl-0.5 pt-0.5">{code}</span>
+                                    </div>
+                                    {/* Triângulo inferior-direito: 2º plantão */}
+                                    <div
+                                      className={`absolute inset-0 flex items-end justify-end ${getCellColorClass(code2)}`}
+                                      style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
+                                    >
+                                      <span className="text-[9px] font-bold leading-none pr-0.5 pb-0.5">{code2}</span>
+                                    </div>
+                                    {/* Linha diagonal divisória */}
+                                    <div
+                                      className="absolute inset-0 pointer-events-none"
+                                      style={{
+                                        background: 'linear-gradient(to top right, transparent calc(50% - 0.5px), rgba(0,0,0,0.4) calc(50% - 0.5px), rgba(0,0,0,0.4) calc(50% + 0.5px), transparent calc(50% + 0.5px))'
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="px-1 py-2">{code}</div>
+                                )}
                                 {/* Indicador em modo Realizada: ponto vermelho quando célula foi sobrescrita */}
                                 {isOverridden && (
                                   <span
