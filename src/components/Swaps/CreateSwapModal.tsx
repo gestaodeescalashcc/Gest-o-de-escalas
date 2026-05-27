@@ -86,7 +86,11 @@ export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: 
             )
           `)
           .gte('shift_date', today)
-          .order('shift_date'),
+          .order('shift_date')
+          // PostgREST default = 1000 rows. Enfermagem tem ~30 plantões/dia,
+          // o que dava só ~33 dias visíveis (cobertura até dia 22 do mês
+          // seguinte). Aumentamos para cobrir vários meses à frente.
+          .limit(20000),
 
         supabase
           .from('professionals')
