@@ -2349,13 +2349,24 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     const daysInMonth = getDaysInMonth();
 
     // Construir o map professional_id -> day -> code
-    // Usa getEffectiveShiftCode: se modo é "realizada", aplica absences;
-    // se "planejada", retorna apenas o turno planejado (igual antes)
+    // Usa getEffectiveShiftCodes (array): pega TODOS os plantões do dia.
+    // Plantão duplo SD+SN (alguém que fez SD e depois SN via troca) colapsa
+    // para "P" no Excel — Excel não suporta célula diagonal nativa, e SD+SN
+    // = 24h = Plantão.
     const shiftsByProf = new Map<string, Map<number, string>>();
     professionals.forEach(p => {
       const m = new Map<number, string>();
       for (let day = 1; day <= daysInMonth; day++) {
-        const code = getEffectiveShiftCode(p.id, day);
+        const codes = getEffectiveShiftCodes(p.id, day);
+        let code = codes[0] || '';
+        if (codes.length === 2) {
+          const set = new Set(codes);
+          // SD + SN = P (Plantão 24h)
+          if (set.has('SD') && set.has('SN')) code = 'P';
+          // Manhã + Tarde = MT (8h)
+          else if (set.has('M') && set.has('T')) code = 'MT';
+          // Caso contrário, mantém o primeiro
+        }
         if (code) m.set(day, code);
       }
       shiftsByProf.set(p.id, m);
