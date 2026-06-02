@@ -1081,12 +1081,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           }
         : {};
 
-      // Todos os shifts existentes nesse dia/profissional (até 2, ativos)
-      const existingShifts = shifts.filter(
-        s => s.professional_id === selectedCell.profId &&
-             s.shift_date === date &&
-             !(s as any).deleted_in_realizada_at
-      );
+      // Todos os shifts existentes nesse dia/profissional.
+      // - Realizada: só os ATIVOS (não soft-deletados).
+      // - Planejada: inclui também shifts soft-deletados que ainda têm original_*,
+      //   pois eles ESTÃO visíveis na Planejada (vivem só lá).
+      const existingShifts = shifts.filter(s => {
+        if (s.professional_id !== selectedCell.profId) return false;
+        if (s.shift_date !== date) return false;
+        const isSoftDeleted = !!(s as any).deleted_in_realizada_at;
+        const hasOriginal = !!(s as any).original_shift_type;
+        if (viewMode === 'planejada' && isPublished) {
+          // Em Planejada, "existente" = qualquer shift que aparece na Planejada
+          return hasOriginal;
+        }
+        return !isSoftDeleted;
+      });
 
       // Se já tem 2 shifts ativos: substituir o primeiro (mantém a regra simples)
       // — pode evoluir depois pra perguntar qual.
@@ -1294,15 +1303,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const [year, month] = selectedMonth.split('-');
       const date = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
 
-      // Pega shifts ATIVOS do dia. Se houver mais de 1 (plantão duplo),
-      // remove o MAIS RECENTE primeiro (último inserido) — assume que ele é
-      // o "extra" que entrou via troca/cobertura.
+      // Pega os shifts "deletáveis" do dia:
+      // - Realizada: shifts ativos (não soft-deletados).
+      // - Planejada: shifts ativos OU shifts soft-deletados que ainda têm
+      //   original_* (estão visíveis só na Planejada). Sem isso, clicar Remover
+      //   em uma célula "só Planejada" não fazia nada (bug silencioso).
       const activeShifts = shifts
-        .filter(s =>
-          s.professional_id === selectedCell.profId &&
-          s.shift_date === date &&
-          !(s as any).deleted_in_realizada_at
-        )
+        .filter(s => {
+          if (s.professional_id !== selectedCell.profId) return false;
+          if (s.shift_date !== date) return false;
+          const isSoftDeleted = !!(s as any).deleted_in_realizada_at;
+          const hasOriginal = !!(s as any).original_shift_type;
+          if (viewMode === 'planejada' && isPublished) return hasOriginal;
+          return !isSoftDeleted;
+        })
         .sort((a, b) => {
           const ta = (a as any).created_at || '';
           const tb = (b as any).created_at || '';
