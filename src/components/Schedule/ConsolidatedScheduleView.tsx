@@ -912,6 +912,30 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     }
   };
 
+  // Hex sólidos para fundos dos totais (linha sticky inferior).
+  // Tailwind JIT não emite as classes -50 geradas dinamicamente; usamos inline style.
+  const getSolidBgHex = (code: string): string => {
+    switch (code) {
+      case 'FG': return '#f3f4f6'; // gray-100
+      case 'FE': return '#fef9c3'; // yellow-100
+      case 'FA': return '#fecaca'; // red-200
+      case 'FR': return '#ffe4e6'; // rose-100
+      case 'LP': return '#f3e8ff'; // purple-100
+      case 'LM': return '#fee2e2'; // red-100
+      case 'LG': return '#fce7f3'; // pink-100
+      case 'AS': return '#ffedd5'; // orange-100
+      case 'SN': return '#e0e7ff'; // indigo-100
+      case 'SD': return '#e0f2fe'; // sky-100
+      case 'D':  return '#cffafe'; // cyan-100
+      case 'M':  return '#d1fae5'; // emerald-100
+      case 'M2': return '#ecfccb'; // lime-100
+      case 'T':  return '#fef3c7'; // amber-100
+      case 'MT': return '#ccfbf1'; // teal-100
+      case 'P':  return '#dbeafe'; // blue-100
+      default:   return '#dbeafe'; // blue-100
+    }
+  };
+
   // Standardized badge classes — all shift codes use the same dimensions
   const SHIFT_BADGE_CLASS =
     'inline-flex items-center justify-center min-w-[40px] h-6 px-2 rounded-md text-xs font-semibold tracking-wide';
@@ -1089,8 +1113,31 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         ));
       } else if (existingShifts.length === 1) {
         const existing = existingShifts[0];
-        // Se o tipo escolhido é o MESMO do existente, ignora (no-op)
+        // Se o tipo escolhido é o MESMO do existente:
+        // - em REALIZADA → no-op
+        // - em PLANEJADA → se original_shift_type != novo, "promove" o shift para a Planejada
+        //   (caso de shift criado só na Realizada que agora vai oficializar na Planejada)
         if (existing.shift_type === shiftType.name) {
+          const needsPlanejadaSync =
+            viewMode === 'planejada' &&
+            (existing as any).original_shift_type !== shiftType.name;
+          if (needsPlanejadaSync) {
+            const { error } = await supabase
+              .from('shifts')
+              .update(planejadaFields as any)
+              .eq('id', existing.id);
+            if (error) {
+              toast.error('Erro ao sincronizar Planejada: ' + error.message);
+              return;
+            }
+            setShifts(prev => prev.map(s =>
+              s.id === existing.id
+                ? ({ ...s, ...planejadaFields } as any)
+                : s
+            ));
+            setHasChanges(true);
+            toast.success('Plantão registrado na Planejada.');
+          }
           setShowQuickMenu(false);
           setSelectedCell(null);
           return;
@@ -3347,13 +3394,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                           const colorCls = getCellColorClass(code);
                           const monthTotal = Array.from(dailyShiftTotals.values())
                             .reduce((acc, m) => acc + (m.get(code) ?? 0), 0);
-                          // Fundo bem suave usando a mesma cor da sigla
-                          const rowBg = colorCls.replace(/text-\S+/g, '').replace(/ring-\S+/g, '').replace(/-100/g, '-50');
+                          // Fundo SÓLIDO (hex) — usar inline style porque Tailwind JIT
+                          // não inclui as variantes -50/-100 dinâmicas geradas via replace().
+                          const solidBg = getSolidBgHex(code);
                           // Distância do fundo: a última linha (idx = N-1) fica no bottom 0,
                           // as outras empilhadas acima.
                           const stickyBottom = (uniqueShiftCodes.length - 1 - idx) * 33;
                           return (
-                            <tr key={`tot-${code}`} className={`${rowBg}`}>
+                            <tr key={`tot-${code}`} style={{ backgroundColor: solidBg }}>
                               {/* Rótulo "TOTAL <SIGLA>" sticky em baixo E à esquerda */}
                               <th
                                 colSpan={isMobile ? 2 : (showCorenColumn ? 5 : 4)}
@@ -3381,8 +3429,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                     key={day}
                                     className={`border border-gray-200 px-1 py-1.5 text-center text-xs sticky z-30 ${
                                       count > 0 ? 'text-gray-900 font-bold' : 'text-gray-300 font-normal'
-                                    } ${rowBg}`}
-                                    style={{ minWidth: isMobile ? '28px' : '32px', maxWidth: isMobile ? '28px' : '32px', bottom: `${stickyBottom}px` }}
+                                    }`}
+                                    style={{ minWidth: isMobile ? '28px' : '32px', maxWidth: isMobile ? '28px' : '32px', bottom: `${stickyBottom}px`, backgroundColor: solidBg }}
                                   >
                                     {count > 0 ? count : '·'}
                                   </td>
@@ -3408,7 +3456,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                 {monthTotal}
                               </td>
                               {editMode && (
-                                <td className={`border border-gray-300 sticky z-40 ${rowBg}`} style={{ bottom: `${stickyBottom}px`, right: 0, backgroundColor: '#ffffff' }}></td>
+                                <td className="border border-gray-300 sticky z-40" style={{ bottom: `${stickyBottom}px`, right: 0, backgroundColor: '#ffffff' }}></td>
                               )}
                             </tr>
                           );
