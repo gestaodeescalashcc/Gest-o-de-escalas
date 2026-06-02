@@ -3029,11 +3029,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             <span className="block text-[11px] leading-tight">{code}</span>
                           </th>
                         ))}
-                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold whitespace-nowrap sticky top-0 bg-gray-100 z-30" style={{ minWidth: '70px' }}>
+                        <th className="border border-gray-300 px-2 py-2 text-center font-semibold whitespace-nowrap sticky bg-gray-100 z-40" style={{ minWidth: '70px', top: 0, right: editMode ? '50px' : 0 }}>
                           TOTAL<br/>HORAS
                         </th>
                         {editMode && (
-                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold bg-gray-100 whitespace-nowrap sticky top-0 z-30" style={{ minWidth: '50px' }}>
+                          <th className="border border-gray-300 px-2 py-2 text-center font-semibold bg-gray-100 whitespace-nowrap sticky z-40" style={{ minWidth: '50px', top: 0, right: 0 }}>
                             AÇÕES
                           </th>
                         )}
@@ -3243,11 +3243,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                               </td>
                             );
                           })}
-                          <td className={`border border-gray-300 px-2 py-2 text-center font-bold ${
-                            isOverWorkload(prof.id)
-                              ? 'bg-red-100 text-red-700 border-red-400'
-                              : 'text-gray-900'
-                          }`}>
+                          <td
+                            className={`border border-gray-300 px-2 py-2 text-center font-bold sticky z-20 ${
+                              isOverWorkload(prof.id)
+                                ? 'bg-red-100 text-red-700 border-red-400'
+                                : 'bg-white text-gray-900'
+                            }`}
+                            style={{ right: editMode ? '50px' : 0 }}
+                          >
                             <div className="flex flex-col items-center">
                               <span className={isOverWorkload(prof.id) ? 'line-through' : ''}>
                                 {calculateTotalHours(prof.id)}h
@@ -3260,7 +3263,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             </div>
                           </td>
                           {editMode && (
-                            <td className={`border border-gray-300 px-2 py-2 text-center ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}>
+                            <td
+                              className={`border border-gray-300 px-2 py-2 text-center sticky z-20 ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}
+                              style={{ right: 0 }}
+                            >
                               <button
                                 onClick={(e) => {
                                   const button = e.target as HTMLElement;
@@ -3309,11 +3315,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                     </tbody>
                     {uniqueShiftCodes.length > 0 && (
                       <tfoot>
-                        {/* Separador grosso antes dos totais — evita "embolar" com a última linha */}
+                        {/* Separador grosso antes dos totais — sticky no fundo junto com os totais */}
                         <tr aria-hidden="true">
                           <td colSpan={(isMobile ? 2 : (showCorenColumn ? 5 : 4)) + daysInMonth + uniqueShiftCodes.length + 1 + (editMode ? 1 : 0)}
-                              className="bg-gray-800"
-                              style={{ height: '4px', padding: 0, border: 0 }}
+                              className="sticky z-40 bg-gray-800"
+                              style={{ height: '4px', padding: 0, border: 0, bottom: `${uniqueShiftCodes.length * 33}px` }}
                           ></td>
                         </tr>
                         {uniqueShiftCodes.map((code, idx) => {
@@ -3322,16 +3328,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             .reduce((acc, m) => acc + (m.get(code) ?? 0), 0);
                           // Fundo bem suave usando a mesma cor da sigla
                           const rowBg = colorCls.replace(/text-\S+/g, '').replace(/ring-\S+/g, '').replace(/-100/g, '-50');
+                          // Distância do fundo: a última linha (idx = N-1) fica no bottom 0,
+                          // as outras empilhadas acima.
+                          const stickyBottom = (uniqueShiftCodes.length - 1 - idx) * 33;
                           return (
                             <tr key={`tot-${code}`} className={`${rowBg}`}>
-                              {/* Rótulo "TOTAL <SIGLA>" sticky à esquerda — fundo opaco branco
-                                  para não vazar conteúdo do scroll horizontal por trás */}
+                              {/* Rótulo "TOTAL <SIGLA>" sticky em baixo E à esquerda */}
                               <th
                                 colSpan={isMobile ? 2 : (showCorenColumn ? 5 : 4)}
-                                className="border border-gray-300 px-2 sm:px-3 py-1.5 text-right sticky left-0 z-30"
+                                className="border border-gray-300 px-2 sm:px-3 py-1.5 text-right sticky left-0 z-40"
                                 style={{
                                   minWidth: isMobile ? '136px' : (showCorenColumn ? '510px' : '430px'),
                                   backgroundColor: '#ffffff',
+                                  bottom: `${stickyBottom}px`,
                                 }}
                               >
                                 <div className="inline-flex items-center gap-2">
@@ -3341,16 +3350,18 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                   </span>
                                 </div>
                               </th>
-                              {/* Contagem por dia */}
+                              {/* Contagem por dia (sticky no fundo) */}
                               {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
                                 const count = dailyShiftTotals.get(day)?.get(code) ?? 0;
+                                // Cor de fundo opaca da linha (não pode ser apenas a classe rowBg
+                                // porque algumas células ficariam transparentes ao sticky)
                                 return (
                                   <td
                                     key={day}
-                                    className={`border border-gray-200 px-1 py-1.5 text-center text-xs ${
+                                    className={`border border-gray-200 px-1 py-1.5 text-center text-xs sticky z-30 ${
                                       count > 0 ? 'text-gray-900 font-bold' : 'text-gray-300 font-normal'
-                                    }`}
-                                    style={{ minWidth: isMobile ? '28px' : '32px', maxWidth: isMobile ? '28px' : '32px' }}
+                                    } ${rowBg}`}
+                                    style={{ minWidth: isMobile ? '28px' : '32px', maxWidth: isMobile ? '28px' : '32px', bottom: `${stickyBottom}px` }}
                                   >
                                     {count > 0 ? count : '·'}
                                   </td>
@@ -3360,19 +3371,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                               {uniqueShiftCodes.map(colCode => (
                                 <td
                                   key={`tfoot-x-${code}-${colCode}`}
-                                  className={`border border-gray-300 px-1 py-1.5 text-center text-xs font-bold ${
+                                  className={`border border-gray-300 px-1 py-1.5 text-center text-xs font-bold sticky z-30 ${
                                     code === colCode ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-300'
                                   }`}
+                                  style={{ bottom: `${stickyBottom}px` }}
                                 >
                                   {code === colCode ? monthTotal : '·'}
                                 </td>
                               ))}
-                              {/* Total geral (mesmo monthTotal) — colorido para destaque */}
-                              <td className="border border-gray-300 px-2 py-1.5 text-center text-sm font-extrabold bg-gray-800 text-white">
+                              {/* Total geral — sticky no fundo + à direita */}
+                              <td
+                                className="border border-gray-300 px-2 py-1.5 text-center text-sm font-extrabold bg-gray-800 text-white sticky z-40"
+                                style={{ bottom: `${stickyBottom}px`, right: editMode ? '50px' : 0 }}
+                              >
                                 {monthTotal}
                               </td>
                               {editMode && (
-                                <td className={`border border-gray-300 ${rowBg}`}></td>
+                                <td className={`border border-gray-300 sticky z-40 ${rowBg}`} style={{ bottom: `${stickyBottom}px`, right: 0, backgroundColor: '#ffffff' }}></td>
                               )}
                             </tr>
                           );
