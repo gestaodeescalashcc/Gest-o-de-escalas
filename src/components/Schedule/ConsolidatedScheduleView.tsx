@@ -1113,35 +1113,48 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         ));
       } else if (existingShifts.length === 1) {
         const existing = existingShifts[0];
-        // Se o tipo escolhido é o MESMO do existente:
-        // - em REALIZADA → no-op
-        // - em PLANEJADA → se original_shift_type != novo, "promove" o shift para a Planejada
-        //   (caso de shift criado só na Realizada que agora vai oficializar na Planejada)
-        if (existing.shift_type === shiftType.name) {
-          const needsPlanejadaSync =
-            viewMode === 'planejada' &&
-            (existing as any).original_shift_type !== shiftType.name;
-          if (needsPlanejadaSync) {
-            const { error } = await supabase
-              .from('shifts')
-              .update(planejadaFields as any)
-              .eq('id', existing.id);
-            if (error) {
-              toast.error('Erro ao sincronizar Planejada: ' + error.message);
-              return;
-            }
-            setShifts(prev => prev.map(s =>
-              s.id === existing.id
-                ? ({ ...s, ...planejadaFields } as any)
-                : s
-            ));
-            setHasChanges(true);
-            toast.success('Plantão registrado na Planejada.');
+        // PLANEJADA: sempre SUBSTITUI o existente (não cria 2º plantão).
+        // Plantão duplo (SD+SN diagonal) só faz sentido na Realizada via troca/cobertura.
+        if (viewMode === 'planejada') {
+          const sameType = existing.shift_type === shiftType.name;
+          const alreadySynced = (existing as any).original_shift_type === shiftType.name;
+          if (sameType && alreadySynced) {
+            setShowQuickMenu(false);
+            setSelectedCell(null);
+            return;
           }
+          const { error } = await supabase
+            .from('shifts')
+            .update({
+              shift_type: shiftType.name,
+              start_time: shiftType.start,
+              end_time: shiftType.end,
+              deleted_in_realizada_at: null,
+              ...planejadaFields,
+            } as any)
+            .eq('id', existing.id);
+          if (error) {
+            toast.error('Erro ao atualizar plantão (Planejada): ' + error.message);
+            return;
+          }
+          setShifts(prev => prev.map(s =>
+            s.id === existing.id
+              ? ({ ...s, shift_type: shiftType.name, start_time: shiftType.start, end_time: shiftType.end, deleted_in_realizada_at: null, ...planejadaFields } as any)
+              : s
+          ));
+          setHasChanges(true);
+          toast.success('Plantão atualizado na Planejada (e propagado para a Realizada).');
           setShowQuickMenu(false);
           setSelectedCell(null);
           return;
         }
+        // REALIZADA: se mesmo tipo, no-op.
+        if (existing.shift_type === shiftType.name) {
+          setShowQuickMenu(false);
+          setSelectedCell(null);
+          return;
+        }
+        // REALIZADA: tipo diferente → cria 2º plantão (plantão duplo via troca/cobertura).
         // Verifica se existe shift INATIVO (soft-deletado) que poderia ser reativado
         const inactive = shifts.find(s =>
           s.professional_id === selectedCell.profId &&
