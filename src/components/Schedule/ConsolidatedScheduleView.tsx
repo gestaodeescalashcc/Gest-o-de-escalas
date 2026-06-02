@@ -1046,6 +1046,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       const [year, month] = selectedMonth.split('-');
       const date = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
 
+      // Edição em modo PLANEJADA propaga pra Realizada (atualiza original_* TAMBÉM).
+      // Edição em modo REALIZADA só altera os campos correntes (original_* preservado).
+      const planejadaFields: Record<string, any> = viewMode === 'planejada'
+        ? {
+            original_shift_type: shiftType.name,
+            original_start_time: shiftType.start,
+            original_end_time: shiftType.end,
+            original_professional_id: selectedCell.profId,
+          }
+        : {};
+
       // Todos os shifts existentes nesse dia/profissional (até 2, ativos)
       const existingShifts = shifts.filter(
         s => s.professional_id === selectedCell.profId &&
@@ -1064,6 +1075,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             start_time: shiftType.start,
             end_time: shiftType.end,
             deleted_in_realizada_at: null,
+            ...planejadaFields,
           } as any)
           .eq('id', target.id);
         if (error) {
@@ -1098,6 +1110,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               start_time: shiftType.start,
               end_time: shiftType.end,
               deleted_in_realizada_at: null,
+              ...planejadaFields,
             } as any)
             .eq('id', inactive.id);
           if (error) {
@@ -1126,7 +1139,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               status: 'Agendado',
               company_id: shiftCompanyId,
               created_by: user?.id,
-            })
+              ...planejadaFields,
+            } as any)
             .select()
             .maybeSingle();
           if (error) {
@@ -1160,6 +1174,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               start_time: shiftType.start,
               end_time: shiftType.end,
               deleted_in_realizada_at: null,
+              ...planejadaFields,
             } as any)
             .eq('id', inactiveSameSlot.id);
           if (error) {
@@ -1187,7 +1202,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               status: 'Agendado',
               company_id: shiftCompanyId,
               created_by: user?.id,
-            })
+              ...planejadaFields,
+            } as any)
             .select()
             .maybeSingle();
           if (error) {
@@ -1237,7 +1253,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
 
       if (existingShift) {
         const hasPlanejada = (existingShift as any).original_shift_type;
-        if (isPublished && hasPlanejada) {
+        // Regras por modo:
+        // - PLANEJADA: hard delete (some das duas vistas)
+        // - REALIZADA + escala finalizada com snapshot: soft delete (Planejada preservada)
+        // - REALIZADA + sem snapshot OU rascunho: hard delete
+        const useSoftDelete = viewMode === 'realizada' && isPublished && hasPlanejada;
+        if (useSoftDelete) {
           const { error } = await supabase
             .from('shifts')
             .update({ deleted_in_realizada_at: new Date().toISOString() } as any)
