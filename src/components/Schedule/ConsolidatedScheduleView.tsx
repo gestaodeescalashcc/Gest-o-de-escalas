@@ -1141,34 +1141,65 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           toast.success(`Plantão duplo: ${existing.shift_type.split('(')[0].trim()} + ${shiftType.name.split('(')[0].trim()}`);
         }
       } else {
-        // 0 shifts ativos → INSERT normal
-        const profForShift = professionals.find(p => p.id === selectedCell.profId);
-        const shiftCompanyId = (profForShift as any)?.company_id || null;
-        const { data, error } = await supabase
-          .from('shifts')
-          .insert({
-            professional_id: selectedCell.profId,
-            department_id: selectedDepartment,
-            schedule_id: selectedSchedule,
-            shift_date: date,
-            shift_type: shiftType.name,
-            start_time: shiftType.start,
-            end_time: shiftType.end,
-            status: 'Agendado',
-            company_id: shiftCompanyId,
-            created_by: user?.id,
-          })
-          .select()
-          .maybeSingle();
-        if (error) {
-          if (error.code === '23505') {
-            toast.warning('Já existe um plantão com esse horário neste dia.');
-          } else {
-            toast.error('Erro ao inserir turno: ' + error.message);
+        // 0 shifts ativos. Antes de INSERT, verifica se há shift INATIVO
+        // (soft-deletado) com mesmo horário — reativa ao invés de criar novo.
+        // Sem isso, o unique index do banco bloqueava com "já existe plantão"
+        // mesmo a célula aparecendo vazia.
+        const inactiveSameSlot = shifts.find(s =>
+          s.professional_id === selectedCell.profId &&
+          s.shift_date === date &&
+          s.start_time === shiftType.start &&
+          s.end_time === shiftType.end &&
+          (s as any).deleted_in_realizada_at
+        );
+        if (inactiveSameSlot) {
+          const { error } = await supabase
+            .from('shifts')
+            .update({
+              shift_type: shiftType.name,
+              start_time: shiftType.start,
+              end_time: shiftType.end,
+              deleted_in_realizada_at: null,
+            } as any)
+            .eq('id', inactiveSameSlot.id);
+          if (error) {
+            toast.error('Erro ao reativar turno: ' + error.message);
+            return;
           }
-          return;
+          setShifts(prev => prev.map(s =>
+            s.id === inactiveSameSlot.id
+              ? ({ ...s, shift_type: shiftType.name, start_time: shiftType.start, end_time: shiftType.end, deleted_in_realizada_at: null } as any)
+              : s
+          ));
+        } else {
+          const profForShift = professionals.find(p => p.id === selectedCell.profId);
+          const shiftCompanyId = (profForShift as any)?.company_id || null;
+          const { data, error } = await supabase
+            .from('shifts')
+            .insert({
+              professional_id: selectedCell.profId,
+              department_id: selectedDepartment,
+              schedule_id: selectedSchedule,
+              shift_date: date,
+              shift_type: shiftType.name,
+              start_time: shiftType.start,
+              end_time: shiftType.end,
+              status: 'Agendado',
+              company_id: shiftCompanyId,
+              created_by: user?.id,
+            })
+            .select()
+            .maybeSingle();
+          if (error) {
+            if (error.code === '23505') {
+              toast.warning('Já existe um plantão com esse horário neste dia.');
+            } else {
+              toast.error('Erro ao inserir turno: ' + error.message);
+            }
+            return;
+          }
+          if (data) setShifts(prev => [...prev, data]);
         }
-        if (data) setShifts(prev => [...prev, data]);
       }
 
       setShowQuickMenu(false);
