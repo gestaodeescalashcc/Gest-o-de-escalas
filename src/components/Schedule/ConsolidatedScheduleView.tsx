@@ -1224,18 +1224,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
           toast.success(`Plantão duplo: ${existing.shift_type.split('(')[0].trim()} + ${shiftType.name.split('(')[0].trim()}`);
         }
       } else {
-        // 0 shifts ativos. Antes de INSERT, verifica se há shift INATIVO
-        // (soft-deletado) com mesmo horário — reativa ao invés de criar novo.
-        // Sem isso, o unique index do banco bloqueava com "já existe plantão"
-        // mesmo a célula aparecendo vazia.
-        const inactiveSameSlot = shifts.find(s =>
+        // 0 shifts "visíveis" na view atual. Antes de INSERT, procura QUALQUER
+        // shift no mesmo slot (prof+data+horário) — pode ser:
+        //   a) inativo (soft-deletado) → reativa.
+        //   b) ativo só na Realizada (original_*=NULL) e estamos em Planejada
+        //      → UPDATE para PROMOVER à Planejada (adiciona original_*).
+        // Sem essa busca, INSERT bate no unique index do banco e mostra
+        // "Já existe um plantão com esse horário" com a célula aparentemente vazia.
+        const collidingSlot = shifts.find(s =>
           s.professional_id === selectedCell.profId &&
           s.shift_date === date &&
           s.start_time === shiftType.start &&
-          s.end_time === shiftType.end &&
-          (s as any).deleted_in_realizada_at
+          s.end_time === shiftType.end
         );
-        if (inactiveSameSlot) {
+        if (collidingSlot) {
           const { error } = await supabase
             .from('shifts')
             .update({
@@ -1245,16 +1247,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               deleted_in_realizada_at: null,
               ...planejadaFields,
             } as any)
-            .eq('id', inactiveSameSlot.id);
+            .eq('id', collidingSlot.id);
           if (error) {
-            toast.error('Erro ao reativar turno: ' + error.message);
+            toast.error('Erro ao atualizar turno: ' + error.message);
             return;
           }
           setShifts(prev => prev.map(s =>
-            s.id === inactiveSameSlot.id
-              ? ({ ...s, shift_type: shiftType.name, start_time: shiftType.start, end_time: shiftType.end, deleted_in_realizada_at: null } as any)
+            s.id === collidingSlot.id
+              ? ({ ...s, shift_type: shiftType.name, start_time: shiftType.start, end_time: shiftType.end, deleted_in_realizada_at: null, ...planejadaFields } as any)
               : s
           ));
+          if (viewMode === 'planejada') {
+            toast.success('Plantão registrado na Planejada.');
+          }
         } else {
           const profForShift = professionals.find(p => p.id === selectedCell.profId);
           const shiftCompanyId = (profForShift as any)?.company_id || null;
