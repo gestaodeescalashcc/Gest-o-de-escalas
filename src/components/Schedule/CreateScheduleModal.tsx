@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Loader2, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import { useToast } from '../../hooks/useToast';
 import ToastContainer from '../Common/ToastContainer';
 import Modal from '../Common/Modal';
@@ -18,6 +19,7 @@ interface Department {
 
 export default function CreateScheduleModal({ onClose, onSuccess }: CreateScheduleModalProps) {
   const { user } = useAuth();
+  const { allowedDepartments, isAdmin } = usePermissions();
   const { toasts, toast, removeToast } = useToast();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,7 +33,8 @@ export default function CreateScheduleModal({ onClose, onSuccess }: CreateSchedu
 
   useEffect(() => {
     loadDepartments();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedDepartments]);
 
   // Auto-generate name only if user hasn't manually edited it
   useEffect(() => {
@@ -52,7 +55,12 @@ export default function CreateScheduleModal({ onClose, onSuccess }: CreateSchedu
   }, [formData.department_id, formData.month, departments, nameDirty]);
 
   const loadDepartments = async () => {
-    const { data } = await supabase.from('departments').select('id, name').eq('active', true).order('name');
+    let query = supabase.from('departments').select('id, name').eq('active', true).order('name');
+    // Admin vê tudo. Coordenador/Gestor vê só os setores permitidos.
+    if (!isAdmin() && allowedDepartments && allowedDepartments.length > 0) {
+      query = query.in('id', allowedDepartments);
+    }
+    const { data } = await query;
     if (data) setDepartments(data);
   };
 
