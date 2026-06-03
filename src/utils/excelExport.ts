@@ -77,6 +77,16 @@ function sanitizeSheetXml(xml: string): string {
     rest = rest.trim();
     return `<sheetPr${attrs || ''}>${tabColor}${outlinePr}${pageSetUpPr}${rest}</sheetPr>`;
   });
+
+  // Bug crítico do ExcelJS: emite x14ac:dyDescent com valores fora de faixa
+  // (visto "55" em sheetFormatPr) — Excel pede recovery e descarta a planilha.
+  // dyDescent é opcional; melhor é remover qualquer valor inválido (>1 ou <0).
+  out = out.replace(/\sx14ac:dyDescent="([^"]+)"/g, (_full, val) => {
+    const n = parseFloat(val);
+    if (!isFinite(n) || n < 0 || n > 1) return '';
+    return ` x14ac:dyDescent="${val}"`;
+  });
+
   // Remove namespaces órfãos no <worksheet> root também
   if (!/<x14ac:|x14ac:[a-zA-Z]/.test(out.replace(/^<\?xml[^>]*\?>/, ''))) {
     // ainda pode estar referenciado em x14ac:dyDescent etc — verifica
