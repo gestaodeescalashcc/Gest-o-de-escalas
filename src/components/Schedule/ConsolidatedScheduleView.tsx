@@ -2599,6 +2599,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const StatusBadge = currentSchedule ? statusBadgeStyles[scheduleStatus] : null;
   const StatusIcon = StatusBadge?.icon ?? Edit3;
 
+  // Escala "recém-criada" → Copiar Mês Anterior só faz sentido aqui.
+  const isEmptySchedule = !!currentSchedule && shifts.length === 0;
+  // Unifica o estado do overflow (`⋯`) entre mobile e desktop reusando mobileToolbarOpen.
+  const moreMenuOpen = mobileToolbarOpen;
+  const setMoreMenuOpen = setMobileToolbarOpen;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -2667,160 +2673,173 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             </div>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {!editMode ? (
             <>
-              {/* Desktop: show all buttons. Mobile: show primary + dropdown */}
-              {/* Primary buttons — always visible */}
+              {/* ═══ GRUPO 1: ação primária + workflow ═══ */}
               {canEditSchedule && (
                 <button
                   onClick={() => setEditMode(true)}
-                  className="inline-flex items-center gap-1.5 min-h-[40px] px-3.5 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 active:bg-blue-800 transition-colors text-[13px] font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 >
                   <Edit3 className="w-4 h-4" aria-hidden="true" />
                   {isMobile ? 'Editar' : 'Modo Edição'}
                 </button>
               )}
+
+              {currentSchedule && !isPublished && canEditSchedule && !isMobile && (
+                <button
+                  onClick={requestPublish}
+                  title="Congela a Planejada atual. A partir daqui, edições só afetam a Realizada."
+                  className="inline-flex items-center gap-1.5 h-9 px-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors text-[13px] font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1"
+                >
+                  <Lock className="w-3.5 h-3.5" aria-hidden="true" />
+                  Finalizar
+                </button>
+              )}
+
+              {!isMobile && <div className="h-6 w-px bg-gray-200 mx-1" aria-hidden="true" />}
+
+              {/* ═══ GRUPO 2: secundárias frequentes ═══ */}
               <button
                 onClick={handleExportExcel}
                 title={`Exporta a escala ${viewMode === 'realizada' ? 'Realizada (com ausências aplicadas)' : 'Planejada'}`}
-                className="inline-flex items-center gap-1.5 min-h-[40px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                className="inline-flex items-center gap-1.5 h-9 px-3 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-colors text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
               >
-                <Download className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                <Download className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
                 Excel
               </button>
 
-              {/* Mobile: more actions dropdown */}
-              {isMobile ? (
-                <div className="relative">
-                  <button
-                    onClick={() => setMobileToolbarOpen(prev => !prev)}
-                    className="inline-flex items-center gap-1.5 min-h-[40px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                    aria-label="Mais ações"
-                  >
-                    <MoreVertical className="w-4 h-4" aria-hidden="true" />
-                  </button>
-                  {mobileToolbarOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setMobileToolbarOpen(false)} />
-                      <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-lg shadow-xl border border-gray-200 py-1 w-56 max-h-[60vh] overflow-y-auto">
-                        <button onClick={() => { setShowCreateScheduleModal(true); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                          <Plus className="w-4 h-4 text-gray-400" /> Nova Escala
-                        </button>
-                        {currentSchedule && !isPublished && canEditSchedule && (
-                          <button onClick={() => { requestPublish(); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-emerald-700 hover:bg-emerald-50">
-                            <Lock className="w-4 h-4" /> Finalizar Planejamento
-                          </button>
-                        )}
-                        {currentSchedule && isPublished && isAdmin() && (
-                          <button onClick={() => { requestReopen(); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                            <Unlock className="w-4 h-4 text-gray-400" /> Reabrir
-                          </button>
-                        )}
-                        {currentSchedule && (
-                          <button onClick={() => { setAbsenceInitialData({ department_id: selectedDepartment, schedule_id: currentSchedule.id, start_date: new Date().toISOString().slice(0, 10) }); setShowAbsenceModal(true); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                            <CalendarX className="w-4 h-4 text-gray-400" /> Registrar Ausência
-                          </button>
-                        )}
-                        {!isLocked && (
-                          <button onClick={() => { copyPreviousMonth(); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                            <Copy className="w-4 h-4 text-gray-400" /> Copiar Mês Anterior
-                          </button>
-                        )}
-                        {currentSchedule && (
-                          <button onClick={() => { setShowAuditLog(true); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                            <Clock className="w-4 h-4 text-gray-400" /> Histórico
-                          </button>
-                        )}
-                        {currentSchedule && (isAdmin() || canDelete('schedules')) && (
-                          <>
-                            <div className="border-t border-gray-100 my-1" />
-                            <button onClick={() => { setShowDeleteScheduleModal(true); setMobileToolbarOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                              <Trash2 className="w-4 h-4" /> Excluir Escala
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                /* Desktop: all buttons inline */
-                <>
-                  <button
-                    onClick={() => setShowCreateScheduleModal(true)}
-                    className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                  >
-                    <Plus className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                    Nova Escala
-                  </button>
-                  {currentSchedule && !isPublished && canEditSchedule && (
-                    <button
-                      onClick={requestPublish}
-                      title="Congela a Planejada atual. A partir daqui, novos plantões e edições só afetam a Realizada."
-                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md hover:bg-emerald-100 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1"
-                    >
-                      <Lock className="w-4 h-4" aria-hidden="true" />
-                      Finalizar Planejamento
-                    </button>
-                  )}
-                  {currentSchedule && isPublished && isAdmin() && (
-                    <button
-                      onClick={requestReopen}
-                      title="Reabre o planejamento (apenas Administrador)"
-                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                    >
-                      <Unlock className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                      Reabrir
-                    </button>
-                  )}
-                  {currentSchedule && (
-                    <button
-                      onClick={() => {
-                        setAbsenceInitialData({
-                          department_id: selectedDepartment,
-                          schedule_id: currentSchedule.id,
-                          start_date: new Date().toISOString().slice(0, 10),
-                        });
-                        setShowAbsenceModal(true);
-                      }}
-                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                    >
-                      <CalendarX className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                      Registrar Ausência
-                    </button>
-                  )}
-                  {!isLocked && (
-                    <button
-                      onClick={copyPreviousMonth}
-                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                    >
-                      <Copy className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                      Copiar Mês Anterior
-                    </button>
-                  )}
-                  {currentSchedule && (
-                    <button
-                      onClick={() => setShowAuditLog(true)}
-                      title="Ver histórico de alterações desta escala"
-                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
-                    >
-                      <Clock className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                      Histórico
-                    </button>
-                  )}
-                  {currentSchedule && (isAdmin() || canDelete('schedules')) && (
-                    <button
-                      onClick={() => setShowDeleteScheduleModal(true)}
-                      title="Excluir esta escala por completo"
-                      className="inline-flex items-center gap-1.5 min-h-[36px] px-3 py-1.5 bg-white text-red-600 border border-gray-200 rounded-md hover:bg-red-50 hover:border-red-200 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
-                    >
-                      <Trash2 className="w-4 h-4" aria-hidden="true" />
-                      Excluir
-                    </button>
-                  )}
-                </>
+              {currentSchedule && !isMobile && (
+                <button
+                  onClick={() => {
+                    setAbsenceInitialData({
+                      department_id: selectedDepartment,
+                      schedule_id: currentSchedule.id,
+                      start_date: new Date().toISOString().slice(0, 10),
+                    });
+                    setShowAbsenceModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-colors text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                >
+                  <CalendarX className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
+                  Ausência
+                </button>
               )}
+
+              {!isMobile && <div className="h-6 w-px bg-gray-200 mx-1" aria-hidden="true" />}
+
+              {/* ═══ GRUPO 3: criação / seed ═══ */}
+              {!isMobile && (
+                <button
+                  onClick={() => setShowCreateScheduleModal(true)}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-colors text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                >
+                  <Plus className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
+                  Nova Escala
+                </button>
+              )}
+
+              {/* Copiar Mês Anterior: SÓ aparece em escala ainda vazia */}
+              {!isMobile && isEmptySchedule && !isLocked && (
+                <button
+                  onClick={copyPreviousMonth}
+                  title="Importa os plantões do mês anterior como ponto de partida (escala atual está vazia)"
+                  className="inline-flex items-center gap-1.5 h-9 px-3 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-colors text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                >
+                  <Copy className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
+                  Copiar Mês Anterior
+                </button>
+              )}
+
+              {!isMobile && <div className="h-6 w-px bg-gray-200 mx-1" aria-hidden="true" />}
+
+              {/* ═══ GRUPO 4: meta + overflow ═══ */}
+              {currentSchedule && !isMobile && (
+                <button
+                  onClick={() => setShowAuditLog(true)}
+                  title="Histórico de alterações desta escala"
+                  aria-label="Histórico"
+                  className="inline-flex items-center justify-center h-9 w-9 bg-white text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                >
+                  <Clock className="w-4 h-4" aria-hidden="true" />
+                </button>
+              )}
+
+              <div className="relative">
+                <button
+                  onClick={() => setMoreMenuOpen(prev => !prev)}
+                  title="Mais ações"
+                  aria-label="Mais ações"
+                  aria-haspopup="menu"
+                  aria-expanded={moreMenuOpen}
+                  className="inline-flex items-center justify-center h-9 w-9 bg-white text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                >
+                  <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                </button>
+                {moreMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMoreMenuOpen(false)} />
+                    <div
+                      role="menu"
+                      className="absolute right-0 top-full mt-1.5 z-50 bg-white rounded-lg shadow-xl ring-1 ring-gray-200 py-1 w-60 max-h-[70vh] overflow-y-auto"
+                    >
+                      {/* Mobile-only items (no desktop já estão visíveis na barra) */}
+                      {isMobile && (
+                        <>
+                          <button onClick={() => { setShowCreateScheduleModal(true); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50">
+                            <Plus className="w-4 h-4 text-gray-400" /> Nova Escala
+                          </button>
+                          {currentSchedule && (
+                            <button onClick={() => { setAbsenceInitialData({ department_id: selectedDepartment, schedule_id: currentSchedule.id, start_date: new Date().toISOString().slice(0, 10) }); setShowAbsenceModal(true); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50">
+                              <CalendarX className="w-4 h-4 text-gray-400" /> Registrar Ausência
+                            </button>
+                          )}
+                          {isEmptySchedule && !isLocked && (
+                            <button onClick={() => { copyPreviousMonth(); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50">
+                              <Copy className="w-4 h-4 text-gray-400" /> Copiar Mês Anterior
+                            </button>
+                          )}
+                          {currentSchedule && (
+                            <button onClick={() => { setShowAuditLog(true); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50">
+                              <Clock className="w-4 h-4 text-gray-400" /> Histórico
+                            </button>
+                          )}
+                          {currentSchedule && !isPublished && canEditSchedule && (
+                            <button onClick={() => { requestPublish(); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-emerald-700 hover:bg-emerald-50">
+                              <Lock className="w-4 h-4" /> Finalizar Planejamento
+                            </button>
+                          )}
+                          <div className="border-t border-gray-100 my-1" />
+                        </>
+                      )}
+
+                      {/* Reabrir (admin, só quando publicado) */}
+                      {currentSchedule && isPublished && isAdmin() && (
+                        <button
+                          onClick={() => { requestReopen(); setMoreMenuOpen(false); }}
+                          className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50"
+                        >
+                          <Unlock className="w-4 h-4 text-gray-400" /> Reabrir planejamento
+                        </button>
+                      )}
+
+                      {/* Destrutiva, sempre por último, separada */}
+                      {currentSchedule && (isAdmin() || canDelete('schedules')) && (
+                        <>
+                          {((isPublished && isAdmin()) || isMobile) && <div className="border-t border-gray-100 my-1" />}
+                          <button
+                            onClick={() => { setShowDeleteScheduleModal(true); setMoreMenuOpen(false); }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-red-600 hover:bg-red-50 font-medium"
+                          >
+                            <Trash2 className="w-4 h-4" /> Excluir Escala
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </>
           ) : (
             <>
