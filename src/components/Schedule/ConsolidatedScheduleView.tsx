@@ -1231,11 +1231,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         //      → UPDATE para PROMOVER à Planejada (adiciona original_*).
         // Sem essa busca, INSERT bate no unique index do banco e mostra
         // "Já existe um plantão com esse horário" com a célula aparentemente vazia.
+        // IMPORTANTE: o Postgres devolve TIME como 'HH:MM:SS' e o catálogo de
+        // tipos usa 'HH:MM' → normalizar pra comparar.
+        const hhmm = (t: string) => (t || '').slice(0, 5);
         const collidingSlot = shifts.find(s =>
           s.professional_id === selectedCell.profId &&
           s.shift_date === date &&
-          s.start_time === shiftType.start &&
-          s.end_time === shiftType.end
+          hhmm(s.start_time) === hhmm(shiftType.start) &&
+          hhmm(s.end_time) === hhmm(shiftType.end)
         );
         if (collidingSlot) {
           const { error } = await supabase
