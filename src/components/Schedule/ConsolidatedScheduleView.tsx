@@ -2605,6 +2605,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const moreMenuOpen = mobileToolbarOpen;
   const setMoreMenuOpen = setMobileToolbarOpen;
 
+  // Stickify das colunas TOTAL SD/SN/... à direita (antes da coluna TOTAL HORAS).
+  // Empilha da direita pra esquerda: rightmost code col senta logo após
+  // TOTAL HORAS (70px), as próximas vão somando 38px (largura da col code).
+  const TOTAL_HORAS_W = 70;
+  const TOTAL_CODE_W = 38;
+  const rightStickyBase = editMode ? 50 : 0;
+  const codeColRight = (i: number) =>
+    rightStickyBase + TOTAL_HORAS_W + (uniqueShiftCodes.length - 1 - i) * TOTAL_CODE_W;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -3139,12 +3148,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             </th>
                           );
                         })}
-                        {/* Uma coluna por sigla com o total daquele profissional */}
-                        {uniqueShiftCodes.map(code => (
+                        {/* Uma coluna por sigla com o total daquele profissional — sticky direita */}
+                        {uniqueShiftCodes.map((code, idx) => (
                           <th
                             key={`hcol-${code}`}
-                            className={`border border-gray-300 px-1 py-1 text-center font-bold whitespace-nowrap sticky top-0 z-30 ${getCellColorClass(code)}`}
-                            style={{ minWidth: '38px' }}
+                            className={`border border-gray-300 px-1 py-1 text-center font-bold whitespace-nowrap sticky top-0 z-40 ${getCellColorClass(code)}`}
+                            style={{ minWidth: `${TOTAL_CODE_W}px`, maxWidth: `${TOTAL_CODE_W}px`, right: `${codeColRight(idx)}px` }}
                             title={`Total de ${code} no mês`}
                           >
                             <span className="block text-[8px] uppercase tracking-wider opacity-70 leading-tight">Total</span>
@@ -3192,8 +3201,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             </th>
                           );
                         })}
-                        {uniqueShiftCodes.map(code => (
-                          <th key={`hcol2-${code}`} className="border border-gray-300 bg-gray-50 sticky z-30" style={{ top: '36px' }}></th>
+                        {uniqueShiftCodes.map((code, idx) => (
+                          <th
+                            key={`hcol2-${code}`}
+                            className="border border-gray-300 bg-gray-50 sticky z-40"
+                            style={{ top: '36px', minWidth: `${TOTAL_CODE_W}px`, maxWidth: `${TOTAL_CODE_W}px`, right: `${codeColRight(idx)}px` }}
+                          ></th>
                         ))}
                         <th className="border border-gray-300 px-2 py-1 sticky bg-gray-50 z-30" style={{ top: '36px' }}></th>
                         {editMode && (
@@ -3348,18 +3361,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                               </td>
                             );
                           })}
-                          {/* Total por sigla, na linha do profissional */}
-                          {uniqueShiftCodes.map(code => {
+                          {/* Total por sigla, na linha do profissional — sticky direita */}
+                          {uniqueShiftCodes.map((code, idx) => {
                             // Conta quantos dias esse profissional tem essa sigla
                             let count = 0;
                             for (let d = 1; d <= daysInMonth; d++) {
                               if (getEffectiveShiftCode(prof.id, d) === code) count++;
                             }
+                            const cellBg = isOverWorkload(prof.id) ? '#fee2e2' /* red-100 */ : '#f9fafb' /* gray-50 */;
                             return (
                               <td
                                 key={`pcol-${prof.id}-${code}`}
-                                className={`border border-gray-300 px-1 py-2 text-center text-xs font-bold ${count > 0 ? 'text-gray-900 bg-gray-50' : 'text-gray-300 bg-gray-50'}`}
-                                style={{ minWidth: '36px' }}
+                                className={`border border-gray-300 px-1 py-2 text-center text-xs font-bold sticky z-20 ${count > 0 ? 'text-gray-900' : 'text-gray-300'}`}
+                                style={{ minWidth: `${TOTAL_CODE_W}px`, maxWidth: `${TOTAL_CODE_W}px`, right: `${codeColRight(idx)}px`, backgroundColor: cellBg }}
                               >
                                 {count > 0 ? count : '·'}
                               </td>
@@ -3490,14 +3504,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                   </td>
                                 );
                               })}
-                              {/* Intersecção com cada coluna "TOTAL <SIGLA>" da direita */}
-                              {uniqueShiftCodes.map(colCode => (
+                              {/* Intersecção com cada coluna "TOTAL <SIGLA>" da direita — sticky direita */}
+                              {uniqueShiftCodes.map((colCode, colIdx) => (
                                 <td
                                   key={`tfoot-x-${code}-${colCode}`}
-                                  className={`border border-gray-300 px-1 py-1.5 text-center text-xs font-bold sticky z-30 ${
+                                  className={`border border-gray-300 px-1 py-1.5 text-center text-xs font-bold sticky z-40 ${
                                     code === colCode ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-300'
                                   }`}
-                                  style={{ bottom: `${stickyBottom}px` }}
+                                  style={{ bottom: `${stickyBottom}px`, right: `${codeColRight(colIdx)}px`, minWidth: `${TOTAL_CODE_W}px`, maxWidth: `${TOTAL_CODE_W}px` }}
                                 >
                                   {code === colCode ? monthTotal : '·'}
                                 </td>
