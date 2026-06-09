@@ -150,16 +150,27 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const [deletingSchedule, setDeletingSchedule] = useState(false);
   const [auditEntries, setAuditEntries] = useState<Array<{
     id: string;
-    action: string;
-    professional_name: string | null;
-    shift_date: string | null;
-    old_shift_type: string | null;
-    new_shift_type: string | null;
-    actor_email: string | null;
-    actor_name: string | null;
+    table_name: string;
+    action: 'INSERT' | 'UPDATE' | 'DELETE' | string;
+    description: string | null;
+    user_email: string | null;
     created_at: string;
+    schedule_id: string | null;
+    professional_id: string | null;
+    professional_name?: string | null;
+    shift_date: string | null;
+    old_data: Record<string, any> | null;
+    new_data: Record<string, any> | null;
+    changed_fields: string[] | null;
   }>>([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [auditFilters, setAuditFilters] = useState<{
+    search: string;
+    action: 'all' | 'INSERT' | 'UPDATE' | 'DELETE';
+    table: 'all' | 'shifts' | 'monthly_schedules' | 'absences' | 'shift_swaps';
+    author: string;
+  }>({ search: '', action: 'all', table: 'all', author: '' });
+  const [auditExpanded, setAuditExpanded] = useState<Set<string>>(new Set());
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   // Absenteísmo
   const [showAbsenceModal, setShowAbsenceModal] = useState(false);
@@ -2415,29 +2426,27 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     }
   };
 
-  // Carrega histórico de alterações da escala atual
+  // Carrega histórico de alterações da escala atual (audit_logs imutável)
   const loadAuditLog = async () => {
     if (!selectedSchedule) return;
     setAuditLoading(true);
     try {
       const { data, error } = await supabase
-        .from('schedule_audit_log')
+        .from('audit_logs')
         .select(`
-          id, action, shift_date, old_shift_type, new_shift_type,
-          actor_email, actor_name, created_at,
-          professional_id, old_professional_id, new_professional_id
+          id, table_name, action, description, user_email, created_at,
+          schedule_id, professional_id, shift_date,
+          old_data, new_data, changed_fields
         `)
         .eq('schedule_id', selectedSchedule)
         .order('created_at', { ascending: false })
-        .limit(500);
+        .limit(1000);
       if (error) throw error;
 
-      // Pega os nomes dos profissionais envolvidos numa só query
+      // Lookup de nomes dos profissionais (só os do schedule)
       const profIds = new Set<string>();
       (data ?? []).forEach((e: any) => {
         if (e.professional_id) profIds.add(e.professional_id);
-        if (e.old_professional_id) profIds.add(e.old_professional_id);
-        if (e.new_professional_id) profIds.add(e.new_professional_id);
       });
       const nameById = new Map<string, string>();
       if (profIds.size > 0) {
@@ -2451,22 +2460,67 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
       setAuditEntries(
         (data ?? []).map((e: any) => ({
           id: e.id,
+          table_name: e.table_name,
           action: e.action,
+          description: e.description,
+          user_email: e.user_email,
+          created_at: e.created_at,
+          schedule_id: e.schedule_id,
+          professional_id: e.professional_id,
           professional_name: e.professional_id ? nameById.get(e.professional_id) ?? null : null,
           shift_date: e.shift_date,
-          old_shift_type: e.old_shift_type,
-          new_shift_type: e.new_shift_type,
-          actor_email: e.actor_email,
-          actor_name: e.actor_name,
-          created_at: e.created_at,
+          old_data: e.old_data,
+          new_data: e.new_data,
+          changed_fields: e.changed_fields,
         }))
       );
+      setAuditExpanded(new Set());
     } catch (err: any) {
       console.error('Erro ao carregar histórico:', err);
       toast.error('Erro ao carregar histórico: ' + (err.message ?? 'tente novamente'));
     } finally {
       setAuditLoading(false);
     }
+  };
+
+  // Filtros aplicados em memória sobre auditEntries
+  const filteredAuditEntries = auditEntries.filter(e => {
+    if (auditFilters.action !== 'all' && e.action !== auditFilters.action) return false;
+    if (auditFilters.table !== 'all' && e.table_name !== auditFilters.table) return false;
+    if (auditFilters.author && !(e.user_email ?? '').toLowerCase().includes(auditFilters.author.toLowerCase())) return false;
+    if (auditFilters.search) {
+      const q = auditFilters.search.toLowerCase();
+      const hay = `${e.description ?? ''} ${e.user_email ?? ''} ${e.professional_name ?? ''} ${e.shift_date ?? ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Lista de autores únicos para o dropdown
+  const auditAuthors = Array.from(new Set(auditEntries.map(e => e.user_email).filter(Boolean))) as string[];
+
+  // Export CSV do log filtrado
+  const exportAuditCsv = () => {
+    const rows = [
+      ['Quando', 'Quem', 'Ação', 'Tabela', 'Profissional', 'Data plantão', 'Descrição', 'Campos alterados'],
+      ...filteredAuditEntries.map(e => [
+        new Date(e.created_at).toLocaleString('pt-BR'),
+        e.user_email ?? 'Sistema',
+        e.action,
+        e.table_name,
+        e.professional_name ?? '',
+        e.shift_date ?? '',
+        e.description ?? '',
+        (e.changed_fields ?? []).join('; '),
+      ]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `auditoria-${currentSchedule?.name ?? 'escala'}-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
   };
 
   // Recarrega o log toda vez que o modal abre
@@ -4188,66 +4242,175 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
         />
       )}
 
-      {/* Modal de histórico de alterações */}
+      {/* Modal de histórico de alterações — audit_logs imutável, com filtros */}
       {showAuditLog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-slate-600" />
                 <h2 className="text-lg font-semibold text-gray-900">Histórico de Alterações</h2>
-                <span className="text-xs text-gray-500">(imutável)</span>
+                <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                  <Lock className="w-3 h-3" /> imutável
+                </span>
               </div>
-              <button onClick={() => setShowAuditLog(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={exportAuditCsv}
+                  disabled={filteredAuditEntries.length === 0}
+                  className="inline-flex items-center gap-1.5 h-8 px-2.5 text-[13px] text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-40"
+                  title="Exportar log filtrado em CSV"
+                >
+                  <Download className="w-3.5 h-3.5" /> CSV
+                </button>
+                <button onClick={() => setShowAuditLog(false)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4">
+
+            {/* Filtros */}
+            <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex flex-wrap items-center gap-2">
+              <input
+                type="text"
+                value={auditFilters.search}
+                onChange={e => setAuditFilters(f => ({ ...f, search: e.target.value }))}
+                placeholder="Buscar descrição, profissional, data..."
+                className="flex-1 min-w-[180px] h-8 px-3 text-[13px] bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <select
+                value={auditFilters.action}
+                onChange={e => setAuditFilters(f => ({ ...f, action: e.target.value as any }))}
+                className="h-8 px-2 text-[13px] bg-white border border-gray-200 rounded-md"
+              >
+                <option value="all">Todas as ações</option>
+                <option value="INSERT">Criou</option>
+                <option value="UPDATE">Editou</option>
+                <option value="DELETE">Excluiu</option>
+              </select>
+              <select
+                value={auditFilters.table}
+                onChange={e => setAuditFilters(f => ({ ...f, table: e.target.value as any }))}
+                className="h-8 px-2 text-[13px] bg-white border border-gray-200 rounded-md"
+              >
+                <option value="all">Tudo</option>
+                <option value="shifts">Plantões</option>
+                <option value="absences">Ausências</option>
+                <option value="shift_swaps">Trocas</option>
+                <option value="monthly_schedules">Escala</option>
+              </select>
+              <select
+                value={auditFilters.author}
+                onChange={e => setAuditFilters(f => ({ ...f, author: e.target.value }))}
+                className="h-8 px-2 text-[13px] bg-white border border-gray-200 rounded-md max-w-[220px]"
+              >
+                <option value="">Qualquer autor</option>
+                {auditAuthors.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+              {(auditFilters.search || auditFilters.action !== 'all' || auditFilters.table !== 'all' || auditFilters.author) && (
+                <button
+                  onClick={() => setAuditFilters({ search: '', action: 'all', table: 'all', author: '' })}
+                  className="h-8 px-2 text-[13px] text-gray-600 hover:text-gray-900"
+                >
+                  Limpar
+                </button>
+              )}
+              <span className="ml-auto text-[12px] text-gray-500">
+                {filteredAuditEntries.length} de {auditEntries.length}
+              </span>
+            </div>
+
+            {/* Timeline */}
+            <div className="flex-1 overflow-y-auto">
               {auditLoading ? (
-                <div className="text-center py-8 text-gray-500 text-sm">Carregando...</div>
-              ) : auditEntries.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  Nenhuma alteração registrada nesta escala.
+                <div className="text-center py-10 text-gray-500 text-sm">Carregando...</div>
+              ) : filteredAuditEntries.length === 0 ? (
+                <div className="text-center py-10 text-gray-500 text-sm">
+                  {auditEntries.length === 0
+                    ? 'Nenhuma alteração registrada nesta escala.'
+                    : 'Nenhuma alteração bate com os filtros aplicados.'}
                 </div>
               ) : (
                 <ul className="divide-y divide-gray-100">
-                  {auditEntries.map(e => {
-                    const when = new Date(e.created_at).toLocaleString('pt-BR');
-                    const date = e.shift_date ? new Date(e.shift_date + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
-                    let actionLabel = '';
-                    let actionColor = '';
-                    if (e.action === 'insert') {
-                      actionLabel = 'Inseriu';
-                      actionColor = 'bg-emerald-100 text-emerald-800 ring-emerald-200';
-                    } else if (e.action === 'update') {
-                      actionLabel = 'Alterou';
-                      actionColor = 'bg-blue-100 text-blue-800 ring-blue-200';
-                    } else {
-                      actionLabel = 'Removeu';
-                      actionColor = 'bg-red-100 text-red-800 ring-red-200';
-                    }
+                  {filteredAuditEntries.map(e => {
+                    const when = new Date(e.created_at);
+                    const whenStr = when.toLocaleString('pt-BR');
+                    const isExpanded = auditExpanded.has(e.id);
+                    const actionStyle =
+                      e.action === 'INSERT' ? { bg: 'bg-emerald-50', ring: 'ring-emerald-200', dot: 'bg-emerald-500', label: 'Criou' } :
+                      e.action === 'DELETE' ? { bg: 'bg-red-50',     ring: 'ring-red-200',     dot: 'bg-red-500',     label: 'Excluiu' } :
+                                              { bg: 'bg-blue-50',    ring: 'ring-blue-200',    dot: 'bg-blue-500',    label: 'Editou' };
+                    const canExpand = !!e.changed_fields?.length || !!e.old_data || !!e.new_data;
                     return (
-                      <li key={e.id} className="py-2.5 flex flex-wrap items-start gap-2 text-sm">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ring-1 ring-inset ${actionColor}`}>
-                          {actionLabel}
-                        </span>
-                        <span className="text-gray-700 flex-1 min-w-[200px]">
-                          {e.professional_name ?? 'Profissional desconhecido'}
-                          {' · '}
-                          <span className="font-medium">{date}</span>
-                          {e.action === 'update' && (e.old_shift_type !== e.new_shift_type) && (
-                            <> · <span className="text-gray-500">{e.old_shift_type ?? '—'}</span> → <span className="font-bold">{e.new_shift_type ?? '—'}</span></>
+                      <li key={e.id} className="px-5 py-3">
+                        <div className="flex items-start gap-3">
+                          {/* Action dot */}
+                          <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${actionStyle.dot}`} aria-hidden="true" />
+                          {/* Main */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2 flex-wrap">
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${actionStyle.bg} ${actionStyle.ring} text-gray-700`}>
+                                {actionStyle.label}
+                              </span>
+                              <span className="text-[13px] text-gray-900 font-medium">
+                                {e.description ?? `${e.action} em ${e.table_name}`}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                              <span title={when.toISOString()}>{whenStr}</span>
+                              <span>·</span>
+                              <span className="font-medium text-gray-600">{e.user_email ?? 'Sistema'}</span>
+                              {e.table_name !== 'shifts' && (
+                                <>
+                                  <span>·</span>
+                                  <span className="px-1.5 py-0.5 bg-gray-100 rounded text-[10px]">{e.table_name}</span>
+                                </>
+                              )}
+                            </div>
+                            {/* Expansão: diff de campos */}
+                            {isExpanded && canExpand && (
+                              <div className="mt-2 bg-gray-50 border border-gray-200 rounded p-2 text-[12px]">
+                                {(e.changed_fields ?? []).length > 0 && (
+                                  <div className="grid grid-cols-[max-content_1fr_max-content_1fr] gap-x-3 gap-y-1 items-baseline">
+                                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">Campo</div>
+                                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">Antes</div>
+                                    <div></div>
+                                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">Depois</div>
+                                    {(e.changed_fields ?? []).map(k => (
+                                      <Fragment key={k}>
+                                        <div className="font-mono text-gray-700">{k}</div>
+                                        <div className="font-mono text-red-700 line-through truncate">
+                                          {e.old_data && e.old_data[k] !== undefined ? JSON.stringify(e.old_data[k]) : '—'}
+                                        </div>
+                                        <div className="text-gray-400">→</div>
+                                        <div className="font-mono text-emerald-700 truncate">
+                                          {e.new_data && e.new_data[k] !== undefined ? JSON.stringify(e.new_data[k]) : '—'}
+                                        </div>
+                                      </Fragment>
+                                    ))}
+                                  </div>
+                                )}
+                                {(!e.changed_fields || e.changed_fields.length === 0) && e.new_data && (
+                                  <pre className="font-mono text-[11px] text-gray-700 whitespace-pre-wrap break-all">{JSON.stringify(e.new_data, null, 2)}</pre>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {/* Expand toggle */}
+                          {canExpand && (
+                            <button
+                              onClick={() => setAuditExpanded(s => {
+                                const n = new Set(s);
+                                if (n.has(e.id)) n.delete(e.id); else n.add(e.id);
+                                return n;
+                              })}
+                              className="text-[11px] text-gray-500 hover:text-gray-900 flex-shrink-0 mt-0.5"
+                              title="Ver detalhes"
+                            >
+                              {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </button>
                           )}
-                          {e.action === 'insert' && e.new_shift_type && (
-                            <> · turno <span className="font-bold">{e.new_shift_type}</span></>
-                          )}
-                          {e.action === 'delete' && e.old_shift_type && (
-                            <> · turno <span className="font-bold line-through">{e.old_shift_type}</span></>
-                          )}
-                        </span>
-                        <div className="text-xs text-gray-500 text-right min-w-[180px]">
-                          <div>{e.actor_name ?? e.actor_email ?? 'Sistema'}</div>
-                          <div>{when}</div>
                         </div>
                       </li>
                     );
@@ -4255,9 +4418,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 </ul>
               )}
             </div>
-            <div className="p-3 border-t border-gray-200 text-xs text-gray-500 flex items-center gap-2">
-              <Lock className="w-3.5 h-3.5" />
-              Os registros não podem ser editados ou apagados.
+
+            <div className="px-5 py-2 border-t border-gray-200 text-[11px] text-gray-500 flex items-center gap-1.5">
+              <Lock className="w-3 h-3" />
+              Registros gravados por trigger no banco. Não podem ser editados nem apagados — nem por administradores.
             </div>
           </div>
         </div>
