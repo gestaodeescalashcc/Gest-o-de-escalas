@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -55,6 +55,12 @@ const SHIFT_TYPES = [
   { code: 'LM', name: 'Licença Médica', start: '00:00', end: '00:00', hours: 0 },
   { code: 'LG', name: 'Licença Gestação', start: '00:00', end: '00:00', hours: 0 },
   { code: 'AS', name: 'Afastamento À Serviço', start: '00:00', end: '00:00', hours: 0 },
+  // Códigos importados das planilhas (FESF) — marcadores de ausência. Ajustar nomes/horas conforme necessário.
+  { code: 'FSN', name: 'Falta no SN', start: '00:00', end: '00:00', hours: 0 },
+  { code: 'FSD', name: 'Falta no SD', start: '00:00', end: '00:00', hours: 0 },
+  { code: 'FDS', name: 'Falta (FDS)', start: '00:00', end: '00:00', hours: 0 },
+  { code: 'FP', name: 'Falta no Plantão', start: '00:00', end: '00:00', hours: 0 },
+  { code: 'ATM', name: 'Atestado Médico', start: '00:00', end: '00:00', hours: 0 },
 ];
 
 interface MonthlySchedule {
@@ -179,8 +185,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   // Troca de plantão
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [swapInitialShiftId, setSwapInitialShiftId] = useState<string | null>(null);
-  // Modo de visualização da escala (planejada vs realizada)
-  const [viewMode, setViewMode] = useState<'planejada' | 'realizada'>('planejada');
+  // Modo de visualização da escala (planejada / troca e remanejamento / realizada)
+  type ViewMode = 'planejada' | 'troca' | 'realizada';
+  const [viewMode, setViewMode] = useState<ViewMode>('planejada');
   // Responsive: detect mobile viewport
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   useEffect(() => {
@@ -789,7 +796,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   // Retorna ARRAY de códigos efetivos (com overlays de ausência/cobertura aplicados na Realizada)
   const getEffectiveShiftCodes = (professionalId: string, day: number): string[] => {
     const planned = getShiftCodes(professionalId, day);
-    if (viewMode === 'planejada') return planned;
+    // planejada → snapshot original; troca → shift VIVO (com remanejamentos/trocas)
+    // SEM sobrepor absences. Só a Realizada aplica faltas/atestados por cima.
+    if (viewMode === 'planejada' || viewMode === 'troca') return planned;
 
     const [year, month] = selectedMonth.split('-');
     const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
@@ -863,6 +872,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     });
     return map;
   }, [holidays]);
+
+  // Maior dia do mês com plantão VIVO não-deletado (usado no badge "Realizada
+  // preenchida até dia X").
+  const realizadaFilledUntilDay = useMemo(() => {
+    let max = 0;
+    for (const s of shifts) {
+      if ((s as any).deleted_in_realizada_at) continue;
+      if (!s.shift_type) continue;
+      if (!s.shift_date?.startsWith(selectedMonth)) continue;
+      const d = parseInt(s.shift_date.slice(8, 10), 10);
+      if (!isNaN(d) && d > max) max = d;
+    }
+    return max;
+  }, [shifts, selectedMonth]);
 
   const getHolidayForDay = (day: number): Holiday | undefined => holidayByDay.get(day);
   const isHolidayDay = (day: number) => holidayByDay.has(day);
@@ -1312,6 +1335,192 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
     } catch (err) {
       console.error('Erro inesperado ao salvar turno:', err);
       toast.error('Erro inesperado ao salvar turno.');
+    }
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // FLUXO "TROCA E REMANEJAMENTO" — ações estruturadas (substitui digitação livre)
+  // Estados auxiliares do menu de troca/remanejamento.
+  const [trocaAction, setTrocaAction] = useState<null | 'trocar' | 'remanejar' | 'liberar'>(null);
+  const [trocaTargetProf, setTrocaTargetProf] = useState<string>('');
+  const [trocaRefDay, setTrocaRefDay] = useState<string>('');
+  const [trocaSaving, setTrocaSaving] = useState(false);
+
+  const resetTrocaState = () => {
+    setTrocaAction(null);
+    setTrocaTargetProf('');
+    setTrocaRefDay('');
+  };
+
+  // Atualiza o shift VIVO (sem mexer em original_*) com novo tipo + notes padronizado.
+  // Usado por Remanejar e Liberar por dobra. Retorna true em sucesso.
+  const applyLiveShiftChange = async (
+    profId: string,
+    day: number,
+    shiftType: typeof SHIFT_TYPES[0],
+    note: string,
+  ): Promise<boolean> => {
+    const [year, month] = selectedMonth.split('-');
+    const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
+    // Pega o primeiro shift vivo (não soft-deletado) do dia.
+    const live = shifts
+      .filter(s => s.professional_id === profId && s.shift_date === date && !(s as any).deleted_in_realizada_at)
+      .sort((a, b) => ((a.start_time || '').localeCompare(b.start_time || '')))[0];
+
+    if (live) {
+      const { error } = await supabase
+        .from('shifts')
+        .update({
+          shift_type: shiftType.name,
+          start_time: shiftType.start,
+          end_time: shiftType.end,
+          deleted_in_realizada_at: null,
+          notes: note,
+        } as any)
+        .eq('id', live.id);
+      if (error) {
+        toast.error('Erro ao aplicar: ' + error.message);
+        return false;
+      }
+      setShifts(prev => prev.map(s =>
+        s.id === live.id
+          ? ({ ...s, shift_type: shiftType.name, start_time: shiftType.start, end_time: shiftType.end, deleted_in_realizada_at: null, notes: note } as any)
+          : s
+      ));
+      return true;
+    }
+    // Sem shift vivo — cria (ex.: liberar dia que não tinha plantão vivo).
+    const profForShift = professionals.find(p => p.id === profId);
+    const shiftCompanyId = (profForShift as any)?.company_id || null;
+    const { data, error } = await supabase
+      .from('shifts')
+      .insert({
+        professional_id: profId,
+        department_id: selectedDepartment,
+        schedule_id: selectedSchedule,
+        shift_date: date,
+        shift_type: shiftType.name,
+        start_time: shiftType.start,
+        end_time: shiftType.end,
+        status: 'Agendado',
+        company_id: shiftCompanyId,
+        created_by: user?.id,
+        notes: note,
+      } as any)
+      .select()
+      .maybeSingle();
+    if (error) {
+      if (error.code === '23505') toast.warning('Já existe um plantão com esse horário neste dia.');
+      else toast.error('Erro ao aplicar: ' + error.message);
+      return false;
+    }
+    if (data) setShifts(prev => [...prev, data]);
+    return true;
+  };
+
+  // REMANEJAR — substitui o tipo do shift vivo por um novo código (notes "Remanejamento").
+  const handleRemanejar = async (shiftType: typeof SHIFT_TYPES[0]) => {
+    if (!selectedCell) return;
+    setTrocaSaving(true);
+    try {
+      const ok = await applyLiveShiftChange(
+        selectedCell.profId, selectedCell.day, shiftType,
+        `Remanejamento → ${shiftType.code}`,
+      );
+      if (ok) {
+        toast.success(`Remanejado para ${shiftType.code}.`);
+        setHasChanges(true);
+        setShowQuickMenu(false);
+        setSelectedCell(null);
+        resetTrocaState();
+      }
+    } finally {
+      setTrocaSaving(false);
+    }
+  };
+
+  // LIBERAR POR DOBRA — marca o dia como folga (FG) referenciando um dia de dobra.
+  const handleLiberarPorDobra = async () => {
+    if (!selectedCell) return;
+    const fg = SHIFT_TYPES.find(st => st.code === 'FG')!;
+    setTrocaSaving(true);
+    try {
+      const refTxt = trocaRefDay.trim() ? ` (ref. dia ${trocaRefDay.trim()})` : '';
+      const ok = await applyLiveShiftChange(
+        selectedCell.profId, selectedCell.day, fg,
+        `Liberação por dobra${refTxt}`,
+      );
+      if (ok) {
+        toast.success('Liberado por dobra (FG).');
+        setHasChanges(true);
+        setShowQuickMenu(false);
+        setSelectedCell(null);
+        resetTrocaState();
+      }
+    } finally {
+      setTrocaSaving(false);
+    }
+  };
+
+  // TROCAR COM — aplica troca entre dois profissionais no MESMO dia e registra em shift_swaps.
+  const handleTrocarCom = async () => {
+    if (!selectedCell || !trocaTargetProf) return;
+    setTrocaSaving(true);
+    try {
+      const [year, month] = selectedMonth.split('-');
+      const date = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
+      const live = (pid: string) => shifts
+        .filter(s => s.professional_id === pid && s.shift_date === date && !(s as any).deleted_in_realizada_at)
+        .sort((a, b) => ((a.start_time || '').localeCompare(b.start_time || '')))[0];
+
+      const reqShift = live(selectedCell.profId);
+      if (!reqShift) {
+        toast.warning('A célula de origem não tem plantão vivo para trocar.');
+        return;
+      }
+      const targetShift = live(trocaTargetProf);
+
+      // Aplica a troca nos campos vivos: o plantão de origem passa ao profissional alvo.
+      const { error: e1 } = await supabase
+        .from('shifts')
+        .update({ professional_id: trocaTargetProf } as any)
+        .eq('id', reqShift.id);
+      if (e1) { toast.error('Erro ao trocar: ' + e1.message); return; }
+
+      if (targetShift) {
+        const { error: e2 } = await supabase
+          .from('shifts')
+          .update({ professional_id: selectedCell.profId } as any)
+          .eq('id', targetShift.id);
+        if (e2) { toast.error('Erro ao trocar (alvo): ' + e2.message); return; }
+      }
+
+      // Registra a troca (status Aprovado — aplicada diretamente pela gestão).
+      const { error: e3 } = await supabase
+        .from('shift_swaps')
+        .insert({
+          original_shift_id: reqShift.id,
+          offered_shift_id: targetShift?.id ?? null,
+          requesting_professional_id: selectedCell.profId,
+          target_professional_id: trocaTargetProf,
+          reason: 'Troca aplicada pela gestão',
+          status: 'Aprovado',
+        } as any);
+      if (e3) {
+        // Troca já aplicada nos shifts; só o registro falhou. Avisa mas não reverte.
+        console.error('Erro ao registrar shift_swap:', e3);
+        toast.warning('Troca aplicada, mas o registro do histórico falhou.');
+      } else {
+        toast.success('Troca aplicada e registrada.');
+      }
+
+      setHasChanges(true);
+      setShowQuickMenu(false);
+      setSelectedCell(null);
+      resetTrocaState();
+      await loadData(true);
+    } finally {
+      setTrocaSaving(false);
     }
   };
 
@@ -2710,6 +2919,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               <button
                 type="button"
                 role="tab"
+                aria-selected={viewMode === 'troca'}
+                onClick={() => setViewMode('troca')}
+                title="Escala vigente com trocas e remanejamentos aplicados (sem faltas)"
+                className={`min-h-[36px] px-3 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-1.5 ${
+                  viewMode === 'troca'
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Repeat className="w-3.5 h-3.5" aria-hidden="true" />
+                {isMobile ? 'Troca' : 'Troca e Remanejamento'}
+              </button>
+              <button
+                type="button"
+                role="tab"
                 aria-selected={viewMode === 'realizada'}
                 onClick={() => setViewMode('realizada')}
                 title="Estado atual com ausências, coberturas e trocas aplicadas"
@@ -2733,6 +2957,30 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                   </span>
                 )}
               </button>
+            </div>
+          )}
+          {/* Legenda do modo atual — explica em 1 linha o que está sendo exibido */}
+          {currentSchedule && (
+            <div className="flex items-center gap-2 w-full lg:w-auto mt-1 lg:mt-0">
+              <span
+                className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md ${
+                  viewMode === 'planejada'
+                    ? 'bg-blue-50 text-blue-700'
+                    : viewMode === 'troca'
+                    ? 'bg-indigo-50 text-indigo-700'
+                    : 'bg-orange-50 text-orange-700'
+                }`}
+              >
+                {viewMode === 'planejada' && 'Planejada: escala original congelada (snapshot publicado).'}
+                {viewMode === 'troca' && 'Troca e Remanejamento: escala vigente com trocas/remanejamentos aplicados, sem faltas.'}
+                {viewMode === 'realizada' && 'Realizada: escala vigente + faltas, atestados e coberturas aplicados.'}
+              </span>
+              {viewMode === 'realizada' && realizadaFilledUntilDay > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700">
+                  <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                  Realizada preenchida até dia {realizadaFilledUntilDay}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -3065,15 +3313,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold ${
                       viewMode === 'planejada'
                         ? 'bg-blue-100 text-blue-800 ring-1 ring-inset ring-blue-200'
+                        : viewMode === 'troca'
+                        ? 'bg-indigo-100 text-indigo-800 ring-1 ring-inset ring-indigo-200'
                         : 'bg-orange-100 text-orange-800 ring-1 ring-inset ring-orange-200'
                     }`}
                   >
                     {viewMode === 'planejada' ? (
                       <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
+                    ) : viewMode === 'troca' ? (
+                      <Repeat className="w-3.5 h-3.5" aria-hidden="true" />
                     ) : (
                       <ArrowLeftRight className="w-3.5 h-3.5" aria-hidden="true" />
                     )}
-                    Vendo {viewMode === 'planejada' ? 'Planejada' : 'Realizada'}
+                    Vendo {viewMode === 'planejada' ? 'Planejada' : viewMode === 'troca' ? 'Troca e Remanejamento' : 'Realizada'}
                   </span>
 
                   {/* Modo edição (substitui o banner amarelo grande) */}
@@ -3299,6 +3551,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                             const code2 = codes[1] || '';  // 2º turno (plantão duplo)
                             const hasDouble = !!code2;
                             const plannedCode = getShiftCode(prof.id, day);
+                            // Código da PLANEJADA (snapshot original) para comparar com o vigente.
+                            // Em troca/realizada destacamos células que divergem da planejada.
+                            const snapshotCode = getOriginalShiftCode(prof.id, day);
+                            const cellAbsenceForMark = (viewMode === 'troca' || viewMode === 'realizada')
+                              ? findAbsenceForCell(prof.id, day) : null;
+                            const isChangedFromPlanned =
+                              (viewMode === 'troca' || viewMode === 'realizada') &&
+                              !!snapshotCode &&
+                              (code !== snapshotCode || !!cellAbsenceForMark);
                             const cellAbsence = findAbsenceForCell(prof.id, day);
                             // Indicador visual de divergência DESATIVADO — a Planejada
                             // e a Realizada são vistas independentes e INTACTAS. Sem
@@ -3411,6 +3672,23 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                                   >
                                     +
                                   </span>
+                                )}
+                                {/* Divergência da Planejada (troca/realizada): código planejado esmaecido + canto destacado */}
+                                {isChangedFromPlanned && !isSwapped && !isCoverage && (
+                                  <>
+                                    <span
+                                      className={`absolute bottom-0 left-0 text-[7px] leading-none font-semibold opacity-40 pl-0.5 ${cellAbsenceForMark ? 'text-red-700' : 'text-gray-600'}`}
+                                      aria-hidden="true"
+                                    >
+                                      {snapshotCode}
+                                    </span>
+                                    <span
+                                      className={`absolute top-0 right-0 w-0 h-0 ${cellAbsenceForMark ? 'border-t-red-500' : 'border-t-indigo-500'}`}
+                                      style={{ borderTopWidth: '6px', borderLeftWidth: '6px', borderLeftColor: 'transparent', borderStyle: 'solid' }}
+                                      aria-label={cellAbsenceForMark ? 'Faltou (difere da planejada)' : 'Alterado em relação à planejada'}
+                                      title={cellAbsenceForMark ? `Faltou — planejado: ${snapshotCode}` : `Alterado — planejado: ${snapshotCode}`}
+                                    />
+                                  </>
                                 )}
                               </td>
                             );
@@ -3678,6 +3956,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             onClick={() => {
               setShowQuickMenu(false);
               setSelectedCell(null);
+              resetTrocaState();
             }}
           />
           <div
@@ -3698,11 +3977,26 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
               </div>
             )}
             <div className={`py-2 space-y-1 overflow-y-auto flex-1 ${isMobile ? 'pb-6' : ''}`}>
-              {/* Header informativo quando em modo visualização ou escala bloqueada */}
-              {(!editMode || isLocked) && (
+              {/* Header informativo — explica o que cada modo permite */}
+              {viewMode === 'planejada' && isPublished && (
+                <div className="px-3 py-1.5 mx-2 mb-1 bg-blue-50 rounded text-xs text-blue-700">
+                  Planejada publicada — somente leitura. Use "Troca e Remanejamento" ou "Realizada" para mudanças.
+                </div>
+              )}
+              {viewMode === 'troca' && (
+                <div className="px-3 py-1.5 mx-2 mb-1 bg-indigo-50 rounded text-xs text-indigo-700">
+                  Troca e Remanejamento — aplique troca, remanejamento ou liberação por dobra.
+                </div>
+              )}
+              {viewMode === 'realizada' && (
+                <div className="px-3 py-1.5 mx-2 mb-1 bg-orange-50 rounded text-xs text-orange-700">
+                  Realizada — registre apenas exceções: falta, atestado ou cobertura.
+                </div>
+              )}
+              {viewMode === 'planejada' && !isPublished && (!editMode || isLocked) && (
                 <div className="px-3 py-1.5 mx-2 mb-1 bg-gray-50 rounded text-xs text-gray-600">
                   {isLocked
-                    ? 'Escala publicada — somente registrar ausência ou trocar é permitido.'
+                    ? 'Escala bloqueada — somente registrar ausência ou trocar é permitido.'
                     : 'Modo visualização — entre em edição para alterar turnos.'}
                 </div>
               )}
@@ -3757,8 +4051,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 );
               })()}
 
-              {/* TURNOS / AUSÊNCIAS BUILT-IN — só em modo edição com escala não bloqueada */}
-              {editMode && !isLocked && (
+              {/* TURNOS / AUSÊNCIAS BUILT-IN — paleta crua só na PLANEJADA editável e não publicada */}
+              {editMode && !isLocked && viewMode === 'planejada' && !isPublished && (
                 <>
                   <button
                     onClick={() => setQuickMenuExpanded(prev => ({ ...prev, shifts: !prev.shifts }))}
@@ -3828,68 +4122,236 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 </>
               )}
 
-              {/* Trocar/Reatribuir — sempre disponível se a célula tem turno e usuário tem permissão */}
-              {selectedCell && (() => {
-                const dateStr = (() => {
-                  const [year, month] = selectedMonth.split('-');
-                  return `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
-                })();
-                const existingShift = shifts.find(
-                  s => s.professional_id === selectedCell.profId && s.shift_date === dateStr
+              {/* ═══ MODO TROCA E REMANEJAMENTO — ações estruturadas ═══ */}
+              {viewMode === 'troca' && selectedCell && !isLocked && canCreate('swaps' as any) && (() => {
+                const sameDept = allProfessionals.filter(
+                  p => p.id !== selectedCell.profId && professionalIdsInSchedule.has(p.id)
                 );
-                if (!existingShift) return null;
-                if (!canCreate('swaps' as any)) return null;
                 return (
-                  <button
-                    onClick={() => {
-                      setSwapInitialShiftId(existingShift.id);
-                      setShowSwapModal(true);
-                      setShowQuickMenu(false);
-                      setSelectedCell(null);
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-blue-50 rounded text-left transition text-blue-700"
-                  >
-                    <ArrowLeftRight className="w-4 h-4" />
-                    <span className="text-sm font-medium">Trocar / Reatribuir</span>
-                  </button>
+                  <div className="px-2 space-y-1">
+                    {/* TROCAR COM */}
+                    <button
+                      onClick={() => setTrocaAction(prev => prev === 'trocar' ? null : 'trocar')}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-indigo-50 rounded text-left transition text-indigo-700"
+                    >
+                      <span className="flex items-center gap-2"><ArrowLeftRight className="w-4 h-4" /><span className="text-sm font-medium">Trocar com…</span></span>
+                      {trocaAction === 'trocar' ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                    {trocaAction === 'trocar' && (
+                      <div className="px-2 pb-2 space-y-2">
+                        <select
+                          value={trocaTargetProf}
+                          onChange={e => setTrocaTargetProf(e.target.value)}
+                          className="w-full text-sm border border-gray-300 rounded px-2 py-1.5"
+                        >
+                          <option value="">Selecione o profissional…</option>
+                          {sameDept.map(p => (
+                            <option key={p.id} value={p.id}>{p.full_name}</option>
+                          ))}
+                        </select>
+                        <button
+                          disabled={!trocaTargetProf || trocaSaving}
+                          onClick={handleTrocarCom}
+                          className="w-full px-3 py-1.5 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          {trocaSaving ? 'Aplicando…' : 'Aplicar troca'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* REMANEJAR PARA */}
+                    <button
+                      onClick={() => setTrocaAction(prev => prev === 'remanejar' ? null : 'remanejar')}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-indigo-50 rounded text-left transition text-indigo-700"
+                    >
+                      <span className="flex items-center gap-2"><Shuffle className="w-4 h-4" /><span className="text-sm font-medium">Remanejar para…</span></span>
+                      {trocaAction === 'remanejar' ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                    {trocaAction === 'remanejar' && (
+                      <div className="px-2 pb-2 grid grid-cols-3 gap-1">
+                        {SHIFT_TYPES.filter(t => ['SN', 'SD', 'P', 'MT', 'M', 'T', 'D', 'FG'].includes(t.code)).map(t => (
+                          <button
+                            key={t.code}
+                            disabled={trocaSaving}
+                            onClick={() => handleRemanejar(t)}
+                            title={t.name}
+                            className={`${SHIFT_BADGE_CLASS} ${getCellColorClass(t.code)} disabled:opacity-50`}
+                          >
+                            {t.code}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* LIBERAR POR DOBRA */}
+                    <button
+                      onClick={() => setTrocaAction(prev => prev === 'liberar' ? null : 'liberar')}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-indigo-50 rounded text-left transition text-indigo-700"
+                    >
+                      <span className="flex items-center gap-2"><Coffee className="w-4 h-4" /><span className="text-sm font-medium">Liberar por dobra</span></span>
+                      {trocaAction === 'liberar' ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                    {trocaAction === 'liberar' && (
+                      <div className="px-2 pb-2 space-y-2">
+                        <input
+                          type="text"
+                          value={trocaRefDay}
+                          onChange={e => setTrocaRefDay(e.target.value)}
+                          placeholder="Dia ref. da dobra (opcional)"
+                          className="w-full text-sm border border-gray-300 rounded px-2 py-1.5"
+                        />
+                        <button
+                          disabled={trocaSaving}
+                          onClick={handleLiberarPorDobra}
+                          className="w-full px-3 py-1.5 bg-indigo-600 text-white rounded text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          {trocaSaving ? 'Aplicando…' : 'Marcar folga (FG)'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Acesso ao fluxo completo de troca (modal) */}
+                    {(() => {
+                      const [year, month] = selectedMonth.split('-');
+                      const dateStr = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
+                      const existingShift = shifts.find(s => s.professional_id === selectedCell.profId && s.shift_date === dateStr && !(s as any).deleted_in_realizada_at);
+                      if (!existingShift) return null;
+                      return (
+                        <button
+                          onClick={() => {
+                            setSwapInitialShiftId(existingShift.id);
+                            setShowSwapModal(true);
+                            setShowQuickMenu(false);
+                            setSelectedCell(null);
+                            resetTrocaState();
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded text-left transition text-gray-600 text-xs"
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                          Troca avançada (solicitação)
+                        </button>
+                      );
+                    })()}
+                  </div>
                 );
               })()}
 
-              {/* Registrar Ausência — sempre disponível se usuário tem permissão de absences */}
-              {selectedCell && currentSchedule && canCreate('absences' as any) && (
-                <button
-                  onClick={() => {
-                    const [year, month] = selectedMonth.split('-');
-                    const dateStr = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
-                    const existingCode = getShiftCode(selectedCell.profId, selectedCell.day);
-                    setAbsenceInitialData({
-                      professional_id: selectedCell.profId,
-                      department_id: selectedDepartment,
-                      schedule_id: currentSchedule.id,
-                      start_date: dateStr,
-                      end_date: dateStr,
-                      shift_type: existingCode || 'SD',
-                    });
-                    setShowAbsenceModal(true);
-                    setShowQuickMenu(false);
-                    setSelectedCell(null);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-700"
-                >
-                  <CalendarX className="w-4 h-4" />
-                  <span className="text-sm font-medium">Registrar Ausência</span>
-                </button>
-              )}
+              {/* ═══ MODO REALIZADA — exceções: Falta / Atestado / Cobertura ═══ */}
+              {viewMode === 'realizada' && selectedCell && currentSchedule && canCreate('absences' as any) && (() => {
+                const openAbsence = (kind: 'falta' | 'atestado' | 'cobertura') => {
+                  const [year, month] = selectedMonth.split('-');
+                  const dateStr = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
+                  const existingCode = getShiftCode(selectedCell.profId, selectedCell.day);
+                  // Trava: não permitir marcar exceção em dia sem plantão.
+                  if (!existingCode) {
+                    toast.warning('Não há plantão neste dia para registrar exceção.');
+                    return;
+                  }
+                  // Pré-seleciona o motivo correspondente quando existir no catálogo.
+                  const norm = (s: string) => s.toLowerCase();
+                  const matchReason = (kw: string[]) =>
+                    absenceReasons.find(r => kw.some(k => norm(r.name).includes(k)))?.id;
+                  const reason_id =
+                    kind === 'falta' ? matchReason(['falta'])
+                    : kind === 'atestado' ? matchReason(['atestado', 'médic', 'medic'])
+                    : matchReason(['cobertura', 'extra']);
+                  setAbsenceInitialData({
+                    professional_id: selectedCell.profId,
+                    department_id: selectedDepartment,
+                    schedule_id: currentSchedule.id,
+                    start_date: dateStr,
+                    end_date: dateStr,
+                    shift_type: existingCode || 'SD',
+                    reason_id,
+                  });
+                  setShowAbsenceModal(true);
+                  setShowQuickMenu(false);
+                  setSelectedCell(null);
+                };
+                return (
+                  <div className="px-2 space-y-1">
+                    <button onClick={() => openAbsence('falta')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-700">
+                      <CalendarX className="w-4 h-4" /><span className="text-sm font-medium">Falta</span>
+                    </button>
+                    <button onClick={() => openAbsence('atestado')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-amber-50 rounded text-left transition text-amber-700">
+                      <AlertCircle className="w-4 h-4" /><span className="text-sm font-medium">Atestado</span>
+                    </button>
+                    <button onClick={() => openAbsence('cobertura')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-blue-50 rounded text-left transition text-blue-700">
+                      <UserPlus className="w-4 h-4" /><span className="text-sm font-medium">Cobertura</span>
+                    </button>
+                  </div>
+                );
+              })()}
 
-              {/* Remover turno — só em modo edição */}
-              {editMode && !isLocked && (
-                <button
-                  onClick={handleDeleteShift}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-600"
-                >
-                  <X className="w-4 h-4" />
-                  <span className="text-sm">Remover</span>
-                </button>
+              {/* ═══ MODO PLANEJADA (não publicada) — Trocar/Ausência/Remover como antes ═══ */}
+              {viewMode === 'planejada' && (
+                <>
+                  {selectedCell && (() => {
+                    const dateStr = (() => {
+                      const [year, month] = selectedMonth.split('-');
+                      return `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
+                    })();
+                    const existingShift = shifts.find(
+                      s => s.professional_id === selectedCell.profId && s.shift_date === dateStr
+                    );
+                    if (!existingShift) return null;
+                    if (!canCreate('swaps' as any)) return null;
+                    return (
+                      <button
+                        onClick={() => {
+                          setSwapInitialShiftId(existingShift.id);
+                          setShowSwapModal(true);
+                          setShowQuickMenu(false);
+                          setSelectedCell(null);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-blue-50 rounded text-left transition text-blue-700"
+                      >
+                        <ArrowLeftRight className="w-4 h-4" />
+                        <span className="text-sm font-medium">Trocar / Reatribuir</span>
+                      </button>
+                    );
+                  })()}
+
+                  {selectedCell && currentSchedule && canCreate('absences' as any) && (
+                    <button
+                      onClick={() => {
+                        const [year, month] = selectedMonth.split('-');
+                        const dateStr = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
+                        const existingCode = getShiftCode(selectedCell.profId, selectedCell.day);
+                        if (!existingCode) {
+                          toast.warning('Não há plantão neste dia para registrar ausência.');
+                          return;
+                        }
+                        setAbsenceInitialData({
+                          professional_id: selectedCell.profId,
+                          department_id: selectedDepartment,
+                          schedule_id: currentSchedule.id,
+                          start_date: dateStr,
+                          end_date: dateStr,
+                          shift_type: existingCode || 'SD',
+                        });
+                        setShowAbsenceModal(true);
+                        setShowQuickMenu(false);
+                        setSelectedCell(null);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-700"
+                    >
+                      <CalendarX className="w-4 h-4" />
+                      <span className="text-sm font-medium">Registrar Ausência</span>
+                    </button>
+                  )}
+
+                  {/* Remover turno — só em modo edição planejada não publicada */}
+                  {editMode && !isLocked && !isPublished && (
+                    <button
+                      onClick={handleDeleteShift}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-600"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="text-sm">Remover</span>
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>

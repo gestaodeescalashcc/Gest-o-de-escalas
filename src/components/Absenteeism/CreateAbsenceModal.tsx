@@ -15,6 +15,7 @@ export interface AbsenceInitialData {
   start_date?: string;
   end_date?: string;
   shift_type?: string;
+  reason_id?: string;
 }
 
 interface DeptOption { id: string; name: string }
@@ -49,7 +50,7 @@ export default function CreateAbsenceModal({
     professional_id: absence?.professional_id ?? initialData?.professional_id ?? '',
     department_id: absence?.department_id ?? initialData?.department_id ?? '',
     schedule_id: (absence as any)?.schedule_id ?? initialData?.schedule_id ?? '',
-    reason_id: absence?.reason_id ?? '',
+    reason_id: absence?.reason_id ?? initialData?.reason_id ?? '',
     start_date: absence?.start_date ?? initialData?.start_date ?? today,
     end_date: absence?.end_date ?? initialData?.end_date ?? initialData?.start_date ?? today,
     shift_type: absence?.shift_type ?? initialData?.shift_type ?? 'SD',
