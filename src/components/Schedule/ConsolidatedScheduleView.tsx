@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -84,11 +85,13 @@ interface Holiday {
 
 interface ConsolidatedScheduleViewProps {
   initialScheduleId?: string | null;
+  mode?: 'planejada' | 'troca' | 'realizada';
   onBackToList?: () => void;
 }
 
-export default function ConsolidatedScheduleView({ initialScheduleId, onBackToList }: ConsolidatedScheduleViewProps) {
+export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBackToList }: ConsolidatedScheduleViewProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { isAdmin, canUpdate, canCreate, canDelete, allowedDepartments } = usePermissions();
   const { toasts, toast, removeToast } = useToast();
   const [pendingConfirm, setPendingConfirm] = useState<{ title: string; message: string; action: () => void } | null>(null);
@@ -187,7 +190,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const [swapInitialShiftId, setSwapInitialShiftId] = useState<string | null>(null);
   // Modo de visualização da escala (planejada / troca e remanejamento / realizada)
   type ViewMode = 'planejada' | 'troca' | 'realizada';
-  const [viewMode, setViewMode] = useState<ViewMode>('planejada');
+  const [viewMode, setViewMode] = useState<ViewMode>(mode ?? 'planejada');
+  // URL é a fonte da verdade: sincroniza o estado interno quando o modo da rota muda.
+  useEffect(() => {
+    if (mode && mode !== viewMode) setViewMode(mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+  // Navega entre as 3 páginas/URLs (planejada/troca/realizada) mantendo o mesmo scheduleId.
+  const goToMode = (target: ViewMode) => {
+    const sid = currentSchedule?.id || selectedSchedule || initialScheduleId;
+    if (sid) {
+      navigate(`/escala/${sid}/${target}`);
+    } else {
+      setViewMode(target);
+    }
+  };
   // Responsive: detect mobile viewport
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   useEffect(() => {
@@ -2877,8 +2894,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
   const codeColRight = (i: number) =>
     rightStickyBase + TOTAL_HORAS_W + (uniqueShiftCodes.length - 1 - i) * TOTAL_CODE_W;
 
+  // Título grande da página, por modo (cor coerente com as abas/legenda).
+  const pageHeading = {
+    planejada: { label: 'ESCALA PLANEJADA', cls: 'text-blue-700', Icon: Calendar },
+    troca: { label: 'TROCA E REMANEJAMENTO', cls: 'text-indigo-700', Icon: Repeat },
+    realizada: { label: 'ESCALA REALIZADA', cls: 'text-orange-700', Icon: ArrowLeftRight },
+  }[viewMode];
+
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <pageHeading.Icon className={`w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 ${pageHeading.cls}`} aria-hidden="true" />
+        <h1 className={`text-3xl sm:text-4xl font-extrabold uppercase tracking-tight ${pageHeading.cls}`}>
+          {pageHeading.label}
+        </h1>
+      </div>
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3 flex-wrap">
           {onBackToList && (
@@ -2891,7 +2921,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
             </button>
           )}
           <Calendar className="w-7 h-7 text-blue-600 flex-shrink-0 hidden sm:block" aria-hidden="true" />
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Escala do Mês</h1>
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-600">Escala do Mês</h2>
           {/* Badge de status removido — fluxo simplificado, todas as escalas
               são editáveis. Histórico é registrado em schedule_audit_log. */}
           {/* Toggle Planejada / Realizada — segmented control limpo */}
@@ -2905,7 +2935,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 type="button"
                 role="tab"
                 aria-selected={viewMode === 'planejada'}
-                onClick={() => setViewMode('planejada')}
+                onClick={() => goToMode('planejada')}
                 title="Escala como foi originalmente criada"
                 className={`min-h-[36px] px-3 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-1.5 ${
                   viewMode === 'planejada'
@@ -2920,7 +2950,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 type="button"
                 role="tab"
                 aria-selected={viewMode === 'troca'}
-                onClick={() => setViewMode('troca')}
+                onClick={() => goToMode('troca')}
                 title="Escala vigente com trocas e remanejamentos aplicados (sem faltas)"
                 className={`min-h-[36px] px-3 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-1.5 ${
                   viewMode === 'troca'
@@ -2935,7 +2965,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, onBackToLi
                 type="button"
                 role="tab"
                 aria-selected={viewMode === 'realizada'}
-                onClick={() => setViewMode('realizada')}
+                onClick={() => goToMode('realizada')}
                 title="Estado atual com ausências, coberturas e trocas aplicadas"
                 className={`min-h-[36px] px-3 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-1.5 ${
                   viewMode === 'realizada'

@@ -67,12 +67,20 @@ function ScheduleListRoute() {
   return <ScheduleView onNavigateToSchedule={(id) => navigate(`/escala/${id}`)} />;
 }
 
+const SCHEDULE_MODES = ['planejada', 'troca', 'realizada'] as const;
+type ScheduleMode = (typeof SCHEDULE_MODES)[number];
+
 function ScheduleDetailRoute() {
-  const { scheduleId } = useParams<{ scheduleId: string }>();
+  const { scheduleId, modo } = useParams<{ scheduleId: string; modo: string }>();
   const navigate = useNavigate();
+  const mode: ScheduleMode =
+    modo && (SCHEDULE_MODES as readonly string[]).includes(modo)
+      ? (modo as ScheduleMode)
+      : 'planejada';
   return (
     <ConsolidatedScheduleView
       initialScheduleId={scheduleId}
+      mode={mode}
       onBackToList={() => navigate('/escala')}
     />
   );
@@ -124,7 +132,8 @@ function AppRoutes() {
       {/* Protected */}
       <Route path="/minha-escala" element={<ProtectedLayout><ViewSuspense><MyScheduleView /></ViewSuspense></ProtectedLayout>} />
       <Route path="/escala" element={<ProtectedLayout><ScheduleListRoute /></ProtectedLayout>} />
-      <Route path="/escala/:scheduleId" element={<ProtectedLayout><ScheduleDetailRoute /></ProtectedLayout>} />
+      <Route path="/escala/:scheduleId" element={<Navigate to="planejada" replace />} />
+      <Route path="/escala/:scheduleId/:modo" element={<ProtectedLayout><ScheduleDetailRoute /></ProtectedLayout>} />
       <Route path="/escala-diaria" element={<ProtectedLayout><DailyScheduleView /></ProtectedLayout>} />
       <Route path="/profissionais" element={<ProtectedLayout><ProfessionalsView /></ProtectedLayout>} />
 
