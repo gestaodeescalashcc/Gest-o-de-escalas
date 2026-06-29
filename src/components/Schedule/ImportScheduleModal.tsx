@@ -212,6 +212,20 @@ export default function ImportScheduleModal({ onClose, onSuccess }: ImportSchedu
         scheduleId = data!.id;
       }
 
+      // 2b) Vínculos de visibilidade: setor (p/ profissionais de outro setor
+      // aparecerem na grade) e escala. Idempotente (ON CONFLICT DO NOTHING).
+      const allProfIds = Array.from(new Set(rowToProfId.values()));
+      if (allProfIds.length) {
+        await supabase.from('professional_department_links').upsert(
+          allProfIds.map(pid => ({ professional_id: pid, department_id: deptId, is_primary: false })),
+          { onConflict: 'professional_id,department_id', ignoreDuplicates: true }
+        );
+        await supabase.from('schedule_professional_links').upsert(
+          allProfIds.map(pid => ({ schedule_id: scheduleId!, professional_id: pid })),
+          { onConflict: 'schedule_id,professional_id', ignoreDuplicates: true }
+        );
+      }
+
       // 3) Montar shifts (Planejada: original_* = mesmos valores)
       const rows: any[] = [];
       for (const ip of parsed.professionals) {
