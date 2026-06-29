@@ -182,12 +182,14 @@ export default function ImportScheduleModal({ onClose, onSuccess }: ImportSchedu
       );
       for (const ip of toCreateRows) {
         const catId = categories.find(c => norm(c.name) === norm(ip.role))?.id ?? null;
+        // OBS: o CH da planilha é carga SEMANAL (ex.: 40h, 36h) e não o mensal
+        // contratado. Não importamos esse valor — deixamos o padrão do banco
+        // (180h/mês), ajustável depois no cadastro do profissional.
         const { data, error } = await supabase.from('professionals').insert({
           full_name: ip.name,
           registration_number: ip.registration,
           department_id: deptId,
           category_id: catId,
-          contracted_hours_per_month: ip.ch ?? undefined,
           active: true,
         } as any).select('id').single();
         if (error) throw new Error(`Falha ao criar profissional "${ip.name}": ${error.message}`);
