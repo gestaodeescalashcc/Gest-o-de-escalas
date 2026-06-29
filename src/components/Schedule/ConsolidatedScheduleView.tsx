@@ -312,14 +312,26 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     () => schedules.find(s => s.id === selectedSchedule),
     [schedules, selectedSchedule]
   );
-  const isLocked = false;
-  // Escala é considerada "finalizada" quando monthly_schedules.published_at foi setado
-  // (via botão "Finalizar Planejamento" pelo Coordenador/Admin). A partir desse momento:
-  // - Novos plantões (INSERT em célula vazia) só aparecem na Realizada (original_* fica NULL)
-  // - Edições em plantões existentes preservam original_* (Planejada não muda)
+  // Modo de visualização atual.
+  const isRealizada = viewMode === 'realizada';
+  const isClosed = (currentSchedule as any)?.status === 'Fechada';
+  // Escala é considerada "finalizada"/publicada quando monthly_schedules.published_at foi setado
+  // (via botão "Finalizar Planejamento"). A partir desse momento, a Planejada vira snapshot
+  // (original_*): edições passam a valer só na Realizada e novos plantões não entram na Planejada.
   const isPublished = !!(currentSchedule as any)?.published_at;
-  // Admins can always edit; others only when status is Rascunho
-  const canEditSchedule = isAdmin() ? true : !isLocked && canUpdate('schedules');
+  // Trava de edição:
+  // - Planejada publicada fica CONGELADA (read-only) até ser REABERTA explicitamente.
+  // - Escala 'Fechada' (arquivada) trava tudo.
+  // - Troca permanece sempre livre; Realizada é somente-leitura (tratada via isRealizada).
+  const isLocked = isClosed || (isPublished && viewMode === 'planejada');
+  // Só edita quem: não está travado, não está na Realizada (resultado) e tem permissão.
+  const canEditSchedule = !isLocked && !isRealizada && (isAdmin() || canUpdate('schedules'));
+  // Reabrir planejamento (destravar Planejada publicada): Admin OU Coordenador do setor da escala.
+  const scheduleDeptId = (currentSchedule as any)?.department_id as string | undefined;
+  const isCoordOfSchedule =
+    !!scheduleDeptId && (!allowedDepartments || allowedDepartments.includes(scheduleDeptId));
+  const canReopenPlanning =
+    isPublished && (isAdmin() || (canUpdate('schedules') && isCoordOfSchedule));
 
   // Cache armazena ARRAY de shifts por profissional/dia — permite plantão duplo
   // (ex: SD + SN no mesmo dia quando alguém cobre depois do próprio plantão).
@@ -980,13 +992,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   const SHIFT_BADGE_CLASS =
     'inline-flex items-center justify-center min-w-[40px] h-6 px-2 rounded-md text-xs font-semibold tracking-wide';
 
-  // Force-exit edit mode when switching to a locked schedule
+  // Sai do modo edição ao entrar numa escala travada OU na aba Realizada (read-only).
   useEffect(() => {
-    if (isLocked && editMode) {
+    if ((isLocked || isRealizada) && editMode) {
       setEditMode(false);
       setShowQuickMenu(false);
     }
-  }, [isLocked, editMode]);
+  }, [isLocked, isRealizada, editMode]);
 
   const updateScheduleStatus = async (newStatus: 'Rascunho' | 'Publicada' | 'Fechada') => {
     if (!currentSchedule) return;
@@ -1060,7 +1072,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     });
 
   const handleCellClick = (profId: string, day: number, event: React.MouseEvent) => {
-    // O menu sempre abre — as opções dentro dele variam por permissão e estado
+    // Realizada é somente-leitura (apenas o RESULTADO: Planejada/Troca + ausências +
+    // coberturas). Faltas/atestados entram pelo módulo Absenteísmo, não aqui.
+    if (isRealizada) return;
+    // Nos demais modos o menu sempre abre — as opções variam por permissão e estado
     // (modo edição: turnos+remover; modo visualização ou escala bloqueada:
     // apenas Trocar e Registrar Ausência).
     const rect = (event.target as HTMLElement).getBoundingClientRect();
@@ -3114,8 +3129,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                         </>
                       )}
 
-                      {/* Reabrir (admin, só quando publicado) */}
-                      {currentSchedule && isPublished && isAdmin() && (
+                      {/* Reabrir (Admin ou Coordenador do setor, só quando publicado) */}
+                      {currentSchedule && canReopenPlanning && (
                         <button
                           onClick={() => { requestReopen(); setMoreMenuOpen(false); }}
                           className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50"
@@ -3230,11 +3245,22 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                   isPublished ? 'text-emerald-700' : 'text-slate-600'
                 }`}
               >
-                {isAdmin()
-                  ? 'Como Administrador, você pode reabri-la para fazer ajustes.'
-                  : 'Apenas Administradores podem reabri-la.'}
+                {isClosed
+                  ? 'Escala arquivada (Fechada).'
+                  : canReopenPlanning
+                  ? 'Para editar a Planejada, reabra o planejamento.'
+                  : 'Apenas Administradores ou o Coordenador do setor podem reabri-la.'}
               </p>
             </div>
+            {!isClosed && canReopenPlanning && (
+              <button
+                onClick={requestReopen}
+                className="inline-flex items-center gap-2 flex-shrink-0 px-3.5 py-2 bg-white text-emerald-700 border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                <Unlock className="w-4 h-4" aria-hidden="true" />
+                Reabrir planejamento
+              </button>
+            )}
           </div>
         </div>
       )}
