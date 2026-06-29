@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -32,11 +32,18 @@ interface Professional {
 
 interface Shift {
   id: string;
-  professional_id: string;
+  professional_id: string | null;
   shift_date: string;
   shift_type: string;
   start_time: string;
   end_time: string;
+  original_shift_type?: string | null;
+  original_start_time?: string | null;
+  original_end_time?: string | null;
+  published_at?: string | null;
+  company_id?: string | null;
+  original_company_id?: string | null;
+  deleted_in_realizada_at?: string | null;
 }
 
 const SHIFT_TYPES = [
@@ -68,7 +75,7 @@ interface MonthlySchedule {
   id: string;
   name: string;
   month: string;
-  status: string;
+  status: string | null;
   department_id: string;
   published_at?: string | null;
   published_by?: string | null;
@@ -78,9 +85,9 @@ interface Holiday {
   id: string;
   date: string;
   name: string;
-  type: string;
-  recurring: boolean;
-  active: boolean;
+  type: string | null;
+  recurring: boolean | null;
+  active: boolean | null;
 }
 
 interface ConsolidatedScheduleViewProps {
@@ -305,11 +312,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     () => schedules.find(s => s.id === selectedSchedule),
     [schedules, selectedSchedule]
   );
-  const scheduleStatus = (currentSchedule?.status ?? 'Rascunho') as
-    | 'Rascunho'
-    | 'Publicada'
-    | 'Fechada';
-  const isClosed = false;
   const isLocked = false;
   // Escala é considerada "finalizada" quando monthly_schedules.published_at foi setado
   // (via botão "Finalizar Planejamento" pelo Coordenador/Admin). A partir desse momento:
@@ -325,6 +327,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     const cache = new Map<string, Map<string, Shift[]>>();
 
     shifts.forEach(shift => {
+      if (!shift.professional_id) return;
       if (!cache.has(shift.professional_id)) {
         cache.set(shift.professional_id, new Map());
       }
@@ -718,7 +721,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
 
         const shiftsArr = shiftsData.data ?? [];
         setShifts(shiftsArr);
-        const profsWithShifts = new Set(shiftsArr.map(s => s.professional_id));
+        const profsWithShifts = new Set(
+          shiftsArr.map(s => s.professional_id).filter((id): id is string => !!id)
+        );
         const linkedProfIds = new Set(((linksData?.data ?? []) as any[]).map(l => l.professional_id));
 
         // União: profissionais com plantões + explicitamente vinculados à escala
@@ -846,19 +851,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     return getEffectiveShiftCodes(professionalId, day)[0] || '';
   };
 
-  // Tooltip helper para célula em modo realizada (override)
-  const getAbsenceForCell = (professionalId: string, day: number) => {
-    if (viewMode !== 'realizada') return null;
-    const [year, month] = selectedMonth.split('-');
-    const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
-    return scheduleAbsences.find(
-      a =>
-        a.professional_id === professionalId &&
-        date >= a.start_date &&
-        date <= a.end_date
-    );
-  };
-
   // Retorna a absence registrada nesse dia (independente do modo)
   // Usado para destacar visualmente células com ausências mesmo em modo Planejada
   const findAbsenceForCell = (professionalId: string, day: number) => {
@@ -905,9 +897,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   }, [shifts, selectedMonth]);
 
   const getHolidayForDay = (day: number): Holiday | undefined => holidayByDay.get(day);
-  const isHolidayDay = (day: number) => holidayByDay.has(day);
-  const isWeekendOrHoliday = (day: number) =>
-    ['SAB', 'DOM'].includes(getDayOfWeek(day)) || isHolidayDay(day);
 
   const calculateTotalHours = (professionalId: string) => {
     return totalHoursCache.get(professionalId) || 0;
@@ -1058,16 +1047,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
         'A Planejada será CONGELADA exatamente como está agora. A partir daqui:\n\n• Edições em plantões existentes → vão apenas para a Realizada (Planejada preservada)\n• Novos plantões adicionados → aparecem só na Realizada (não fazem parte da Planejada original)\n• Exclusões → somem da Realizada mas continuam na Planejada\n\nUse este botão quando terminar de montar a escala e quiser que dali pra frente tudo seja tratado como "exceção".',
       variant: 'default',
       confirmLabel: 'Finalizar planejamento',
-    });
-
-  const requestClose = () =>
-    setStatusChangeDialog({
-      targetStatus: 'Fechada',
-      title: 'Fechar escala?',
-      message:
-        'Ao fechar, a escala é arquivada e não poderá mais ser editada. Use esta opção quando o mês for concluído. Você pode reabrir depois (Administrador).',
-      variant: 'warning',
-      confirmLabel: 'Fechar escala',
     });
 
   const requestReopen = () =>
@@ -2858,26 +2837,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     return { dailyShiftTotals: totals, uniqueShiftCodes: sorted };
   })();
 
-  // Status badge styling
-  const statusBadgeStyles: Record<string, { container: string; icon: typeof Edit3; label: string }> = {
-    Rascunho: {
-      container: 'bg-gray-100 text-gray-700 ring-gray-200',
-      icon: Edit3,
-      label: 'Rascunho',
-    },
-    Publicada: {
-      container: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
-      icon: CheckCircle2,
-      label: 'Publicada',
-    },
-    Fechada: {
-      container: 'bg-slate-200 text-slate-700 ring-slate-300',
-      icon: Archive,
-      label: 'Fechada',
-    },
-  };
-  const StatusBadge = currentSchedule ? statusBadgeStyles[scheduleStatus] : null;
-  const StatusIcon = StatusBadge?.icon ?? Edit3;
 
   // Escala "recém-criada" → Copiar Mês Anterior só faz sentido aqui.
   const isEmptySchedule = !!currentSchedule && shifts.length === 0;

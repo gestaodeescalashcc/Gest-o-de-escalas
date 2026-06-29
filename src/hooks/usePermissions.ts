@@ -57,14 +57,6 @@ interface Permissions {
   };
 }
 
-interface UserData {
-  role: {
-    name: string;
-    permissions: Permissions;
-  };
-  allowed_departments: string[] | null;
-}
-
 const defaultPermissions: Permissions = {
   professionals: { create: false, read: false, update: false, delete: false },
   schedules: { create: false, read: false, update: false, delete: false },
@@ -127,7 +119,7 @@ export function usePermissions() {
       }
 
       if (roleData) {
-        setPermissions(roleData.permissions || defaultPermissions);
+        setPermissions((roleData.permissions as unknown as Permissions) || defaultPermissions);
         setRoleName(roleData.name || '');
         setAllowedDepartments(data.allowed_departments || null);
       } else {

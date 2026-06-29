@@ -112,7 +112,7 @@ describe('Hour Bank Entries - Create', () => {
 
     const { error } = await supabase
       .from('hour_bank_entries')
-      .insert({ professional_id: 'prof-1', entry_type: 'debit', minutes: 60 }) as unknown as { error: null };
+      .insert({ professional_id: 'prof-1', entry_type: 'debit', minutes: 60 } as any) as unknown as { error: null };
 
     expect(error).toBeNull();
   });

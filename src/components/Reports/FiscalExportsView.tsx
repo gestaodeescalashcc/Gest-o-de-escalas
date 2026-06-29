@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Shield, AlertCircle, CheckCircle, XCircle, Building2, Calendar, Users, Hash, RefreshCw, Clock, FileCheck } from 'lucide-react';
+import { FileText, Download, Shield, CheckCircle, XCircle, RefreshCw, FileCheck } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../hooks/useToast';
 import ToastContainer from '../Common/ToastContainer';
@@ -13,15 +13,21 @@ interface Establishment {
 interface ExportJob {
   id: string;
   export_type: string;
-  establishment_id: string;
+  establishment_id: string | null;
   start_date: string;
   end_date: string;
   status: string;
-  file_hash: string;
+  file_hash: string | null;
   is_fiscal_request: boolean;
   fiscal_protocol: string | null;
   requested_at: string;
   completed_at: string | null;
+  error_message: string | null;
+  file_url: string | null;
+  professional_ids: string[] | null;
+  progress: number | null;
+  requested_by: string;
+  signature_file_url: string | null;
 }
 
 interface IntegrityResult {
@@ -43,7 +49,6 @@ export default function FiscalExportsView() {
   const [endDate, setEndDate] = useState('');
   const [isFiscalRequest, setIsFiscalRequest] = useState(false);
   const [fiscalProtocol, setFiscalProtocol] = useState('');
-  const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState<'AFD' | 'AEJ' | null>(null);
   const [integrityResult, setIntegrityResult] = useState<IntegrityResult | null>(null);
   const [verifying, setVerifying] = useState(false);

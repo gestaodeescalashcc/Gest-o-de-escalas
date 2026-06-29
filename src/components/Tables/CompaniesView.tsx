@@ -9,8 +9,9 @@ import { useToast } from '../../hooks/useToast';
 interface Company {
   id: string;
   name: string;
-  cnpj?: string;
-  created_at: string;
+  cnpj?: string | null;
+  active?: boolean | null;
+  created_at: string | null;
 }
 
 export default function CompaniesView() {
@@ -102,6 +103,7 @@ export default function CompaniesView() {
   };
 
   const handleSaveEdit = async () => {
+    if (!editingId) return;
     if (!editForm.name.trim()) {
       toast.warning('Nome é obrigatório');
       return;

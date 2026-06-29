@@ -117,7 +117,7 @@ export default function MealScheduleView({ onBack }: MealScheduleViewProps = {})
     }
   };
 
-  const calculateShiftHours = (shiftType: string, startTime: string, endTime: string): number => {
+  const calculateShiftHours = (_shiftType: string, startTime: string, endTime: string): number => {
     const start = new Date(`2000-01-01T${startTime}`);
     const end = new Date(`2000-01-01T${endTime}`);
     let diff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
@@ -195,7 +195,7 @@ export default function MealScheduleView({ onBack }: MealScheduleViewProps = {})
       const [year, month] = selectedDate.split('-');
       const monthKey = `${year}-${month}-01`;
 
-      const { data: schedulesData, error: schedulesError } = await supabase
+      const { error: schedulesError } = await supabase
         .from('monthly_schedules')
         .select('id, department_id')
         .eq('month', monthKey);
@@ -246,6 +246,10 @@ export default function MealScheduleView({ onBack }: MealScheduleViewProps = {})
         const companyId = shift.professional?.company_id;
 
         if (!categoryId || !allowedCategories.has(categoryId)) {
+          continue;
+        }
+
+        if (!shift.professional_id) {
           continue;
         }
 

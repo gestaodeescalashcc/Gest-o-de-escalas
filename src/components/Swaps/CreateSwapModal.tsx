@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Calendar, Clock, User, ArrowRight, CheckCircle, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import ToastContainer from '../Common/ToastContainer';
 
@@ -38,7 +37,6 @@ interface Professional {
 }
 
 export default function CreateSwapModal({ onClose, onSuccess, initialShiftId }: CreateSwapModalProps) {
-  const { user } = useAuth();
   const { toasts, toast, removeToast } = useToast();
   const [step, setStep] = useState(initialShiftId ? 2 : 1);
   const [shifts, setShifts] = useState<Shift[]>([]);

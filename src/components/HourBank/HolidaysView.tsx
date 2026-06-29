@@ -9,9 +9,11 @@ interface Holiday {
   id: string;
   name: string;
   date: string;
-  type: string;
-  recurring: boolean;
-  active: boolean;
+  type: string | null;
+  recurring: boolean | null;
+  active: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export function HolidaysView() {
@@ -99,8 +101,8 @@ export function HolidaysView() {
     setFormData({
       name: holiday.name,
       date: holiday.date,
-      type: holiday.type,
-      recurring: holiday.recurring,
+      type: holiday.type ?? 'Nacional',
+      recurring: holiday.recurring ?? false,
     });
     setEditingId(holiday.id);
     setShowModal(true);
@@ -132,11 +134,6 @@ export function HolidaysView() {
       return;
     }
     loadHolidays();
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
   };
 
   const getDayOfWeek = (dateStr: string) => {
@@ -220,7 +217,7 @@ export function HolidaysView() {
                     <div className="font-medium text-gray-900">{holiday.name}</div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-sm text-gray-500 capitalize">{getDayOfWeek(holiday.date)}</span>
-                      {getTypeBadge(holiday.type)}
+                      {getTypeBadge(holiday.type ?? '')}
                       {holiday.recurring && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
                           Recorrente

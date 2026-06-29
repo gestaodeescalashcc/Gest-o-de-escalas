@@ -9,7 +9,8 @@ import { useToast } from '../../hooks/useToast';
 interface Category {
   id: string;
   name: string;
-  created_at: string;
+  color?: string | null;
+  created_at: string | null;
 }
 
 export default function CategoriesView() {
@@ -91,6 +92,7 @@ export default function CategoriesView() {
   };
 
   const handleSaveEdit = async () => {
+    if (!editingId) return;
     if (!editForm.name.trim()) {
       toast.warning('Nome é obrigatório');
       return;

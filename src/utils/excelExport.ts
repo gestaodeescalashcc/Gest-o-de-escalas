@@ -627,7 +627,6 @@ async function exportGeneric(data: ExportData) {
   //   AL,AM = sub-totais (não usado; ocultos no modelo)
   //   AN = TOTAL HORAS
   const firstDayCol = 7;          // G
-  const lastDayCol = firstDayCol + 30; // AK (31 dias)
   const totalCol = 40;            // AN
   const subDayCol1 = 38;          // AL
   const subDayCol2 = 39;          // AM

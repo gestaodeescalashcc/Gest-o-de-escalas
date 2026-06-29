@@ -155,7 +155,7 @@ export default function DailyScheduleView() {
 
       if (data) {
         setShifts(data as any);
-        const deptIds = new Set((data as any).map((s: Shift) => s.department_id));
+        const deptIds = new Set<string>((data as any).map((s: Shift) => s.department_id));
         setExpandedDepartments(deptIds);
       } else {
         setShifts([]);

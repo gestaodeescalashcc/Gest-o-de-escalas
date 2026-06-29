@@ -90,7 +90,7 @@ describe('Meal Schedules - Bulk Insert', () => {
 
     const { error } = await supabase
       .from('meal_schedules')
-      .insert(mealEntries) as unknown as { error: null };
+      .insert(mealEntries as any) as unknown as { error: null };
 
     expect(chain.insert).toHaveBeenCalledWith(mealEntries);
     expect(error).toBeNull();
@@ -102,7 +102,7 @@ describe('Meal Schedules - Bulk Insert', () => {
 
     const { error } = await supabase
       .from('meal_schedules')
-      .upsert(makeMealEntry()) as unknown as { error: null };
+      .upsert(makeMealEntry() as any) as unknown as { error: null };
 
     expect(chain.upsert).toHaveBeenCalledOnce();
     expect(error).toBeNull();
@@ -147,7 +147,7 @@ describe('Meal Category Config - List and Update', () => {
 
     const { error } = await supabase
       .from('meal_category_config')
-      .insert({ category_id: 'cat-2', has_meal_benefit: true, meal_type: 'Almoço' }) as unknown as { error: null };
+      .insert({ category_id: 'cat-2', has_meal_benefit: true, meal_type: 'Almoço' } as any) as unknown as { error: null };
 
     expect(chain.insert).toHaveBeenCalledOnce();
     expect(error).toBeNull();

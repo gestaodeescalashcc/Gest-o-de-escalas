@@ -4,8 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import ToastContainer from '../Common/ToastContainer';
 import {
-  RefreshCw, Plus, Search, CheckCircle, XCircle, Calendar,
-  Clock, ChevronLeft, ChevronRight, User
+  RefreshCw, Plus, Search, CheckCircle, XCircle,
+  ChevronLeft, ChevronRight, User
 } from 'lucide-react';
 
 interface Compensation {
@@ -25,7 +25,7 @@ interface Compensation {
 interface Professional {
   id: string;
   full_name: string;
-  department_id: string;
+  department_id: string | null;
 }
 
 interface BalanceInfo {

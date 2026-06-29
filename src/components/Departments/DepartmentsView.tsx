@@ -8,8 +8,8 @@ import { useToast } from '../../hooks/useToast';
 interface Department {
   id: string;
   name: string;
-  description: string;
-  created_at: string;
+  description: string | null;
+  created_at: string | null;
 }
 
 export default function DepartmentsView() {
@@ -70,7 +70,7 @@ export default function DepartmentsView() {
   };
 
   const handleEdit = (dept: Department) => {
-    setFormData({ name: dept.name, description: dept.description });
+    setFormData({ name: dept.name, description: dept.description ?? '' });
     setEditingId(dept.id);
     setShowForm(true);
   };
@@ -276,7 +276,7 @@ export default function DepartmentsView() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="text-sm text-gray-600">
-                        {new Date(dept.created_at).toLocaleDateString('pt-BR')}
+                        {dept.created_at ? new Date(dept.created_at).toLocaleDateString('pt-BR') : '—'}
                       </div>
                     </td>
                     <td className="px-4 py-4">
