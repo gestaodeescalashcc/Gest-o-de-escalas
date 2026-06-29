@@ -7,6 +7,7 @@ import { usePermissions } from '../../hooks/usePermissions';
 import CreateScheduleModal from './CreateScheduleModal';
 import AutoFillModal, { ScaleConfig } from './AutoFillModal';
 import { exportScheduleToExcel } from '../../utils/excelExport';
+import { SHIFT_TYPES } from '../../lib/shiftTypes';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import ToastContainer from '../Common/ToastContainer';
 import EmptyState from '../Common/EmptyState';
@@ -45,31 +46,6 @@ interface Shift {
   original_company_id?: string | null;
   deleted_in_realizada_at?: string | null;
 }
-
-const SHIFT_TYPES = [
-  { code: 'SN', name: 'Serviço Noturno (19h às 7h) 12h', start: '19:00', end: '07:00', hours: 12 },
-  { code: 'SD', name: 'Serviço Diurno (7h às 19h) 12h', start: '07:00', end: '19:00', hours: 12 },
-  { code: 'D', name: 'Diarista', start: '07:00', end: '13:00', hours: 6 },
-  { code: 'M', name: 'Manhã (7h às 13h) 6h', start: '07:00', end: '13:00', hours: 6 },
-  { code: 'M2', name: 'Manhã (8h às 12h) 4h', start: '08:00', end: '12:00', hours: 4 },
-  { code: 'T', name: 'Tarde (12h às 18h) 6h', start: '12:00', end: '18:00', hours: 6 },
-  { code: 'MT', name: 'Manhã e Tarde (8h às 17h) 8h', start: '08:00', end: '17:00', hours: 8 },
-  { code: 'P', name: 'Plantão 24h (7h às 7h) 24h', start: '07:00', end: '07:00', hours: 24 },
-  { code: 'FG', name: 'Folga', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'FR', name: 'Feriado', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'FE', name: 'Férias', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'FA', name: 'Falta', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'LP', name: 'Licença Prêmio', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'LM', name: 'Licença Médica', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'LG', name: 'Licença Gestação', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'AS', name: 'Afastamento À Serviço', start: '00:00', end: '00:00', hours: 0 },
-  // Códigos importados das planilhas (FESF) — marcadores de ausência. Ajustar nomes/horas conforme necessário.
-  { code: 'FSN', name: 'Falta no SN', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'FSD', name: 'Falta no SD', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'FDS', name: 'Falta (FDS)', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'FP', name: 'Falta no Plantão', start: '00:00', end: '00:00', hours: 0 },
-  { code: 'ATM', name: 'Atestado Médico', start: '00:00', end: '00:00', hours: 0 },
-];
 
 interface MonthlySchedule {
   id: string;
