@@ -212,6 +212,16 @@ export default function ImportScheduleModal({ onClose, onSuccess }: ImportSchedu
         scheduleId = data!.id;
       }
 
+      // 2a) Profissionais casados SEM setor primário adotam o setor da escala —
+      // senão não aparecem na grade (que lista por department_id primário).
+      const matchedNoDept = matches
+        .filter(m => m.matchedId && m.action !== 'skip')
+        .map(m => m.matchedId!)
+        .filter(id => professionals.find(p => p.id === id)?.department_id == null);
+      if (matchedNoDept.length) {
+        await supabase.from('professionals').update({ department_id: deptId } as any).in('id', matchedNoDept);
+      }
+
       // 2b) Vínculos de visibilidade: setor (p/ profissionais de outro setor
       // aparecerem na grade) e escala. Idempotente (ON CONFLICT DO NOTHING).
       const allProfIds = Array.from(new Set(rowToProfId.values()));
