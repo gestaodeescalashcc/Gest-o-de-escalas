@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
 import { Settings, Save, Info, Clock, Calendar, DollarSign, AlertTriangle, Moon } from 'lucide-react';
 import ToastContainer from '../Common/ToastContainer';
 import { useToast } from '../../hooks/useToast';
@@ -8,8 +7,8 @@ import { useToast } from '../../hooks/useToast';
 interface HourBankConfig {
   id: string;
   company_id: string | null;
-  agreement_type: 'individual' | 'coletivo' | 'mensal';
-  compensation_period_months: 1 | 6 | 12;
+  agreement_type: string;
+  compensation_period_months: number;
   daily_overtime_limit_minutes: number;
   weekly_overtime_limit_minutes: number;
   monthly_overtime_limit_minutes: number;
@@ -24,6 +23,8 @@ interface HourBankConfig {
   auto_calculate: boolean;
   expiration_warning_days: number;
   is_active: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 interface Company {
@@ -52,7 +53,6 @@ const defaultConfig: Omit<HourBankConfig, 'id'> = {
 };
 
 export function HourBankConfigView() {
-  const { user } = useAuth();
   const { toasts, toast, removeToast } = useToast();
   const [config, setConfig] = useState<HourBankConfig | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);

@@ -17,6 +17,7 @@ interface User {
   active: boolean;
   last_login: string | null;
   created_at: string;
+  allowed_departments: string[] | null;
   role: {
     id: string;
     name: string;
@@ -68,12 +69,27 @@ export default function UsersView() {
 
       if (error) throw error;
 
-      if (data?.role?.permissions?.users) {
+      const userPerms = (
+        data as unknown as {
+          role?: {
+            permissions?: {
+              users?: {
+                create?: boolean;
+                read?: boolean;
+                update?: boolean;
+                delete?: boolean;
+              };
+            };
+          };
+        } | null
+      )?.role?.permissions?.users;
+
+      if (userPerms) {
         setPermissions({
-          canCreate: data.role.permissions.users.create || false,
-          canRead: data.role.permissions.users.read || false,
-          canUpdate: data.role.permissions.users.update || false,
-          canDelete: data.role.permissions.users.delete || false,
+          canCreate: userPerms.create || false,
+          canRead: userPerms.read || false,
+          canUpdate: userPerms.update || false,
+          canDelete: userPerms.delete || false,
         });
       }
     } catch (err) {

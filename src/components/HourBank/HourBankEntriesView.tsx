@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import ToastContainer from '../Common/ToastContainer';
 import {
-  List, Plus, Search, Filter, Calendar, CheckCircle, XCircle, Clock,
+  List, Plus, Search, CheckCircle, XCircle, Clock,
   TrendingUp, TrendingDown, AlertTriangle, FileText, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
@@ -30,7 +30,7 @@ interface Entry {
 interface Professional {
   id: string;
   full_name: string;
-  department_id: string;
+  department_id: string | null;
 }
 
 interface Department {
@@ -46,13 +46,12 @@ export function HourBankEntriesView() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateTo] = useState('');
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const pageSize = 20;
@@ -60,7 +59,7 @@ export function HourBankEntriesView() {
   const [formData, setFormData] = useState({
     professional_id: '',
     entry_date: new Date().toISOString().split('T')[0],
-    entry_type: 'credit' as const,
+    entry_type: 'credit' as 'credit' | 'debit',
     hours: 0,
     minutes: 0,
     description: '',

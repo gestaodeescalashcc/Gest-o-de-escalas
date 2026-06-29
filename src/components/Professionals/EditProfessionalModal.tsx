@@ -188,7 +188,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
       if (data) {
         setFacialDataId(data.id);
         if (data.facial_descriptors) {
-          setFacialDescriptor(data.facial_descriptors);
+          setFacialDescriptor(data.facial_descriptors as unknown as number[] | null);
           setHasExistingDescriptor(true);
         }
       }

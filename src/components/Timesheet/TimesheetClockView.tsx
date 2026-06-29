@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Clock, Camera, CheckCircle, XCircle, User, Fingerprint, LogIn, LogOut, AlertCircle, RefreshCw, Utensils, Search, X, Check, RotateCw, Download, FileText, Shield, Hash, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { extractFaceDescriptor, compareFaces, loadModels, areModelsLoaded, getEyeRatios, createBlinkDetector, updateBlinkDetection, BlinkDetectionState } from '../../services/faceRecognition';
+import { extractFaceDescriptor, compareFaces, loadModels, getEyeRatios, createBlinkDetector, updateBlinkDetection, BlinkDetectionState } from '../../services/faceRecognition';
 
 interface Professional {
   id: string;

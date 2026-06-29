@@ -98,7 +98,7 @@ describe('Shifts - Create', () => {
         shift_type: 'SN',
         status: 'Agendado',
         created_by: 'user-1',
-      }) as unknown as { error: null };
+      } as any) as unknown as { error: null };
 
     expect(chain.insert).toHaveBeenCalledOnce();
     expect(error).toBeNull();
@@ -111,7 +111,7 @@ describe('Shifts - Create', () => {
 
     const { error } = await supabase
       .from('shifts')
-      .insert({ professional_id: 'prof-1', shift_date: '2025-06-01' }) as unknown as { error: typeof dbError };
+      .insert({ professional_id: 'prof-1', shift_date: '2025-06-01' } as any) as unknown as { error: typeof dbError };
 
     expect(error?.code).toBe('23505');
   });

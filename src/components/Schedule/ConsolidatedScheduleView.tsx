@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, Archive, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee } from 'lucide-react';
+import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -32,11 +32,18 @@ interface Professional {
 
 interface Shift {
   id: string;
-  professional_id: string;
+  professional_id: string | null;
   shift_date: string;
   shift_type: string;
   start_time: string;
   end_time: string;
+  original_shift_type?: string | null;
+  original_start_time?: string | null;
+  original_end_time?: string | null;
+  published_at?: string | null;
+  company_id?: string | null;
+  original_company_id?: string | null;
+  deleted_in_realizada_at?: string | null;
 }
 
 const SHIFT_TYPES = [
@@ -68,7 +75,7 @@ interface MonthlySchedule {
   id: string;
   name: string;
   month: string;
-  status: string;
+  status: string | null;
   department_id: string;
   published_at?: string | null;
   published_by?: string | null;
@@ -78,9 +85,9 @@ interface Holiday {
   id: string;
   date: string;
   name: string;
-  type: string;
-  recurring: boolean;
-  active: boolean;
+  type: string | null;
+  recurring: boolean | null;
+  active: boolean | null;
 }
 
 interface ConsolidatedScheduleViewProps {
@@ -161,6 +168,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     id: string;
     table_name: string;
     action: 'INSERT' | 'UPDATE' | 'DELETE' | string;
+    actionLabel: string;
     description: string | null;
     user_email: string | null;
     created_at: string;
@@ -305,19 +313,26 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     () => schedules.find(s => s.id === selectedSchedule),
     [schedules, selectedSchedule]
   );
-  const scheduleStatus = (currentSchedule?.status ?? 'Rascunho') as
-    | 'Rascunho'
-    | 'Publicada'
-    | 'Fechada';
-  const isClosed = false;
-  const isLocked = false;
-  // Escala é considerada "finalizada" quando monthly_schedules.published_at foi setado
-  // (via botão "Finalizar Planejamento" pelo Coordenador/Admin). A partir desse momento:
-  // - Novos plantões (INSERT em célula vazia) só aparecem na Realizada (original_* fica NULL)
-  // - Edições em plantões existentes preservam original_* (Planejada não muda)
+  // Modo de visualização atual.
+  const isRealizada = viewMode === 'realizada';
+  const isClosed = (currentSchedule as any)?.status === 'Fechada';
+  // Escala é considerada "finalizada"/publicada quando monthly_schedules.published_at foi setado
+  // (via botão "Finalizar Planejamento"). A partir desse momento, a Planejada vira snapshot
+  // (original_*): edições passam a valer só na Realizada e novos plantões não entram na Planejada.
   const isPublished = !!(currentSchedule as any)?.published_at;
-  // Admins can always edit; others only when status is Rascunho
-  const canEditSchedule = isAdmin() ? true : !isLocked && canUpdate('schedules');
+  // Trava de edição:
+  // - Planejada publicada fica CONGELADA (read-only) até ser REABERTA explicitamente.
+  // - Escala 'Fechada' (arquivada) trava tudo.
+  // - Troca permanece sempre livre; Realizada é somente-leitura (tratada via isRealizada).
+  const isLocked = isClosed || (isPublished && viewMode === 'planejada');
+  // Só edita quem: não está travado, não está na Realizada (resultado) e tem permissão.
+  const canEditSchedule = !isLocked && !isRealizada && (isAdmin() || canUpdate('schedules'));
+  // Reabrir planejamento (destravar Planejada publicada): Admin OU Coordenador do setor da escala.
+  const scheduleDeptId = (currentSchedule as any)?.department_id as string | undefined;
+  const isCoordOfSchedule =
+    !!scheduleDeptId && (!allowedDepartments || allowedDepartments.includes(scheduleDeptId));
+  const canReopenPlanning =
+    isPublished && (isAdmin() || (canUpdate('schedules') && isCoordOfSchedule));
 
   // Cache armazena ARRAY de shifts por profissional/dia — permite plantão duplo
   // (ex: SD + SN no mesmo dia quando alguém cobre depois do próprio plantão).
@@ -325,6 +340,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     const cache = new Map<string, Map<string, Shift[]>>();
 
     shifts.forEach(shift => {
+      if (!shift.professional_id) return;
       if (!cache.has(shift.professional_id)) {
         cache.set(shift.professional_id, new Map());
       }
@@ -718,7 +734,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
 
         const shiftsArr = shiftsData.data ?? [];
         setShifts(shiftsArr);
-        const profsWithShifts = new Set(shiftsArr.map(s => s.professional_id));
+        const profsWithShifts = new Set(
+          shiftsArr.map(s => s.professional_id).filter((id): id is string => !!id)
+        );
         const linkedProfIds = new Set(((linksData?.data ?? []) as any[]).map(l => l.professional_id));
 
         // União: profissionais com plantões + explicitamente vinculados à escala
@@ -846,19 +864,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     return getEffectiveShiftCodes(professionalId, day)[0] || '';
   };
 
-  // Tooltip helper para célula em modo realizada (override)
-  const getAbsenceForCell = (professionalId: string, day: number) => {
-    if (viewMode !== 'realizada') return null;
-    const [year, month] = selectedMonth.split('-');
-    const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
-    return scheduleAbsences.find(
-      a =>
-        a.professional_id === professionalId &&
-        date >= a.start_date &&
-        date <= a.end_date
-    );
-  };
-
   // Retorna a absence registrada nesse dia (independente do modo)
   // Usado para destacar visualmente células com ausências mesmo em modo Planejada
   const findAbsenceForCell = (professionalId: string, day: number) => {
@@ -905,9 +910,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   }, [shifts, selectedMonth]);
 
   const getHolidayForDay = (day: number): Holiday | undefined => holidayByDay.get(day);
-  const isHolidayDay = (day: number) => holidayByDay.has(day);
-  const isWeekendOrHoliday = (day: number) =>
-    ['SAB', 'DOM'].includes(getDayOfWeek(day)) || isHolidayDay(day);
 
   const calculateTotalHours = (professionalId: string) => {
     return totalHoursCache.get(professionalId) || 0;
@@ -991,13 +993,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   const SHIFT_BADGE_CLASS =
     'inline-flex items-center justify-center min-w-[40px] h-6 px-2 rounded-md text-xs font-semibold tracking-wide';
 
-  // Force-exit edit mode when switching to a locked schedule
+  // Sai do modo edição ao entrar numa escala travada OU na aba Realizada (read-only).
   useEffect(() => {
-    if (isLocked && editMode) {
+    if ((isLocked || isRealizada) && editMode) {
       setEditMode(false);
       setShowQuickMenu(false);
     }
-  }, [isLocked, editMode]);
+  }, [isLocked, isRealizada, editMode]);
 
   const updateScheduleStatus = async (newStatus: 'Rascunho' | 'Publicada' | 'Fechada') => {
     if (!currentSchedule) return;
@@ -1060,16 +1062,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
       confirmLabel: 'Finalizar planejamento',
     });
 
-  const requestClose = () =>
-    setStatusChangeDialog({
-      targetStatus: 'Fechada',
-      title: 'Fechar escala?',
-      message:
-        'Ao fechar, a escala é arquivada e não poderá mais ser editada. Use esta opção quando o mês for concluído. Você pode reabrir depois (Administrador).',
-      variant: 'warning',
-      confirmLabel: 'Fechar escala',
-    });
-
   const requestReopen = () =>
     setStatusChangeDialog({
       targetStatus: 'Rascunho',
@@ -1081,7 +1073,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     });
 
   const handleCellClick = (profId: string, day: number, event: React.MouseEvent) => {
-    // O menu sempre abre — as opções dentro dele variam por permissão e estado
+    // Realizada é somente-leitura (apenas o RESULTADO: Planejada/Troca + ausências +
+    // coberturas). Faltas/atestados entram pelo módulo Absenteísmo, não aqui.
+    if (isRealizada) return;
+    // Nos demais modos o menu sempre abre — as opções variam por permissão e estado
     // (modo edição: turnos+remover; modo visualização ou escala bloqueada:
     // apenas Trocar e Registrar Ausência).
     const rect = (event.target as HTMLElement).getBoundingClientRect();
@@ -2652,27 +2647,32 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     }
   };
 
-  // Carrega histórico de alterações da escala atual (audit_logs imutável)
+  // Carrega a trilha imutável da escala atual (schedule_audit_log: triggers no banco).
+  // Cobre criação/edição/troca/soft-delete de plantão + publicar/reabrir planejamento.
   const loadAuditLog = async () => {
     if (!selectedSchedule) return;
     setAuditLoading(true);
     try {
       const { data, error } = await supabase
-        .from('audit_logs')
+        .from('schedule_audit_log')
         .select(`
-          id, table_name, action, description, user_email, created_at,
-          schedule_id, professional_id, shift_date,
-          old_data, new_data, changed_fields
+          id, action, schedule_id, shift_id, professional_id, shift_date,
+          old_shift_type, new_shift_type, old_professional_id, new_professional_id,
+          note, actor_email, actor_name, created_at
         `)
         .eq('schedule_id', selectedSchedule)
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(2000);
       if (error) throw error;
 
-      // Lookup de nomes dos profissionais (só os do schedule)
+      const rows = (data ?? []) as any[];
+
+      // Lookup de nomes (profissional do evento + os dois lados de uma troca)
       const profIds = new Set<string>();
-      (data ?? []).forEach((e: any) => {
+      rows.forEach(e => {
         if (e.professional_id) profIds.add(e.professional_id);
+        if (e.old_professional_id) profIds.add(e.old_professional_id);
+        if (e.new_professional_id) profIds.add(e.new_professional_id);
       });
       const nameById = new Map<string, string>();
       if (profIds.size > 0) {
@@ -2682,23 +2682,103 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
           .in('id', Array.from(profIds));
         (profs ?? []).forEach((p: any) => nameById.set(p.id, p.full_name));
       }
+      const nm = (id: string | null) => (id ? nameById.get(id) ?? '—' : '—');
+
+      // Sigla do turno a partir do nome completo guardado no banco (ex: "Plantão 24h..." → "P")
+      const code = (name: string | null) =>
+        name ? (SHIFT_TYPES.find(st => st.name === name)?.code ?? name) : null;
+
+      const fmtDay = (d: string | null) => {
+        if (!d) return '';
+        const [, m, day] = d.split('-');
+        return day && m ? ` (${day}/${m})` : '';
+      };
 
       setAuditEntries(
-        (data ?? []).map((e: any) => ({
-          id: e.id,
-          table_name: e.table_name,
-          action: e.action,
-          description: e.description,
-          user_email: e.user_email,
-          created_at: e.created_at,
-          schedule_id: e.schedule_id,
-          professional_id: e.professional_id,
-          professional_name: e.professional_id ? nameById.get(e.professional_id) ?? null : null,
-          shift_date: e.shift_date,
-          old_data: e.old_data,
-          new_data: e.new_data,
-          changed_fields: e.changed_fields,
-        }))
+        rows.map(e => {
+          const profChanged =
+            e.old_professional_id != null &&
+            e.new_professional_id != null &&
+            e.old_professional_id !== e.new_professional_id;
+          const typeChanged =
+            (e.old_shift_type ?? null) !== (e.new_shift_type ?? null);
+
+          // Bucket de ação (cor/filtro) e rótulo legível
+          let bucket: 'INSERT' | 'UPDATE' | 'DELETE' = 'UPDATE';
+          let label = 'Editou';
+          let table = 'shifts';
+          let description = e.note ?? '';
+
+          const prof = nm(e.professional_id);
+          const oldC = code(e.old_shift_type);
+          const newC = code(e.new_shift_type);
+          const day = fmtDay(e.shift_date);
+
+          switch (e.action) {
+            case 'insert':
+              bucket = 'INSERT'; label = 'Criou';
+              description = `${prof} · ${newC ?? 'plantão'}${day}`;
+              break;
+            case 'delete':
+              bucket = 'DELETE'; label = 'Excluiu';
+              description = `${prof} · ${oldC ?? 'plantão'}${day}`;
+              break;
+            case 'soft_delete':
+              bucket = 'DELETE'; label = 'Removeu';
+              description = `${prof} · removido da Realizada${day}`;
+              break;
+            case 'restore':
+              bucket = 'UPDATE'; label = 'Restaurou';
+              description = `${prof} · restaurado${day}`;
+              break;
+            case 'publish':
+              bucket = 'UPDATE'; label = 'Publicou'; table = 'monthly_schedules';
+              description = e.note ?? 'Planejamento publicado/congelado';
+              break;
+            case 'reopen':
+              bucket = 'UPDATE'; label = 'Reabriu'; table = 'monthly_schedules';
+              description = e.note ?? 'Planejamento reaberto';
+              break;
+            default: // 'update'
+              if (profChanged) {
+                bucket = 'UPDATE'; label = 'Trocou'; table = 'shift_swaps';
+                description = `${nm(e.old_professional_id)} → ${nm(e.new_professional_id)}${day}`;
+              } else {
+                bucket = 'UPDATE'; label = 'Editou';
+                description = `${prof}: ${oldC ?? '—'} → ${newC ?? '—'}${day}`;
+              }
+          }
+
+          // Diff sintetizado para a expansão (reusa a grade Campo/Antes/Depois)
+          const changed: string[] = [];
+          const oldData: Record<string, any> = {};
+          const newData: Record<string, any> = {};
+          if (typeChanged && (oldC || newC)) {
+            changed.push('turno'); oldData.turno = oldC ?? '—'; newData.turno = newC ?? '—';
+          }
+          if (profChanged) {
+            changed.push('profissional');
+            oldData.profissional = nm(e.old_professional_id);
+            newData.profissional = nm(e.new_professional_id);
+          }
+
+          return {
+            id: e.id,
+            table_name: table,
+            action: bucket,
+            actionLabel: label,
+            description,
+            user_email: e.actor_email ?? e.actor_name ?? null,
+            created_at: e.created_at,
+            schedule_id: e.schedule_id,
+            professional_id: e.professional_id,
+            professional_name: e.professional_id ? nm(e.professional_id) : null,
+            shift_date: e.shift_date,
+            old_data: changed.length ? oldData : null,
+            new_data: changed.length ? newData : null,
+            changed_fields: changed.length ? changed : null,
+          };
+        })
       );
       setAuditExpanded(new Set());
     } catch (err: any) {
@@ -2732,7 +2812,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
       ...filteredAuditEntries.map(e => [
         new Date(e.created_at).toLocaleString('pt-BR'),
         e.user_email ?? 'Sistema',
-        e.action,
+        e.actionLabel ?? e.action,
         e.table_name,
         e.professional_name ?? '',
         e.shift_date ?? '',
@@ -2858,26 +2938,6 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     return { dailyShiftTotals: totals, uniqueShiftCodes: sorted };
   })();
 
-  // Status badge styling
-  const statusBadgeStyles: Record<string, { container: string; icon: typeof Edit3; label: string }> = {
-    Rascunho: {
-      container: 'bg-gray-100 text-gray-700 ring-gray-200',
-      icon: Edit3,
-      label: 'Rascunho',
-    },
-    Publicada: {
-      container: 'bg-emerald-100 text-emerald-800 ring-emerald-200',
-      icon: CheckCircle2,
-      label: 'Publicada',
-    },
-    Fechada: {
-      container: 'bg-slate-200 text-slate-700 ring-slate-300',
-      icon: Archive,
-      label: 'Fechada',
-    },
-  };
-  const StatusBadge = currentSchedule ? statusBadgeStyles[scheduleStatus] : null;
-  const StatusIcon = StatusBadge?.icon ?? Edit3;
 
   // Escala "recém-criada" → Copiar Mês Anterior só faz sentido aqui.
   const isEmptySchedule = !!currentSchedule && shifts.length === 0;
@@ -3155,8 +3215,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                         </>
                       )}
 
-                      {/* Reabrir (admin, só quando publicado) */}
-                      {currentSchedule && isPublished && isAdmin() && (
+                      {/* Reabrir (Admin ou Coordenador do setor, só quando publicado) */}
+                      {currentSchedule && canReopenPlanning && (
                         <button
                           onClick={() => { requestReopen(); setMoreMenuOpen(false); }}
                           className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50"
@@ -3271,11 +3331,22 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                   isPublished ? 'text-emerald-700' : 'text-slate-600'
                 }`}
               >
-                {isAdmin()
-                  ? 'Como Administrador, você pode reabri-la para fazer ajustes.'
-                  : 'Apenas Administradores podem reabri-la.'}
+                {isClosed
+                  ? 'Escala arquivada (Fechada).'
+                  : canReopenPlanning
+                  ? 'Para editar a Planejada, reabra o planejamento.'
+                  : 'Apenas Administradores ou o Coordenador do setor podem reabri-la.'}
               </p>
             </div>
+            {!isClosed && canReopenPlanning && (
+              <button
+                onClick={requestReopen}
+                className="inline-flex items-center gap-2 flex-shrink-0 px-3.5 py-2 bg-white text-emerald-700 border border-emerald-300 rounded-lg hover:bg-emerald-50 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              >
+                <Unlock className="w-4 h-4" aria-hidden="true" />
+                Reabrir planejamento
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -4843,7 +4914,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-2 flex-wrap">
                               <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${actionStyle.bg} ${actionStyle.ring} text-gray-700`}>
-                                {actionStyle.label}
+                                {e.actionLabel ?? actionStyle.label}
                               </span>
                               <span className="text-[13px] text-gray-900 font-medium">
                                 {e.description ?? `${e.action} em ${e.table_name}`}

@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, Fragment } from 'react';
 import {
-  Plus, Search, Filter, Edit2, Trash2, AlertCircle, CalendarX,
-  CheckCircle, XCircle, UserCheck, X, FileSpreadsheet, Calendar,
-  Users as UsersIcon, ChevronRight, ChevronDown,
+  Plus, Search, Filter, Edit2, Trash2, CalendarX,
+  CheckCircle, XCircle, UserCheck, X, FileSpreadsheet,
+  ChevronRight, ChevronDown,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../hooks/useToast';

@@ -107,7 +107,7 @@ describe('Punch Records - Create', () => {
         nsr: 1,
         hash: 'abc123',
         previous_hash: null,
-      }) as unknown as { error: null };
+      } as any) as unknown as { error: null };
 
     expect(chain.insert).toHaveBeenCalledOnce();
     expect(error).toBeNull();
@@ -128,7 +128,7 @@ describe('Punch Records - Create', () => {
         nsr: 2,
         hash: 'def456',
         previous_hash: 'abc123',
-      }) as unknown as { error: null };
+      } as any) as unknown as { error: null };
 
     expect(error).toBeNull();
   });
@@ -143,7 +143,7 @@ describe('Timesheet - List', () => {
     mockFrom.mockReturnValue(chain);
 
     const { data, error } = await supabase
-      .from('timesheets')
+      .from('timesheet_records')
       .select('*')
       .eq('professional_id', 'prof-1')
       .order('work_date', { ascending: false }) as unknown as { data: typeof records; error: null };
@@ -159,7 +159,7 @@ describe('Timesheet - List', () => {
     mockFrom.mockReturnValue(chain);
 
     const { data } = await supabase
-      .from('timesheets')
+      .from('timesheet_records')
       .select('*')
       .eq('professional_id', 'prof-1')
       .gte('work_date', '2025-06-01')
@@ -179,8 +179,8 @@ describe('Timesheet - Update', () => {
     mockFrom.mockReturnValue(chain);
 
     const { error } = await supabase
-      .from('timesheets')
-      .update({ status: 'Fechado', actual_end: '19:00', total_hours: 12 })
+      .from('timesheet_records')
+      .update({ status: 'Fechado', actual_end: '19:00', total_hours: 12 } as any)
       .eq('id', 'ts-1') as unknown as { error: null };
 
     expect(chain.update).toHaveBeenCalledWith(
@@ -196,7 +196,7 @@ describe('Timesheet - Update', () => {
 
     const { error } = await supabase
       .from('punch_records')
-      .update({ punch_time: '2025-06-01T07:05:00Z', adjusted: true })
+      .update({ punch_time: '2025-06-01T07:05:00Z', adjusted: true } as any)
       .eq('id', 'punch-1') as unknown as { error: null };
 
     expect(chain.update).toHaveBeenCalledWith(

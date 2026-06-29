@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Calendar, Download, Filter, Clock, User } from 'lucide-react';
+import { FileText, Calendar, Download, Filter, Clock } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import ToastContainer from '../Common/ToastContainer';
 import { useToast } from '../../hooks/useToast';

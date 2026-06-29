@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Building2, Plus, Edit2, Trash2, MapPin, FileText, Check, X, Shield, AlertCircle } from 'lucide-react';
+import { Building2, Plus, Edit2, MapPin, FileText, Check, X, Shield, AlertCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import ToastContainer from '../Common/ToastContainer';
 import { useToast } from '../../hooks/useToast';

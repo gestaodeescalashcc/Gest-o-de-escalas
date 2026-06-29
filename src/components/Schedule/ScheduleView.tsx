@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, ChevronLeft, ChevronRight, Info, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import ShiftCard from './ShiftCard';
 import CreateShiftModal from './CreateShiftModal';
@@ -52,7 +52,7 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCreateScheduleModal, setShowCreateScheduleModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'schedules' | 'shifts'>('schedules');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterDepartment, setFilterDepartment] = useState<string>('');
@@ -243,15 +243,6 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const styles = {
-      'Rascunho': 'bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-200',
-      'Publicada': 'bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200',
-      'Fechada': 'bg-slate-200 text-slate-700 ring-1 ring-inset ring-slate-300'
-    };
-    return styles[status as keyof typeof styles] || styles['Rascunho'];
-  };
-
   const filteredShifts = shifts.filter(shift => {
     const profName = shift.professional?.full_name || '';
     const categoryName = shift.professional?.category?.name || '';
@@ -278,27 +269,12 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
     return matchesSearch && matchesStatus && matchesDepartment && matchesMonth;
   });
 
-  const activeFiltersCount = [filterStatus, filterDepartment, filterMonth].filter(Boolean).length;
-
-  const currentMonthStr = new Date().toISOString().slice(0, 7);
-  const isCurrentMonth = filterMonth === currentMonthStr;
-
   const getMonthLabel = (monthStr: string) => {
     const [year, month] = monthStr.split('-');
     return new Date(parseInt(year), parseInt(month) - 1, 15).toLocaleDateString('pt-BR', {
       month: 'long',
       year: 'numeric'
     });
-  };
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const [year, month] = filterMonth.split('-').map(Number);
-    const newDate = new Date(year, month - 1 + (direction === 'next' ? 1 : -1), 1);
-    setFilterMonth(newDate.toISOString().slice(0, 7));
-  };
-
-  const goToCurrentMonth = () => {
-    setFilterMonth(currentMonthStr);
   };
 
   return (

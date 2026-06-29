@@ -22,7 +22,6 @@ import {
   Wallet,
   Search,
   ChevronDown,
-  ChevronRight,
   CalendarX,
   KeyRound,
 } from 'lucide-react';
