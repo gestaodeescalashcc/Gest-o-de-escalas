@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import ShiftCard from './ShiftCard';
 import CreateShiftModal from './CreateShiftModal';
 import CreateScheduleModal from './CreateScheduleModal';
+import ImportScheduleModal from './ImportScheduleModal';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import ToastContainer from '../Common/ToastContainer';
 import { useToast } from '../../hooks/useToast';
@@ -51,6 +52,7 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCreateScheduleModal, setShowCreateScheduleModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'schedules' | 'shifts'>('schedules');
@@ -292,14 +294,25 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
         </div>
         <div className="flex gap-2 sm:gap-3">
           {viewMode === 'schedules' && (
-            <button
-              onClick={() => setShowCreateScheduleModal(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="hidden sm:inline">Nova Escala Mensal</span>
-              <span className="sm:hidden">Nova Escala</span>
-            </button>
+            <>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-2 bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base"
+                title="Importar escala de um arquivo Excel"
+              >
+                <FileSpreadsheet className="w-5 h-5" />
+                <span className="hidden sm:inline">Importar Excel</span>
+                <span className="sm:hidden">Importar</span>
+              </button>
+              <button
+                onClick={() => setShowCreateScheduleModal(true)}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">Nova Escala Mensal</span>
+                <span className="sm:hidden">Nova Escala</span>
+              </button>
+            </>
           )}
           {viewMode === 'shifts' && (
             <button
@@ -607,6 +620,17 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
           onSuccess={() => {
             setShowCreateScheduleModal(false);
             loadSchedules();
+          }}
+        />
+      )}
+
+      {showImportModal && (
+        <ImportScheduleModal
+          onClose={() => setShowImportModal(false)}
+          onSuccess={(scheduleId) => {
+            setShowImportModal(false);
+            if (onNavigateToSchedule) onNavigateToSchedule(scheduleId);
+            else loadSchedules();
           }}
         />
       )}
