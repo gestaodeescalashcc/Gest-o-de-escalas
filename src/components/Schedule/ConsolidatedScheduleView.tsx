@@ -168,6 +168,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     id: string;
     table_name: string;
     action: 'INSERT' | 'UPDATE' | 'DELETE' | string;
+    actionLabel: string;
     description: string | null;
     user_email: string | null;
     created_at: string;
@@ -2646,27 +2647,32 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     }
   };
 
-  // Carrega histórico de alterações da escala atual (audit_logs imutável)
+  // Carrega a trilha imutável da escala atual (schedule_audit_log: triggers no banco).
+  // Cobre criação/edição/troca/soft-delete de plantão + publicar/reabrir planejamento.
   const loadAuditLog = async () => {
     if (!selectedSchedule) return;
     setAuditLoading(true);
     try {
       const { data, error } = await supabase
-        .from('audit_logs')
+        .from('schedule_audit_log')
         .select(`
-          id, table_name, action, description, user_email, created_at,
-          schedule_id, professional_id, shift_date,
-          old_data, new_data, changed_fields
+          id, action, schedule_id, shift_id, professional_id, shift_date,
+          old_shift_type, new_shift_type, old_professional_id, new_professional_id,
+          note, actor_email, actor_name, created_at
         `)
         .eq('schedule_id', selectedSchedule)
         .order('created_at', { ascending: false })
-        .limit(1000);
+        .limit(2000);
       if (error) throw error;
 
-      // Lookup de nomes dos profissionais (só os do schedule)
+      const rows = (data ?? []) as any[];
+
+      // Lookup de nomes (profissional do evento + os dois lados de uma troca)
       const profIds = new Set<string>();
-      (data ?? []).forEach((e: any) => {
+      rows.forEach(e => {
         if (e.professional_id) profIds.add(e.professional_id);
+        if (e.old_professional_id) profIds.add(e.old_professional_id);
+        if (e.new_professional_id) profIds.add(e.new_professional_id);
       });
       const nameById = new Map<string, string>();
       if (profIds.size > 0) {
@@ -2676,23 +2682,103 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
           .in('id', Array.from(profIds));
         (profs ?? []).forEach((p: any) => nameById.set(p.id, p.full_name));
       }
+      const nm = (id: string | null) => (id ? nameById.get(id) ?? '—' : '—');
+
+      // Sigla do turno a partir do nome completo guardado no banco (ex: "Plantão 24h..." → "P")
+      const code = (name: string | null) =>
+        name ? (SHIFT_TYPES.find(st => st.name === name)?.code ?? name) : null;
+
+      const fmtDay = (d: string | null) => {
+        if (!d) return '';
+        const [, m, day] = d.split('-');
+        return day && m ? ` (${day}/${m})` : '';
+      };
 
       setAuditEntries(
-        (data ?? []).map((e: any) => ({
-          id: e.id,
-          table_name: e.table_name,
-          action: e.action,
-          description: e.description,
-          user_email: e.user_email,
-          created_at: e.created_at,
-          schedule_id: e.schedule_id,
-          professional_id: e.professional_id,
-          professional_name: e.professional_id ? nameById.get(e.professional_id) ?? null : null,
-          shift_date: e.shift_date,
-          old_data: e.old_data,
-          new_data: e.new_data,
-          changed_fields: e.changed_fields,
-        }))
+        rows.map(e => {
+          const profChanged =
+            e.old_professional_id != null &&
+            e.new_professional_id != null &&
+            e.old_professional_id !== e.new_professional_id;
+          const typeChanged =
+            (e.old_shift_type ?? null) !== (e.new_shift_type ?? null);
+
+          // Bucket de ação (cor/filtro) e rótulo legível
+          let bucket: 'INSERT' | 'UPDATE' | 'DELETE' = 'UPDATE';
+          let label = 'Editou';
+          let table = 'shifts';
+          let description = e.note ?? '';
+
+          const prof = nm(e.professional_id);
+          const oldC = code(e.old_shift_type);
+          const newC = code(e.new_shift_type);
+          const day = fmtDay(e.shift_date);
+
+          switch (e.action) {
+            case 'insert':
+              bucket = 'INSERT'; label = 'Criou';
+              description = `${prof} · ${newC ?? 'plantão'}${day}`;
+              break;
+            case 'delete':
+              bucket = 'DELETE'; label = 'Excluiu';
+              description = `${prof} · ${oldC ?? 'plantão'}${day}`;
+              break;
+            case 'soft_delete':
+              bucket = 'DELETE'; label = 'Removeu';
+              description = `${prof} · removido da Realizada${day}`;
+              break;
+            case 'restore':
+              bucket = 'UPDATE'; label = 'Restaurou';
+              description = `${prof} · restaurado${day}`;
+              break;
+            case 'publish':
+              bucket = 'UPDATE'; label = 'Publicou'; table = 'monthly_schedules';
+              description = e.note ?? 'Planejamento publicado/congelado';
+              break;
+            case 'reopen':
+              bucket = 'UPDATE'; label = 'Reabriu'; table = 'monthly_schedules';
+              description = e.note ?? 'Planejamento reaberto';
+              break;
+            default: // 'update'
+              if (profChanged) {
+                bucket = 'UPDATE'; label = 'Trocou'; table = 'shift_swaps';
+                description = `${nm(e.old_professional_id)} → ${nm(e.new_professional_id)}${day}`;
+              } else {
+                bucket = 'UPDATE'; label = 'Editou';
+                description = `${prof}: ${oldC ?? '—'} → ${newC ?? '—'}${day}`;
+              }
+          }
+
+          // Diff sintetizado para a expansão (reusa a grade Campo/Antes/Depois)
+          const changed: string[] = [];
+          const oldData: Record<string, any> = {};
+          const newData: Record<string, any> = {};
+          if (typeChanged && (oldC || newC)) {
+            changed.push('turno'); oldData.turno = oldC ?? '—'; newData.turno = newC ?? '—';
+          }
+          if (profChanged) {
+            changed.push('profissional');
+            oldData.profissional = nm(e.old_professional_id);
+            newData.profissional = nm(e.new_professional_id);
+          }
+
+          return {
+            id: e.id,
+            table_name: table,
+            action: bucket,
+            actionLabel: label,
+            description,
+            user_email: e.actor_email ?? e.actor_name ?? null,
+            created_at: e.created_at,
+            schedule_id: e.schedule_id,
+            professional_id: e.professional_id,
+            professional_name: e.professional_id ? nm(e.professional_id) : null,
+            shift_date: e.shift_date,
+            old_data: changed.length ? oldData : null,
+            new_data: changed.length ? newData : null,
+            changed_fields: changed.length ? changed : null,
+          };
+        })
       );
       setAuditExpanded(new Set());
     } catch (err: any) {
@@ -2726,7 +2812,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
       ...filteredAuditEntries.map(e => [
         new Date(e.created_at).toLocaleString('pt-BR'),
         e.user_email ?? 'Sistema',
-        e.action,
+        e.actionLabel ?? e.action,
         e.table_name,
         e.professional_name ?? '',
         e.shift_date ?? '',
@@ -4828,7 +4914,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                           <div className="flex-1 min-w-0">
                             <div className="flex items-baseline gap-2 flex-wrap">
                               <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset ${actionStyle.bg} ${actionStyle.ring} text-gray-700`}>
-                                {actionStyle.label}
+                                {e.actionLabel ?? actionStyle.label}
                               </span>
                               <span className="text-[13px] text-gray-900 font-medium">
                                 {e.description ?? `${e.action} em ${e.table_name}`}

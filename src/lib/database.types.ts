@@ -1377,6 +1377,68 @@ export type Database = {
           },
         ]
       }
+      schedule_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_name: string | null
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          new_professional_id: string | null
+          new_shift_type: string | null
+          note: string | null
+          old_professional_id: string | null
+          old_shift_type: string | null
+          professional_id: string | null
+          schedule_id: string | null
+          shift_date: string | null
+          shift_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          new_professional_id?: string | null
+          new_shift_type?: string | null
+          note?: string | null
+          old_professional_id?: string | null
+          old_shift_type?: string | null
+          professional_id?: string | null
+          schedule_id?: string | null
+          shift_date?: string | null
+          shift_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_name?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          new_professional_id?: string | null
+          new_shift_type?: string | null
+          note?: string | null
+          old_professional_id?: string | null
+          old_shift_type?: string | null
+          professional_id?: string | null
+          schedule_id?: string | null
+          shift_date?: string | null
+          shift_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_audit_log_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_professional_links: {
         Row: {
           added_at: string
@@ -1781,6 +1843,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _audit_actor: { Args: never; Returns: Record<string, unknown> }
       approve_shift_swap: {
         Args: { p_swap_id: string }
         Returns: {
