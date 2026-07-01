@@ -61,14 +61,24 @@ function ViewSuspense({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageSkeleton variant="table" />}>{children}</Suspense>;
 }
 
+const SCHEDULE_MODES = ['planejada', 'troca', 'realizada'] as const;
+type ScheduleMode = (typeof SCHEDULE_MODES)[number];
+
+function readModeFromQuery(search: string): ScheduleMode {
+  const raw = new URLSearchParams(search).get('modo');
+  return raw && (SCHEDULE_MODES as readonly string[]).includes(raw)
+    ? (raw as ScheduleMode)
+    : 'planejada';
+}
+
 // Wrapper components to bridge the old prop-callback API with React Router navigation
 function ScheduleListRoute() {
   const navigate = useNavigate();
-  return <ScheduleView onNavigateToSchedule={(id) => navigate(`/escala/${id}`)} />;
+  const location = useLocation();
+  const mode = readModeFromQuery(location.search);
+  // Preserva o modo escolhido pela sidebar quando o usuário abre uma escala da lista.
+  return <ScheduleView onNavigateToSchedule={(id) => navigate(`/escala/${id}/${mode}`)} />;
 }
-
-const SCHEDULE_MODES = ['planejada', 'troca', 'realizada'] as const;
-type ScheduleMode = (typeof SCHEDULE_MODES)[number];
 
 function ScheduleDetailRoute() {
   const { scheduleId, modo } = useParams<{ scheduleId: string; modo: string }>();
@@ -81,7 +91,7 @@ function ScheduleDetailRoute() {
     <ConsolidatedScheduleView
       initialScheduleId={scheduleId}
       mode={mode}
-      onBackToList={() => navigate('/escala')}
+      onBackToList={() => navigate(`/escala?modo=${mode}`)}
     />
   );
 }

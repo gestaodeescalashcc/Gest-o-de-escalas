@@ -24,6 +24,8 @@ import {
   ChevronDown,
   CalendarX,
   KeyRound,
+  Repeat,
+  CheckCircle2,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,6 +47,8 @@ type Module =
   | 'users'
   | 'absences';
 
+type AccentColor = 'blue' | 'indigo' | 'orange' | 'emerald';
+
 interface MenuItem {
   id: string;
   path: string;
@@ -57,7 +61,42 @@ interface MenuItem {
   onlyForRole?: string;
   /** Quando definido, item NÃO aparece para usuários com essas roles. */
   hiddenForRoles?: string[];
+  /** Cor de destaque quando ativo. Padrão: blue. */
+  accent?: AccentColor;
+  /**
+   * Bate com uma URL que já casou o path — usado para desempate entre itens
+   * que apontam para o mesmo pathname (ex.: 3 camadas da mesma escala).
+   * Recebe (pathname, search) e devolve true se este item é o dono.
+   */
+  matches?: (pathname: string, search: string) => boolean;
 }
+
+// Casadores das 3 camadas da escala:
+// - lista: /escala?modo=X
+// - detalhe: /escala/:id/X
+const matchScheduleMode = (mode: 'planejada' | 'troca' | 'realizada') =>
+  (pathname: string, search: string) => {
+    if (pathname === '/escala') {
+      const raw = new URLSearchParams(search).get('modo');
+      // Fallback para planejada quando não há query, para casar com o comportamento do roteador.
+      return (raw ?? 'planejada') === mode;
+    }
+    if (pathname.startsWith('/escala/')) {
+      const segs = pathname.split('/');
+      // /escala/:id/:modo → segs = ['', 'escala', ':id', ':modo']
+      return segs[3] === mode;
+    }
+    return false;
+  };
+
+const ACCENT_CLASSES: Record<AccentColor, {
+  bg: string; text: string; icon: string; bar: string;
+}> = {
+  blue: { bg: 'bg-blue-50', text: 'text-blue-700', icon: 'text-blue-600', bar: 'bg-blue-600' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-700', icon: 'text-indigo-600', bar: 'bg-indigo-600' },
+  orange: { bg: 'bg-orange-50', text: 'text-orange-700', icon: 'text-orange-600', bar: 'bg-orange-600' },
+  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: 'text-emerald-600', bar: 'bg-emerald-600' },
+};
 
 const MENU_GROUPS = [
   { id: 'schedule', label: 'Escalas' },
@@ -69,11 +108,15 @@ const MENU_GROUPS = [
 const MENU_ITEMS: MenuItem[] = [
   // Médico: tela pessoal — primeiro item, exclusivo da role Médico
   { id: 'my-schedule', path: '/minha-escala', label: 'Minha Escala', icon: Calendar, module: 'schedules', group: 'schedule', onlyForRole: 'Médico' },
-  // Schedule group — médico já tem 'Minha Escala' focada, demais itens são de gestão
-  { id: 'consolidated', path: '/escala', label: 'Escala do Mês', icon: LayoutGrid, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'] },
+  // Escalas: 3 páginas separadas, uma por camada. A grade é a mesma por baixo,
+  // mas cada modo tem toolbar/popover próprios (ver ConsolidatedScheduleView).
+  // A separação na sidebar é o que quebra a confusão visual — cada camada é uma "página".
+  { id: 'schedule-planejada', path: '/escala?modo=planejada', label: 'Planejamento', icon: LayoutGrid, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'blue', matches: matchScheduleMode('planejada'), keywords: 'escala planejada mês montagem' },
+  { id: 'schedule-troca', path: '/escala?modo=troca', label: 'Trocas & Remanejamento', icon: Repeat, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'indigo', matches: matchScheduleMode('troca'), keywords: 'troca remanejamento reatribuir plantão' },
+  { id: 'schedule-realizada', path: '/escala?modo=realizada', label: 'Realizada', icon: CheckCircle2, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'orange', matches: matchScheduleMode('realizada'), keywords: 'realizada faltas atestados coberturas' },
   { id: 'daily', path: '/escala-diaria', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'] },
   { id: 'professionals', path: '/profissionais', label: 'Profissionais', icon: Users, module: 'professionals', group: 'schedule', hiddenForRoles: ['Médico'] },
-  { id: 'swaps', path: '/trocas', label: 'Trocas de Plantões', icon: ArrowLeftRight, module: 'swaps', group: 'schedule', keywords: 'plantoes plantões' },
+  { id: 'swaps', path: '/trocas', label: 'Solicitações de Troca', icon: ArrowLeftRight, module: 'swaps', group: 'schedule', keywords: 'plantoes plantões solicitações' },
   { id: 'absenteeism', path: '/absenteismo', label: 'Absenteísmo', icon: CalendarX, module: 'absences', group: 'schedule', keywords: 'absenteismo faltas atestados', hiddenForRoles: ['Médico'] },
   // REP-P group
   { id: 'timesheet-clock', path: '/ponto/registro', label: 'Registro de Ponto', icon: Fingerprint, module: 'schedules', group: 'rep-p' },
@@ -143,12 +186,19 @@ export default function DashboardLayout({
   const location = useLocation();
   const navigate = useNavigate();
   const currentView = (() => {
-    // Match the longest matching menu path so /escala/:id still highlights "Escala do Mês"
-    const sorted = [...MENU_ITEMS].sort((a, b) => b.path.length - a.path.length);
-    const match = sorted.find(m =>
-      location.pathname === m.path || location.pathname.startsWith(m.path + '/')
+    // 1) Itens com casador customizado ganham prioridade (ex.: as 3 camadas da escala,
+    // que compartilham o mesmo pathname e distinguem-se por query ou por segmento do path).
+    const withMatcher = MENU_ITEMS.find(m => m.matches?.(location.pathname, location.search));
+    if (withMatcher) return withMatcher.id;
+    // 2) Fallback: casa pelo path como antes, sempre pelo mais longo.
+    const sorted = [...MENU_ITEMS]
+      .filter(m => !m.matches)
+      .map(m => ({ m, pathOnly: m.path.split('?')[0] }))
+      .sort((a, b) => b.pathOnly.length - a.pathOnly.length);
+    const match = sorted.find(({ pathOnly }) =>
+      location.pathname === pathOnly || location.pathname.startsWith(pathOnly + '/')
     );
-    return match?.id ?? '';
+    return match?.m.id ?? '';
   })();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -352,6 +402,7 @@ export default function DashboardLayout({
                     {items.map(item => {
                       const Icon = item.icon;
                       const isActive = currentView === item.id;
+                      const accent = ACCENT_CLASSES[item.accent ?? 'blue'];
                       return (
                         <button
                           key={item.id}
@@ -360,19 +411,19 @@ export default function DashboardLayout({
                           aria-current={isActive ? 'page' : undefined}
                           className={`w-full min-h-[44px] flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
                             isActive
-                              ? 'bg-blue-50 text-blue-700'
+                              ? `${accent.bg} ${accent.text}`
                               : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                           }`}
                         >
                           {isActive && (
                             <span
-                              className="absolute left-0 top-2 bottom-2 w-1 bg-blue-600 rounded-r-full"
+                              className={`absolute left-0 top-2 bottom-2 w-1 ${accent.bar} rounded-r-full`}
                               aria-hidden="true"
                             />
                           )}
                           <Icon
                             className={`flex-shrink-0 w-5 h-5 ${
-                              isActive ? 'text-blue-600' : 'text-gray-500'
+                              isActive ? accent.icon : 'text-gray-500'
                             }`}
                             aria-hidden="true"
                           />

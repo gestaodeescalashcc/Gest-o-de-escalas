@@ -2930,20 +2930,50 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   const codeColRight = (i: number) =>
     rightStickyBase + TOTAL_HORAS_W + (uniqueShiftCodes.length - 1 - i) * TOTAL_CODE_W;
 
-  // Título grande da página, por modo (cor coerente com as abas/legenda).
+  // Identidade visual da página por modo. Aplicada no título grande,
+  // na borda superior da seção principal (accent bar) e no subtítulo.
+  // A ideia é que, ao olhar de relance, seja impossível confundir Planejada
+  // com Troca ou Realizada — cores e legenda mudam junto.
   const pageHeading = {
-    planejada: { label: 'ESCALA PLANEJADA', cls: 'text-blue-700', Icon: Calendar },
-    troca: { label: 'TROCA E REMANEJAMENTO', cls: 'text-indigo-700', Icon: Repeat },
-    realizada: { label: 'ESCALA REALIZADA', cls: 'text-orange-700', Icon: ArrowLeftRight },
+    planejada: {
+      label: 'ESCALA PLANEJADA',
+      cls: 'text-blue-700',
+      Icon: Calendar,
+      accent: 'from-blue-500 to-blue-700',
+      subtitle: 'Montagem da escala',
+      tint: 'bg-blue-50 text-blue-700 border-blue-200',
+    },
+    troca: {
+      label: 'TROCA E REMANEJAMENTO',
+      cls: 'text-indigo-700',
+      Icon: Repeat,
+      accent: 'from-indigo-500 to-indigo-700',
+      subtitle: 'Ajuste de plantões',
+      tint: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    },
+    realizada: {
+      label: 'ESCALA REALIZADA',
+      cls: 'text-orange-700',
+      Icon: ArrowLeftRight,
+      accent: 'from-orange-500 to-orange-700',
+      subtitle: 'Registro do que aconteceu',
+      tint: 'bg-orange-50 text-orange-700 border-orange-200',
+    },
   }[viewMode];
 
   return (
     <div className="space-y-6">
+      {/* Faixa colorida por modo — âncora visual que garante que a página não
+          é confundida com uma "aba" da mesma tela; cada modo é uma página. */}
+      <div className={`h-1.5 rounded-full bg-gradient-to-r ${pageHeading.accent}`} aria-hidden="true" />
       <div className="flex items-center gap-3">
         <pageHeading.Icon className={`w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 ${pageHeading.cls}`} aria-hidden="true" />
         <h1 className={`text-3xl sm:text-4xl font-extrabold uppercase tracking-tight ${pageHeading.cls}`}>
           {pageHeading.label}
         </h1>
+        <span className={`hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${pageHeading.tint}`}>
+          {pageHeading.subtitle}
+        </span>
       </div>
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3 flex-wrap">
@@ -2956,8 +2986,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
               <ChevronLeft className="w-5 h-5" />
             </button>
           )}
-          <Calendar className="w-7 h-7 text-blue-600 flex-shrink-0 hidden sm:block" aria-hidden="true" />
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-600">Escala do Mês</h2>
+          <pageHeading.Icon className={`w-7 h-7 flex-shrink-0 hidden sm:block ${pageHeading.cls}`} aria-hidden="true" />
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-600">{pageHeading.subtitle}</h2>
           {/* Badge de status removido — fluxo simplificado, todas as escalas
               são editáveis. Histórico é registrado em schedule_audit_log. */}
           {/* Toggle Planejada / Realizada — segmented control limpo */}
@@ -3053,8 +3083,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
         <div className="flex items-center gap-1.5 flex-wrap">
           {!editMode ? (
             <>
-              {/* ═══ GRUPO 1: ação primária + workflow ═══ */}
-              {canEditSchedule && (
+              {/* ═══ GRUPO 1: ação primária + workflow — só na Planejada ═══
+                  Modo Edição altera plantões/quem-está-na-escala; isso só se faz na Planejada.
+                  Trocas/faltas têm fluxos próprios em /troca e /realizada. */}
+              {viewMode === 'planejada' && canEditSchedule && (
                 <button
                   onClick={() => setEditMode(true)}
                   className="inline-flex items-center gap-1.5 h-9 px-3.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 active:bg-blue-800 transition-colors text-[13px] font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
@@ -3064,7 +3096,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 </button>
               )}
 
-              {currentSchedule && !isPublished && canEditSchedule && !isMobile && (
+              {viewMode === 'planejada' && currentSchedule && !isPublished && canEditSchedule && !isMobile && (
                 <button
                   onClick={requestPublish}
                   title="Congela a Planejada atual. A partir daqui, edições só afetam a Realizada."
@@ -3087,7 +3119,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 Excel
               </button>
 
-              {currentSchedule && !isMobile && (
+              {/* Ausência — só na Realizada. É o fluxo próprio dela. */}
+              {viewMode === 'realizada' && currentSchedule && !isMobile && (
                 <button
                   onClick={() => {
                     setAbsenceInitialData({
@@ -3106,8 +3139,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
 
               {!isMobile && <div className="h-6 w-px bg-gray-200 mx-1" aria-hidden="true" />}
 
-              {/* ═══ GRUPO 3: criação / seed ═══ */}
-              {!isMobile && (
+              {/* ═══ GRUPO 3: criação / seed — só na Planejada ═══ */}
+              {viewMode === 'planejada' && !isMobile && (
                 <button
                   onClick={() => setShowCreateScheduleModal(true)}
                   className="inline-flex items-center gap-1.5 h-9 px-3 bg-white text-gray-700 border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-colors text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
@@ -3117,8 +3150,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 </button>
               )}
 
-              {/* Copiar Mês Anterior: SÓ aparece em escala ainda vazia */}
-              {!isMobile && isEmptySchedule && !isLocked && (
+              {/* Copiar Mês Anterior: SÓ na Planejada, escala ainda vazia */}
+              {viewMode === 'planejada' && !isMobile && isEmptySchedule && !isLocked && (
                 <button
                   onClick={copyPreviousMonth}
                   title="Importa os plantões do mês anterior como ponto de partida (escala atual está vazia)"
@@ -3164,15 +3197,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                       {/* Mobile-only items (no desktop já estão visíveis na barra) */}
                       {isMobile && (
                         <>
-                          <button onClick={() => { setShowCreateScheduleModal(true); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50">
-                            <Plus className="w-4 h-4 text-gray-400" /> Nova Escala
-                          </button>
-                          {currentSchedule && (
+                          {viewMode === 'planejada' && (
+                            <button onClick={() => { setShowCreateScheduleModal(true); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50">
+                              <Plus className="w-4 h-4 text-gray-400" /> Nova Escala
+                            </button>
+                          )}
+                          {viewMode === 'realizada' && currentSchedule && (
                             <button onClick={() => { setAbsenceInitialData({ department_id: selectedDepartment, schedule_id: currentSchedule.id, start_date: new Date().toISOString().slice(0, 10) }); setShowAbsenceModal(true); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50">
                               <CalendarX className="w-4 h-4 text-gray-400" /> Registrar Ausência
                             </button>
                           )}
-                          {isEmptySchedule && !isLocked && (
+                          {viewMode === 'planejada' && isEmptySchedule && !isLocked && (
                             <button onClick={() => { copyPreviousMonth(); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-gray-700 hover:bg-gray-50">
                               <Copy className="w-4 h-4 text-gray-400" /> Copiar Mês Anterior
                             </button>
@@ -3182,7 +3217,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                               <Clock className="w-4 h-4 text-gray-400" /> Histórico
                             </button>
                           )}
-                          {currentSchedule && !isPublished && canEditSchedule && (
+                          {viewMode === 'planejada' && currentSchedule && !isPublished && canEditSchedule && (
                             <button onClick={() => { requestPublish(); setMoreMenuOpen(false); }} className="w-full flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-emerald-700 hover:bg-emerald-50">
                               <Lock className="w-4 h-4" /> Finalizar Planejamento
                             </button>
@@ -4360,75 +4395,27 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 );
               })()}
 
-              {/* ═══ MODO PLANEJADA (não publicada) — Trocar/Ausência/Remover como antes ═══ */}
-              {viewMode === 'planejada' && (
-                <>
-                  {selectedCell && (() => {
-                    const dateStr = (() => {
-                      const [year, month] = selectedMonth.split('-');
-                      return `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
-                    })();
-                    const existingShift = shifts.find(
-                      s => s.professional_id === selectedCell.profId && s.shift_date === dateStr
-                    );
-                    if (!existingShift) return null;
-                    if (!canCreate('swaps' as any)) return null;
-                    return (
-                      <button
-                        onClick={() => {
-                          setSwapInitialShiftId(existingShift.id);
-                          setShowSwapModal(true);
-                          setShowQuickMenu(false);
-                          setSelectedCell(null);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-blue-50 rounded text-left transition text-blue-700"
-                      >
-                        <ArrowLeftRight className="w-4 h-4" />
-                        <span className="text-sm font-medium">Trocar / Reatribuir</span>
-                      </button>
-                    );
-                  })()}
+              {/* ═══ MODO PLANEJADA — só ações de criação/edição da grade ═══
+                  A Planejada é para MONTAR a escala (turnos + presença de gente).
+                  Trocas vão em /troca. Faltas/atestados vão em /realizada. */}
+              {viewMode === 'planejada' && editMode && !isLocked && !isPublished && (
+                <button
+                  onClick={handleDeleteShift}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-600"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="text-sm">Remover</span>
+                </button>
+              )}
 
-                  {selectedCell && currentSchedule && canCreate('absences' as any) && (
-                    <button
-                      onClick={() => {
-                        const [year, month] = selectedMonth.split('-');
-                        const dateStr = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;
-                        const existingCode = getShiftCode(selectedCell.profId, selectedCell.day);
-                        if (!existingCode) {
-                          toast.warning('Não há plantão neste dia para registrar ausência.');
-                          return;
-                        }
-                        setAbsenceInitialData({
-                          professional_id: selectedCell.profId,
-                          department_id: selectedDepartment,
-                          schedule_id: currentSchedule.id,
-                          start_date: dateStr,
-                          end_date: dateStr,
-                          shift_type: existingCode || 'SD',
-                        });
-                        setShowAbsenceModal(true);
-                        setShowQuickMenu(false);
-                        setSelectedCell(null);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-700"
-                    >
-                      <CalendarX className="w-4 h-4" />
-                      <span className="text-sm font-medium">Registrar Ausência</span>
-                    </button>
-                  )}
-
-                  {/* Remover turno — só em modo edição planejada não publicada */}
-                  {editMode && !isLocked && !isPublished && (
-                    <button
-                      onClick={handleDeleteShift}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-50 rounded text-left transition text-red-600"
-                    >
-                      <X className="w-4 h-4" />
-                      <span className="text-sm">Remover</span>
-                    </button>
-                  )}
-                </>
+              {/* Planejada publicada — nenhuma ação de célula. O aviso do topo
+                  já orienta o usuário a ir para Troca ou Realizada. */}
+              {viewMode === 'planejada' && isPublished && (
+                <div className="px-3 py-2 text-xs text-gray-500">
+                  Nada a fazer aqui na Planejada. Para mudar plantões deste mês,
+                  use <span className="font-semibold text-indigo-700">Trocas &amp; Remanejamento</span>;
+                  para lançar faltas, use <span className="font-semibold text-emerald-700">Realizada</span>.
+                </div>
               )}
             </div>
           </div>
@@ -4464,6 +4451,10 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
             </div>
 
             <div className={`py-2 space-y-1 overflow-y-auto flex-1 ${isMobile ? 'pb-6' : ''}`}>
+              {/* Preencher/Limpar Dias — só na Planejada em modo edição.
+                  Fora daí, o menu do profissional é só p/ Ausência (Realizada) ou remover (Planejada). */}
+              {viewMode === 'planejada' && editMode && !isLocked && !isPublished && (
+                <>
               <div className="px-3 py-1 bg-gray-50">
                 <p className="text-xs font-bold text-gray-700 uppercase tracking-wide">✓ Preencher Dias</p>
               </div>
@@ -4641,8 +4632,11 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
               )}
 
               <hr className="my-3 border-gray-300" />
+                </>
+              )}
 
-              {currentSchedule && (
+              {/* Registrar Ausência do menu do profissional — só na Realizada. */}
+              {viewMode === 'realizada' && currentSchedule && canCreate('absences' as any) && (
                 <button
                   onClick={() => {
                     const profId = showActionsMenu!;
@@ -4662,16 +4656,33 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 </button>
               )}
 
-              <button
-                onClick={() => {
-                  handleRemoveProfessional(showActionsMenu!);
-                  setShowActionsMenu(null);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-100 rounded text-left transition text-red-700 font-semibold"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="text-sm">Remover da Escala</span>
-              </button>
+              {/* Remover da Escala — só na Planejada em edição. É uma ação de MONTAGEM da escala. */}
+              {viewMode === 'planejada' && editMode && !isLocked && !isPublished && (
+                <button
+                  onClick={() => {
+                    handleRemoveProfessional(showActionsMenu!);
+                    setShowActionsMenu(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-red-100 rounded text-left transition text-red-700 font-semibold"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="text-sm">Remover da Escala</span>
+                </button>
+              )}
+
+              {/* Fallback: nenhuma ação disponível — orienta o usuário para o modo certo. */}
+              {(
+                (viewMode === 'planejada' && (!editMode || isLocked || isPublished)) ||
+                viewMode === 'troca'
+              ) && (
+                <div className="px-3 py-2 text-xs text-gray-500">
+                  {viewMode === 'troca'
+                    ? 'Trocas se aplicam por dia/plantão. Clique numa célula.'
+                    : isPublished
+                      ? 'Escala publicada. Reabra o planejamento para editar profissionais.'
+                      : 'Entre em modo edição para alterar profissionais.'}
+                </div>
+              )}
             </div>
           </div>
         </>
