@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calendar, Download, Filter, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee } from 'lucide-react';
+import { Calendar, Download, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -74,7 +73,6 @@ interface ConsolidatedScheduleViewProps {
 
 export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBackToList }: ConsolidatedScheduleViewProps) {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { isAdmin, canUpdate, canCreate, canDelete, allowedDepartments } = usePermissions();
   const { toasts, toast, removeToast } = useToast();
   const [pendingConfirm, setPendingConfirm] = useState<{ title: string; message: string; action: () => void } | null>(null);
@@ -180,15 +178,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     if (mode && mode !== viewMode) setViewMode(mode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
-  // Navega entre as 3 páginas/URLs (planejada/troca/realizada) mantendo o mesmo scheduleId.
-  const goToMode = (target: ViewMode) => {
-    const sid = currentSchedule?.id || selectedSchedule || initialScheduleId;
-    if (sid) {
-      navigate(`/escala/${sid}/${target}`);
-    } else {
-      setViewMode(target);
-    }
-  };
+  // A navegação entre camadas agora vive na sidebar (3 entradas). Este componente
+  // apenas reflete o `mode` que vem da rota — não precisa mais rotear internamente.
   // Responsive: detect mobile viewport
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
   useEffect(() => {
@@ -2963,124 +2954,38 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
 
   return (
     <div className="space-y-6">
-      {/* Faixa colorida por modo — âncora visual que garante que a página não
-          é confundida com uma "aba" da mesma tela; cada modo é uma página. */}
-      <div className={`h-1.5 rounded-full bg-gradient-to-r ${pageHeading.accent}`} aria-hidden="true" />
-      <div className="flex items-center gap-3">
-        <pageHeading.Icon className={`w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 ${pageHeading.cls}`} aria-hidden="true" />
-        <h1 className={`text-3xl sm:text-4xl font-extrabold uppercase tracking-tight ${pageHeading.cls}`}>
-          {pageHeading.label}
-        </h1>
-        <span className={`hidden sm:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${pageHeading.tint}`}>
-          {pageHeading.subtitle}
-        </span>
-      </div>
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          {onBackToList && (
-            <button
-              onClick={onBackToList}
-              title="Voltar para a lista de escalas"
-              className="inline-flex items-center justify-center w-9 h-9 rounded-lg hover:bg-gray-100 transition text-gray-600 hover:text-gray-900"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-          )}
-          <pageHeading.Icon className={`w-7 h-7 flex-shrink-0 hidden sm:block ${pageHeading.cls}`} aria-hidden="true" />
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-600">{pageHeading.subtitle}</h2>
-          {/* Badge de status removido — fluxo simplificado, todas as escalas
-              são editáveis. Histórico é registrado em schedule_audit_log. */}
-          {/* Toggle Planejada / Realizada — segmented control limpo */}
-          {currentSchedule && (
-            <div
-              role="tablist"
-              aria-label="Modo de visualização da escala"
-              className="inline-flex items-stretch bg-gray-100 rounded-lg p-0.5 border border-gray-200"
-            >
+      {/*
+        HEADER EDITORIAL — Concentrado num único bloco:
+        - Faixa colorida grossa (âncora do modo)
+        - Título grande + subtítulo curto (o que a página faz, uma linha)
+        - Toolbar à direita, alinhada com o título
+        A navegação entre camadas vive na sidebar (Planejamento / Trocas & Remanejamento
+        / Realizada), então NÃO há segmented control aqui. Isso evita a impressão de
+        "abas na mesma tela" que confundia com trocas e ausências.
+      */}
+      <header>
+        <div className={`h-2 rounded-full bg-gradient-to-r ${pageHeading.accent} shadow-sm`} aria-hidden="true" />
+        <div className="mt-5 flex items-start justify-between gap-6 flex-wrap">
+          <div className="flex items-start gap-3 min-w-0">
+            {onBackToList && (
               <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === 'planejada'}
-                onClick={() => goToMode('planejada')}
-                title="Escala como foi originalmente criada"
-                className={`min-h-[36px] px-3 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-1.5 ${
-                  viewMode === 'planejada'
-                    ? 'bg-white text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                onClick={onBackToList}
+                title="Voltar para a lista de escalas"
+                className="inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition text-gray-500 hover:text-gray-900 -ml-1 mt-1"
               >
-                <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
-                Planejada
+                <ChevronLeft className="w-5 h-5" />
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === 'troca'}
-                onClick={() => goToMode('troca')}
-                title="Escala vigente com trocas e remanejamentos aplicados (sem faltas)"
-                className={`min-h-[36px] px-3 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-1.5 ${
-                  viewMode === 'troca'
-                    ? 'bg-white text-indigo-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <Repeat className="w-3.5 h-3.5" aria-hidden="true" />
-                {isMobile ? 'Troca' : 'Troca e Remanejamento'}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === 'realizada'}
-                onClick={() => goToMode('realizada')}
-                title="Estado atual com ausências, coberturas e trocas aplicadas"
-                className={`min-h-[36px] px-3 py-1.5 text-sm font-semibold rounded-md transition flex items-center gap-1.5 ${
-                  viewMode === 'realizada'
-                    ? 'bg-white text-orange-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5" aria-hidden="true" />
-                Realizada
-                {scheduleAbsences.length > 0 && (
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                      viewMode === 'realizada'
-                        ? 'bg-orange-100 text-orange-700'
-                        : 'bg-gray-200 text-gray-700'
-                    }`}
-                  >
-                    {scheduleAbsences.length}
-                  </span>
-                )}
-              </button>
+            )}
+            <div className="min-w-0">
+              <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${pageHeading.cls}`}>
+                {pageHeading.subtitle}
+              </p>
+              <h1 className={`mt-0.5 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-[1.05] ${pageHeading.cls}`}>
+                {pageHeading.label}
+              </h1>
             </div>
-          )}
-          {/* Legenda do modo atual — explica em 1 linha o que está sendo exibido */}
-          {currentSchedule && (
-            <div className="flex items-center gap-2 w-full lg:w-auto mt-1 lg:mt-0">
-              <span
-                className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md ${
-                  viewMode === 'planejada'
-                    ? 'bg-blue-50 text-blue-700'
-                    : viewMode === 'troca'
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'bg-orange-50 text-orange-700'
-                }`}
-              >
-                {viewMode === 'planejada' && 'Planejada: escala original congelada (snapshot publicado).'}
-                {viewMode === 'troca' && 'Troca e Remanejamento: escala vigente com trocas/remanejamentos aplicados, sem faltas.'}
-                {viewMode === 'realizada' && 'Realizada: escala vigente + faltas, atestados e coberturas aplicados.'}
-              </span>
-              {viewMode === 'realizada' && realizadaFilledUntilDay > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md bg-emerald-50 text-emerald-700">
-                  <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
-                  Realizada preenchida até dia {realizadaFilledUntilDay}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {!editMode ? (
             <>
               {/* ═══ GRUPO 1: ação primária + workflow — só na Planejada ═══
@@ -3307,7 +3212,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
             </>
           )}
         </div>
-      </div>
+        </div>
+      </header>
 
       {/* Banner "Modo Edição" e "Visualizando Realizada" foram consolidados
           em um único bloco informativo dentro do header da escala (abaixo). */}
@@ -3364,35 +3270,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
 
       {/* Banner vermelho duplicado removido — info consolidada no header. */}
 
-      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-6">
-        {schedules.length > 0 && (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-6">
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Filter className="w-5 h-5 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Escala:</span>
-            </div>
-
-            <select
-              value={selectedSchedule}
-              onChange={(e) => {
-                const schedule = schedules.find(s => s.id === e.target.value);
-                if (schedule) {
-                  setSelectedSchedule(schedule.id);
-                  setSelectedDepartment(schedule.department_id);
-                  setSelectedMonth(schedule.month.slice(0, 7));
-                }
-              }}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              {schedules.map((schedule) => (
-                <option key={schedule.id} value={schedule.id}>
-                  {schedule.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
+      <div className="bg-white rounded-xl shadow-sm ring-1 ring-gray-100 p-4 sm:p-7">
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -3411,75 +3289,99 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
           />
         ) : (
           <>
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 capitalize">
-                Mês/Ano: {monthName}
-              </h2>
-              <p className="text-sm text-gray-600">
-                Setor: {departments.find(d => d.id === selectedDepartment)?.name}
-              </p>
-              {currentSchedule && (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                  {/* Chip indicando o modo atual */}
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold ${
-                      viewMode === 'planejada'
-                        ? 'bg-blue-100 text-blue-800 ring-1 ring-inset ring-blue-200'
-                        : viewMode === 'troca'
-                        ? 'bg-indigo-100 text-indigo-800 ring-1 ring-inset ring-indigo-200'
-                        : 'bg-orange-100 text-orange-800 ring-1 ring-inset ring-orange-200'
-                    }`}
+            {/*
+              SUB-HERO DE CONTEXTO — Uma faixa editorial com:
+              - Eyebrow "ESCALA" bem discreto
+              - Nome da escala em destaque (o dropdown fica embutido no próprio nome)
+              - Metadados: Setor · Mês/Ano
+              - Chips à direita: Status (Rascunho/Publicada), Edição ativa, Realizada até dia X, Ordenar
+              Substitui o antigo "Escala:" + h2 "Mês/Ano" + p "Setor" + linha de chips redundantes.
+            */}
+            <div className="mb-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 pb-5 border-b border-gray-100">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-gray-400">Escala</p>
+                <div className="mt-1 relative inline-flex items-center group max-w-full">
+                  <select
+                    value={selectedSchedule}
+                    onChange={(e) => {
+                      const schedule = schedules.find(s => s.id === e.target.value);
+                      if (schedule) {
+                        setSelectedSchedule(schedule.id);
+                        setSelectedDepartment(schedule.department_id);
+                        setSelectedMonth(schedule.month.slice(0, 7));
+                      }
+                    }}
+                    aria-label="Selecionar escala"
+                    className="appearance-none bg-transparent border-0 pr-9 pl-0 py-0 text-xl sm:text-2xl font-bold text-gray-900 leading-tight focus:outline-none focus:ring-0 cursor-pointer max-w-full truncate hover:text-gray-700 transition-colors"
+                    style={{ WebkitAppearance: 'none' }}
                   >
-                    {viewMode === 'planejada' ? (
-                      <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
-                    ) : viewMode === 'troca' ? (
-                      <Repeat className="w-3.5 h-3.5" aria-hidden="true" />
-                    ) : (
-                      <ArrowLeftRight className="w-3.5 h-3.5" aria-hidden="true" />
-                    )}
-                    Vendo {viewMode === 'planejada' ? 'Planejada' : viewMode === 'troca' ? 'Troca e Remanejamento' : 'Realizada'}
+                    {schedules.map((schedule) => (
+                      <option key={schedule.id} value={schedule.id}>
+                        {schedule.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    className="pointer-events-none absolute right-0 w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors"
+                    aria-hidden="true"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  <span className="uppercase tracking-wider font-semibold text-gray-400">Setor</span>
+                  <span className="mx-1.5 text-gray-300">·</span>
+                  <span className="text-gray-700 font-medium">
+                    {departments.find(d => d.id === selectedDepartment)?.name ?? '—'}
                   </span>
+                  <span className="mx-2 text-gray-300">·</span>
+                  <span className="uppercase tracking-wider font-semibold text-gray-400">Período</span>
+                  <span className="mx-1.5 text-gray-300">·</span>
+                  <span className="text-gray-700 font-medium capitalize">{monthName}</span>
+                </p>
+              </div>
 
-                  {/* Modo edição (substitui o banner amarelo grande) */}
+              {currentSchedule && (
+                <div className="flex flex-wrap items-center gap-2">
                   {editMode && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold bg-yellow-100 text-yellow-800 ring-1 ring-inset ring-yellow-200">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200">
                       <Edit3 className="w-3.5 h-3.5" aria-hidden="true" />
-                      Edição ativa — clique numa célula
+                      Edição ativa
                     </span>
                   )}
-
-                  {/* Status do planejamento */}
                   {isPublished ? (
                     <span
                       title={`Finalizada em ${new Date((currentSchedule as any).published_at).toLocaleString('pt-BR')}`}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold bg-emerald-100 text-emerald-800 ring-1 ring-inset ring-emerald-200"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200"
                     >
                       <Lock className="w-3.5 h-3.5" aria-hidden="true" />
-                      Planejamento finalizado
+                      Publicada
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold bg-amber-100 text-amber-800 ring-1 ring-inset ring-amber-200">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 ring-1 ring-inset ring-gray-200">
                       <Unlock className="w-3.5 h-3.5" aria-hidden="true" />
                       Rascunho
                     </span>
                   )}
-
-                  {/* Seletor de ordenação — inline com os chips de status */}
+                  {viewMode === 'realizada' && realizadaFilledUntilDay > 0 && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-orange-50 text-orange-800 ring-1 ring-inset ring-orange-200">
+                      <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+                      Realizada até dia {realizadaFilledUntilDay}
+                    </span>
+                  )}
                   {professionals.length > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold bg-indigo-50 text-indigo-800 ring-1 ring-inset ring-indigo-200">
-                      <ArrowUpDown className="w-3.5 h-3.5" aria-hidden="true" />
-                      <label htmlFor="prof-sort" className="font-semibold">Ordenar:</label>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-white text-gray-700 ring-1 ring-inset ring-gray-200 hover:ring-gray-300 transition">
+                      <ArrowUpDown className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
+                      <label htmlFor="prof-sort" className="sr-only">Ordenar profissionais</label>
                       <select
                         id="prof-sort"
                         value={profSort}
                         onChange={(e) => setProfSort(e.target.value as SortMode)}
-                        className="bg-transparent text-indigo-800 font-semibold focus:outline-none cursor-pointer"
+                        className="bg-transparent text-gray-700 font-semibold focus:outline-none cursor-pointer -mr-1"
                         title="Ordenar profissionais na grade"
                       >
                         <option value="custom">Ordem personalizada</option>
                         <option value="alpha_asc">Nome A → Z</option>
                         <option value="alpha_desc">Nome Z → A</option>
-                        <option value="alpha_colab_last">Nome A → Z (colaboradores no fim)</option>
+                        <option value="alpha_colab_last">A → Z (colaboradores no fim)</option>
                         <option value="created_asc">Mais antigos primeiro</option>
                         <option value="created_desc">Mais recentes primeiro</option>
                       </select>
