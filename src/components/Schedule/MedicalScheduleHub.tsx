@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stethoscope, ArrowRight, Users, AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -144,19 +144,21 @@ export default function MedicalScheduleHub() {
           {MED_CATEGORIES.map(cat => {
             const deptInfo = info[cat.deptName];
             const configured = !!deptInfo?.id;
+            // Sombra colorida (glow) na cor da categoria — mais forte no hover.
+            const glowStyle = configured
+              ? ({ '--glow': `${cat.color}73`, '--glow-strong': `${cat.color}bf` } as unknown as CSSProperties)
+              : undefined;
 
             return (
               <div
                 key={cat.deptName}
-                className={`relative bg-white rounded-2xl border shadow-sm overflow-hidden transition ${
+                style={glowStyle}
+                className={`relative bg-white rounded-2xl border transition-all duration-200 ${
                   configured
-                    ? 'border-gray-200 hover:shadow-md hover:border-gray-300'
-                    : 'border-dashed border-gray-300 opacity-80'
+                    ? 'border-gray-100 shadow-[0_16px_38px_-10px_var(--glow)] hover:shadow-[0_26px_54px_-12px_var(--glow-strong)] hover:-translate-y-0.5'
+                    : 'border-dashed border-gray-300 shadow-sm opacity-80'
                 }`}
               >
-                {/* Faixa de cor da categoria */}
-                <div className="h-1.5 w-full" style={{ backgroundColor: cat.color }} />
-
                 <div className="p-5 sm:p-6 flex flex-col h-full">
                   <div className="flex items-center gap-3 mb-3">
                     <span
