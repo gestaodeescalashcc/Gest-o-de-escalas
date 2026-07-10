@@ -44,9 +44,11 @@ interface MonthlySchedule {
 
 interface ScheduleViewProps {
   onNavigateToSchedule?: (scheduleId: string) => void;
+  /** Setor (department_id) para pré-filtrar a lista — vindo do hub de Escala Médica. */
+  initialDepartment?: string;
 }
 
-export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps) {
+export default function ScheduleView({ onNavigateToSchedule, initialDepartment }: ScheduleViewProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [schedules, setSchedules] = useState<MonthlySchedule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
   const [currentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'schedules' | 'shifts'>('schedules');
   const [filterStatus, setFilterStatus] = useState<string>('');
-  const [filterDepartment, setFilterDepartment] = useState<string>('');
+  const [filterDepartment, setFilterDepartment] = useState<string>(initialDepartment ?? '');
   // Filtro de mês opcional — começa vazio (mostra todas as escalas)
   const [filterMonth, setFilterMonth] = useState<string>('');
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
@@ -71,6 +73,12 @@ export default function ScheduleView({ onNavigateToSchedule }: ScheduleViewProps
   useEffect(() => {
     loadDepartments();
   }, []);
+
+  // Quando o hub de Escala Médica navega com ?setor=<id> e o componente já está
+  // montado, o React Router não remonta — então sincronizamos o filtro aqui.
+  useEffect(() => {
+    if (initialDepartment) setFilterDepartment(initialDepartment);
+  }, [initialDepartment]);
 
   useEffect(() => {
     if (viewMode === 'schedules') {

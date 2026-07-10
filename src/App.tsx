@@ -42,6 +42,7 @@ const TimesheetReportView = lazy(() => import('./components/Timesheet/TimesheetR
 const PunchMirrorView = lazy(() => import('./components/Timesheet/PunchMirrorView'));
 const PunchAdjustmentsView = lazy(() => import('./components/Timesheet/PunchAdjustmentsView'));
 const MyScheduleView = lazy(() => import('./components/Schedule/MyScheduleView'));
+const MedicalScheduleHub = lazy(() => import('./components/Schedule/MedicalScheduleHub'));
 
 function AppLoadingScreen() {
   return (
@@ -76,8 +77,15 @@ function ScheduleListRoute() {
   const navigate = useNavigate();
   const location = useLocation();
   const mode = readModeFromQuery(location.search);
+  // Setor opcional vindo do hub de Escala Médica (?setor=<id>) — pré-filtra a lista.
+  const setor = new URLSearchParams(location.search).get('setor') ?? undefined;
   // Preserva o modo escolhido pela sidebar quando o usuário abre uma escala da lista.
-  return <ScheduleView onNavigateToSchedule={(id) => navigate(`/escala/${id}/${mode}`)} />;
+  return (
+    <ScheduleView
+      initialDepartment={setor}
+      onNavigateToSchedule={(id) => navigate(`/escala/${id}/${mode}`)}
+    />
+  );
 }
 
 function ScheduleDetailRoute() {
@@ -141,6 +149,7 @@ function AppRoutes() {
 
       {/* Protected */}
       <Route path="/minha-escala" element={<ProtectedLayout><ViewSuspense><MyScheduleView /></ViewSuspense></ProtectedLayout>} />
+      <Route path="/escala-medicos" element={<ProtectedLayout><ViewSuspense><MedicalScheduleHub /></ViewSuspense></ProtectedLayout>} />
       <Route path="/escala" element={<ProtectedLayout><ScheduleListRoute /></ProtectedLayout>} />
       <Route path="/escala/:scheduleId" element={<Navigate to="planejada" replace />} />
       <Route path="/escala/:scheduleId/:modo" element={<ProtectedLayout><ScheduleDetailRoute /></ProtectedLayout>} />

@@ -1,0 +1,208 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Stethoscope, ArrowRight, Users, AlertTriangle, Loader2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+
+/**
+ * Hub de Escala Médica.
+ *
+ * As 3 categorias de médico (Plantonista / Diarista / Interconsultor) são, no
+ * modelo de dados, 3 SETORES (departments) independentes — cada um com sua
+ * própria escala mensal. Esta tela é o ponto de entrada: mostra os 3 setores
+ * como cartões e leva o gestor direto para a lista de escalas daquele setor
+ * (rota /escala?modo=planejada&setor=<id>).
+ *
+ * Enquanto a migração de dados não roda, os setores podem não existir ainda —
+ * a tela lida com isso mostrando o cartão como "não configurado".
+ */
+
+interface MedCategory {
+  /** Nome EXATO do setor no banco (department.name). */
+  deptName: string;
+  label: string;
+  /** Cor da categoria (mesma do import de médicos). */
+  color: string;
+  description: string;
+}
+
+// Ordem e cores espelham as categorias criadas no import de maio.
+const MED_CATEGORIES: MedCategory[] = [
+  {
+    deptName: 'Plantonistas',
+    label: 'Plantonistas',
+    color: '#0ea5e9',
+    description: 'Plantões de 12h — Serviço Diurno (7h–19h) e Noturno (19h–7h).',
+  },
+  {
+    deptName: 'Diaristas',
+    label: 'Diaristas',
+    color: '#10b981',
+    description: 'Diaristas em turnos fixos ao longo da semana.',
+  },
+  {
+    deptName: 'Interconsultores',
+    label: 'Interconsultores',
+    color: '#a855f7',
+    description: 'Interconsultas por especialidade (manhã/tarde).',
+  },
+];
+
+interface DeptInfo {
+  id: string | null;
+  count: number;
+}
+
+export default function MedicalScheduleHub() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  // Mapa deptName -> { id, count de profissionais ativos }
+  const [info, setInfo] = useState<Record<string, DeptInfo>>({});
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const names = MED_CATEGORIES.map(c => c.deptName);
+
+      const { data: depts, error: deptErr } = await supabase
+        .from('departments')
+        .select('id, name')
+        .in('name', names);
+      if (deptErr) throw deptErr;
+
+      const byName: Record<string, DeptInfo> = {};
+      for (const c of MED_CATEGORIES) byName[c.deptName] = { id: null, count: 0 };
+
+      const deptIds = (depts ?? []).map(d => d.id);
+      for (const d of depts ?? []) {
+        if (byName[d.name]) byName[d.name].id = d.id;
+      }
+
+      // Conta profissionais ativos por setor (client-side; volume é pequeno).
+      if (deptIds.length > 0) {
+        const { data: profs, error: profErr } = await supabase
+          .from('professionals')
+          .select('department_id')
+          .eq('active', true)
+          .in('department_id', deptIds);
+        if (profErr) throw profErr;
+
+        const nameById: Record<string, string> = {};
+        for (const d of depts ?? []) nameById[d.id] = d.name;
+        for (const p of profs ?? []) {
+          const name = nameById[p.department_id as string];
+          if (name && byName[name]) byName[name].count += 1;
+        }
+      }
+
+      setInfo(byName);
+    } catch (err: any) {
+      console.error('Erro ao carregar setores médicos:', err);
+      setError(err.message || 'Erro ao carregar dados.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openSchedule = (deptId: string) => {
+    navigate(`/escala?modo=planejada&setor=${deptId}`);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+          <Stethoscope className="w-6 h-6 text-blue-600" aria-hidden="true" />
+        </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Escala Médica</h1>
+          <p className="text-sm text-gray-600 mt-0.5">
+            Escolha a categoria para trabalhar nas escalas correspondentes.
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div role="alert" className="flex items-start gap-3 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg text-sm">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" aria-hidden="true" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-gray-500">
+          <Loader2 className="w-6 h-6 animate-spin mr-2" aria-hidden="true" />
+          Carregando categorias...
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+          {MED_CATEGORIES.map(cat => {
+            const deptInfo = info[cat.deptName];
+            const configured = !!deptInfo?.id;
+
+            return (
+              <div
+                key={cat.deptName}
+                className={`relative bg-white rounded-2xl border shadow-sm overflow-hidden transition ${
+                  configured
+                    ? 'border-gray-200 hover:shadow-md hover:border-gray-300'
+                    : 'border-dashed border-gray-300 opacity-80'
+                }`}
+              >
+                {/* Faixa de cor da categoria */}
+                <div className="h-1.5 w-full" style={{ backgroundColor: cat.color }} />
+
+                <div className="p-5 sm:p-6 flex flex-col h-full">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span
+                      className="inline-flex items-center justify-center w-10 h-10 rounded-xl text-white flex-shrink-0"
+                      style={{ backgroundColor: cat.color }}
+                    >
+                      <Stethoscope className="w-5 h-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <h2 className="text-lg font-bold text-gray-900 leading-tight">{cat.label}</h2>
+                      {configured ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-500 mt-0.5">
+                          <Users className="w-3.5 h-3.5" aria-hidden="true" />
+                          {deptInfo.count} {deptInfo.count === 1 ? 'médico' : 'médicos'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-600 mt-0.5">
+                          <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+                          Setor não configurado
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-gray-600 flex-1">{cat.description}</p>
+
+                  <button
+                    type="button"
+                    disabled={!configured}
+                    onClick={() => configured && openSchedule(deptInfo!.id!)}
+                    className={`mt-5 inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      configured
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title={configured ? `Abrir escalas de ${cat.label}` : 'Rode a migração para criar este setor'}
+                  >
+                    Abrir escalas
+                    <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
