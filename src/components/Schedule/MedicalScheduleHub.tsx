@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Stethoscope, Users, AlertTriangle, Loader2 } from 'lucide-react';
+import { Stethoscope, ArrowRight, Users, AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 /**
@@ -45,13 +45,6 @@ const MED_CATEGORIES: MedCategory[] = [
     color: '#a855f7',
     description: 'Interconsultas por especialidade (manhã/tarde).',
   },
-];
-
-// As 3 camadas da escala (mesmas do menu lateral), com as cores de cada modo.
-const MODES: { mode: string; label: string; cls: string }[] = [
-  { mode: 'planejada', label: 'Planejada', cls: 'bg-blue-50 text-blue-700 hover:bg-blue-100 focus:ring-blue-500' },
-  { mode: 'troca', label: 'Trocas', cls: 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-500' },
-  { mode: 'realizada', label: 'Realizada', cls: 'bg-orange-50 text-orange-700 hover:bg-orange-100 focus:ring-orange-500' },
 ];
 
 interface DeptInfo {
@@ -116,8 +109,8 @@ export default function MedicalScheduleHub() {
     }
   };
 
-  const openSchedule = (deptId: string, mode: string) => {
-    navigate(`/escala?modo=${mode}&setor=${deptId}`);
+  const openSchedule = (deptId: string) => {
+    navigate(`/escala?modo=planejada&setor=${deptId}`);
   };
 
   return (
@@ -192,25 +185,20 @@ export default function MedicalScheduleHub() {
 
                   <p className="text-sm text-gray-600 flex-1">{cat.description}</p>
 
-                  <div className="mt-5">
-                    <p className="text-xs font-medium text-gray-500 mb-1.5">Abrir escala:</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {MODES.map(m => (
-                        <button
-                          key={m.mode}
-                          type="button"
-                          disabled={!configured}
-                          onClick={() => configured && openSchedule(deptInfo!.id!, m.mode)}
-                          className={`inline-flex items-center justify-center min-h-[40px] px-2 py-2 rounded-lg text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-1 ${
-                            configured ? m.cls : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          }`}
-                          title={configured ? `${cat.label} — ${m.label}` : 'Setor não configurado'}
-                        >
-                          {m.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    disabled={!configured}
+                    onClick={() => configured && openSchedule(deptInfo!.id!)}
+                    className={`mt-5 inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 rounded-lg font-medium transition focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      configured
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title={configured ? `Abrir escalas de ${cat.label}` : 'Rode a migração para criar este setor'}
+                  >
+                    Abrir escalas
+                    <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                  </button>
                 </div>
               </div>
             );
