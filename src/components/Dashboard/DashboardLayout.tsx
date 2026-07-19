@@ -26,7 +26,7 @@ import {
   KeyRound,
   Repeat,
   CheckCircle2,
-  Stethoscope,
+  Home,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -109,8 +109,8 @@ const MENU_GROUPS = [
 const MENU_ITEMS: MenuItem[] = [
   // Médico: tela pessoal — primeiro item, exclusivo da role Médico
   { id: 'my-schedule', path: '/minha-escala', label: 'Minha Escala', icon: Calendar, module: 'schedules', group: 'schedule', onlyForRole: 'Médico' },
-  // Hub de Escala Médica: entrada para as 3 categorias (setores) de médico.
-  { id: 'medical-schedules', path: '/escala-medicos', label: 'Escala Médica', icon: Stethoscope, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], keywords: 'medico plantonista diarista interconsultor categoria' },
+  // Tela inicial: hub de setores. Cada setor abre só as escalas dele.
+  { id: 'home', path: '/', label: 'Início', icon: Home, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], keywords: 'inicio home setores' },
   // Escalas: 3 páginas separadas, uma por camada. A grade é a mesma por baixo,
   // mas cada modo tem toolbar/popover próprios (ver ConsolidatedScheduleView).
   // A separação na sidebar é o que quebra a confusão visual — cada camada é uma "página".

@@ -42,7 +42,7 @@ const TimesheetReportView = lazy(() => import('./components/Timesheet/TimesheetR
 const PunchMirrorView = lazy(() => import('./components/Timesheet/PunchMirrorView'));
 const PunchAdjustmentsView = lazy(() => import('./components/Timesheet/PunchAdjustmentsView'));
 const MyScheduleView = lazy(() => import('./components/Schedule/MyScheduleView'));
-const MedicalScheduleHub = lazy(() => import('./components/Schedule/MedicalScheduleHub'));
+const SetorHub = lazy(() => import('./components/Schedule/SetorHub'));
 
 function AppLoadingScreen() {
   return (
@@ -129,15 +129,29 @@ function PublicOnly({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Redireciona para a tela inicial certa baseada na role:
+// Redireciona rotas desconhecidas para a tela inicial certa baseada na role:
 // - Médico → /minha-escala (foco em ver os próprios plantões e trocar)
-// - Demais → /escala (visão de gestão)
+// - Demais → / (hub de setores)
 function RoleBasedRedirect() {
   const { user, loading: authLoading } = useAuth();
   const { roleName, loading: permLoading } = usePermissions();
   if (authLoading || permLoading) return <AppLoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={roleName === 'Médico' ? '/minha-escala' : '/escala'} replace />;
+  return <Navigate to={roleName === 'Médico' ? '/minha-escala' : '/'} replace />;
+}
+
+// Home (`/`): médico vai pra Minha Escala; demais veem o hub de setores.
+function HomeRoute() {
+  const { user, loading: authLoading } = useAuth();
+  const { roleName, loading: permLoading } = usePermissions();
+  if (authLoading || permLoading) return <AppLoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (roleName === 'Médico') return <Navigate to="/minha-escala" replace />;
+  return (
+    <ProtectedLayout>
+      <ViewSuspense><SetorHub /></ViewSuspense>
+    </ProtectedLayout>
+  );
 }
 
 function AppRoutes() {
@@ -149,7 +163,8 @@ function AppRoutes() {
 
       {/* Protected */}
       <Route path="/minha-escala" element={<ProtectedLayout><ViewSuspense><MyScheduleView /></ViewSuspense></ProtectedLayout>} />
-      <Route path="/escala-medicos" element={<ProtectedLayout><ViewSuspense><MedicalScheduleHub /></ViewSuspense></ProtectedLayout>} />
+      {/* Hub médico antigo consolidado no hub geral de setores. */}
+      <Route path="/escala-medicos" element={<Navigate to="/" replace />} />
       <Route path="/escala" element={<ProtectedLayout><ScheduleListRoute /></ProtectedLayout>} />
       <Route path="/escala/:scheduleId" element={<Navigate to="planejada" replace />} />
       <Route path="/escala/:scheduleId/:modo" element={<ProtectedLayout><ScheduleDetailRoute /></ProtectedLayout>} />
@@ -175,8 +190,8 @@ function AppRoutes() {
       <Route path="/historico" element={<ProtectedLayout><ViewSuspense><HistoryView /></ViewSuspense></ProtectedLayout>} />
       <Route path="/relatorios" element={<ProtectedLayout><ViewSuspense><ReportsView /></ViewSuspense></ProtectedLayout>} />
 
-      {/* Legacy / fallback */}
-      <Route path="/" element={<RoleBasedRedirect />} />
+      {/* Home / fallback */}
+      <Route path="/" element={<HomeRoute />} />
       <Route path="*" element={<RoleBasedRedirect />} />
     </Routes>
   );
