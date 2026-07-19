@@ -451,85 +451,70 @@ export default function ScheduleView({ onNavigateToSchedule, initialDepartment }
               ) : null}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Nome da Escala
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Setor
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Mês/Ano
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Criado em
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredSchedules.map((schedule) => {
-                    const [year, month] = schedule.month.split('-');
-                    const monthName = new Date(parseInt(year), parseInt(month) - 1, 15).toLocaleDateString('pt-BR', {
-                      month: 'long',
-                      year: 'numeric'
-                    });
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredSchedules.map((schedule) => {
+                const [year, month] = schedule.month.split('-');
+                const monthName = new Date(parseInt(year), parseInt(month) - 1, 15).toLocaleDateString('pt-BR', {
+                  month: 'long',
+                  year: 'numeric',
+                });
+                const published = schedule.status === 'Publicada';
 
-                    return (
-                      <tr key={schedule.id} className="hover:bg-gray-50 transition">
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Calendar className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <div className="font-medium text-gray-900">{schedule.name}</div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Building2 className="w-4 h-4" />
-                            {schedule.department?.name || 'Sem setor'}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Clock className="w-4 h-4" />
-                            <span className="capitalize">{monthName}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm text-gray-600">
-                            {new Date(schedule.created_at).toLocaleDateString('pt-BR')}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleViewSchedule(schedule.id)}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition text-sm font-medium"
-                            >
-                              <Eye className="w-4 h-4" />
-                              Visualizar
-                            </button>
-                            <button
-                              onClick={() => handleDeleteRequest(schedule.id)}
-                              className="p-2 hover:bg-red-50 rounded-lg transition"
-                              title="Excluir escala"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-600" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                return (
+                  <div
+                    key={schedule.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleViewSchedule(schedule.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleViewSchedule(schedule.id);
+                      }
+                    }}
+                    className="group relative bg-white rounded-2xl border border-gray-200 p-5 cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          published ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {schedule.status}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 font-bold text-gray-900 leading-snug">{schedule.name}</h3>
+                    <div className="mt-1.5 flex items-center gap-1.5 text-sm text-gray-600">
+                      <Clock className="w-4 h-4 flex-shrink-0" />
+                      <span className="capitalize">{monthName}</span>
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500">
+                      <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
+                      {schedule.department?.name || 'Sem setor'}
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-700">
+                        <Eye className="w-4 h-4" /> Abrir
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteRequest(schedule.id);
+                        }}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="Excluir escala"
+                        aria-label={`Excluir ${schedule.name}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )
         ) : (
