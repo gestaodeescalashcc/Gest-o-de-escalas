@@ -70,6 +70,25 @@ interface MenuItem {
    * Recebe (pathname, search) e devolve true se este item é o dono.
    */
   matches?: (pathname: string, search: string) => boolean;
+  /**
+   * Quando definido, o clique troca apenas o MODO da escala aberta (mantém a
+   * mesma escala/setor). Ver scheduleModeTarget.
+   */
+  scheduleMode?: 'planejada' | 'troca' | 'realizada';
+}
+
+// Destino do clique nos itens de modo, preservando o contexto atual:
+// - dentro de uma escala aberta (/escala/:id/:modo) → troca só o modo, mesma escala
+// - na lista de um setor (/escala?setor=X) → mantém o setor, troca o modo
+// - caso geral → lista no modo escolhido
+function scheduleModeTarget(mode: string, pathname: string, search: string): string {
+  const detail = pathname.match(/^\/escala\/([^/]+)\/[^/]+$/);
+  if (detail) return `/escala/${detail[1]}/${mode}`;
+  if (pathname === '/escala') {
+    const setor = new URLSearchParams(search).get('setor');
+    return setor ? `/escala?modo=${mode}&setor=${setor}` : `/escala?modo=${mode}`;
+  }
+  return `/escala?modo=${mode}`;
 }
 
 // Casadores das 3 camadas da escala:
@@ -114,9 +133,9 @@ const MENU_ITEMS: MenuItem[] = [
   // Escalas: 3 páginas separadas, uma por camada. A grade é a mesma por baixo,
   // mas cada modo tem toolbar/popover próprios (ver ConsolidatedScheduleView).
   // A separação na sidebar é o que quebra a confusão visual — cada camada é uma "página".
-  { id: 'schedule-planejada', path: '/escala?modo=planejada', label: 'Planejamento', icon: LayoutGrid, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'blue', matches: matchScheduleMode('planejada'), keywords: 'escala planejada mês montagem' },
-  { id: 'schedule-troca', path: '/escala?modo=troca', label: 'Trocas & Remanejamento', icon: Repeat, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'indigo', matches: matchScheduleMode('troca'), keywords: 'troca remanejamento reatribuir plantão' },
-  { id: 'schedule-realizada', path: '/escala?modo=realizada', label: 'Realizada', icon: CheckCircle2, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'orange', matches: matchScheduleMode('realizada'), keywords: 'realizada faltas atestados coberturas' },
+  { id: 'schedule-planejada', path: '/escala?modo=planejada', label: 'Planejamento', icon: LayoutGrid, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'blue', scheduleMode: 'planejada', matches: matchScheduleMode('planejada'), keywords: 'escala planejada mês montagem' },
+  { id: 'schedule-troca', path: '/escala?modo=troca', label: 'Trocas & Remanejamento', icon: Repeat, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'indigo', scheduleMode: 'troca', matches: matchScheduleMode('troca'), keywords: 'troca remanejamento reatribuir plantão' },
+  { id: 'schedule-realizada', path: '/escala?modo=realizada', label: 'Realizada', icon: CheckCircle2, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'orange', scheduleMode: 'realizada', matches: matchScheduleMode('realizada'), keywords: 'realizada faltas atestados coberturas' },
   { id: 'daily', path: '/escala-diaria', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'] },
   { id: 'professionals', path: '/profissionais', label: 'Profissionais', icon: Users, module: 'professionals', group: 'schedule', hiddenForRoles: ['Médico'] },
   { id: 'swaps', path: '/trocas', label: 'Solicitações de Troca', icon: ArrowLeftRight, module: 'swaps', group: 'schedule', keywords: 'plantoes plantões solicitações' },
@@ -410,7 +429,13 @@ export default function DashboardLayout({
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => navigate(item.path)}
+                          onClick={() =>
+                            navigate(
+                              item.scheduleMode
+                                ? scheduleModeTarget(item.scheduleMode, location.pathname, location.search)
+                                : item.path
+                            )
+                          }
                           aria-current={isActive ? 'page' : undefined}
                           className={`w-full min-h-[44px] flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
                             isActive
