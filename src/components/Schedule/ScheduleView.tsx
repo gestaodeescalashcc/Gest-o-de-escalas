@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, AlertTriangle, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, AlertTriangle, FileSpreadsheet, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { setCurrentSetor } from '../../lib/setorContext';
 import ShiftCard from './ShiftCard';
 import CreateShiftModal from './CreateShiftModal';
 import CreateScheduleModal from './CreateScheduleModal';
@@ -69,16 +71,25 @@ export default function ScheduleView({ onNavigateToSchedule, initialDepartment }
   const [deletingAll, setDeletingAll] = useState(false);
   const { toasts, toast, removeToast } = useToast();
   const { isAdmin, allowedDepartments } = usePermissions();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadDepartments();
   }, []);
 
-  // Quando o hub de Escala Médica navega com ?setor=<id> e o componente já está
+  // Quando o hub de setores navega com ?setor=<id> e o componente já está
   // montado, o React Router não remonta — então sincronizamos o filtro aqui.
   useEffect(() => {
     if (initialDepartment) setFilterDepartment(initialDepartment);
   }, [initialDepartment]);
+
+  // Mantém o "setor atual" (contexto fixo) sempre que há um setor selecionado.
+  useEffect(() => {
+    if (filterDepartment) {
+      const name = departments.find(d => d.id === filterDepartment)?.name;
+      setCurrentSetor(filterDepartment, name);
+    }
+  }, [filterDepartment, departments]);
 
   useEffect(() => {
     if (viewMode === 'schedules') {
@@ -291,7 +302,18 @@ export default function ScheduleView({ onNavigateToSchedule, initialDepartment }
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Gestão de Escalas</h2>
+          {filterDepartment && (
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-blue-700 mb-1 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+            >
+              <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Setores
+            </button>
+          )}
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+            {(filterDepartment && departments.find(d => d.id === filterDepartment)?.name) || 'Gestão de Escalas'}
+          </h2>
           <p className="text-sm text-gray-600 mt-1">
             {viewMode === 'schedules'
               ? `${filteredSchedules.length} ${filteredSchedules.length === 1 ? 'escala' : 'escalas'}`

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Users, Search, AlertTriangle, Loader2, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { usePermissions } from '../../hooks/usePermissions';
+import { setCurrentSetor } from '../../lib/setorContext';
 
 /**
  * Tela inicial: todos os setores como cartões (com sombra na cor do setor).
@@ -88,7 +89,10 @@ export default function SetorHub() {
     return q ? setores.filter(s => normalize(s.name).includes(q)) : setores;
   }, [setores, search]);
 
-  const open = (id: string) => navigate(`/escala?setor=${id}`);
+  const open = (id: string, name: string) => {
+    setCurrentSetor(id, name);
+    navigate(`/escala?setor=${id}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -136,7 +140,7 @@ export default function SetorHub() {
               <button
                 key={setor.id}
                 type="button"
-                onClick={() => open(setor.id)}
+                onClick={() => open(setor.id, setor.name)}
                 style={glowStyle}
                 className="group text-left bg-white rounded-2xl border border-gray-100 p-5 transition-all duration-200 shadow-[0_16px_38px_-10px_var(--glow)] hover:shadow-[0_26px_54px_-12px_var(--glow-strong)] hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >

@@ -32,6 +32,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { usePermissions } from '../../hooks/usePermissions';
+import { getCurrentSetorId } from '../../lib/setorContext';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -84,11 +85,11 @@ interface MenuItem {
 function scheduleModeTarget(mode: string, pathname: string, search: string): string {
   const detail = pathname.match(/^\/escala\/([^/]+)\/[^/]+$/);
   if (detail) return `/escala/${detail[1]}/${mode}`;
-  if (pathname === '/escala') {
-    const setor = new URLSearchParams(search).get('setor');
-    return setor ? `/escala?modo=${mode}&setor=${setor}` : `/escala?modo=${mode}`;
-  }
-  return `/escala?modo=${mode}`;
+  // Fora de uma escala aberta: fica preso ao setor atual (URL ou persistido).
+  const setor = new URLSearchParams(search).get('setor') || getCurrentSetorId();
+  if (setor) return `/escala?modo=${mode}&setor=${setor}`;
+  // Nenhum setor escolhido ainda → manda escolher na tela inicial.
+  return '/';
 }
 
 // Casadores das 3 camadas da escala:

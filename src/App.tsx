@@ -10,6 +10,7 @@ import {
 } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { usePermissions } from './hooks/usePermissions';
+import { getCurrentSetorId } from './lib/setorContext';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import LoginForm from './components/Auth/LoginForm';
 import DoctorSignupForm from './components/Auth/DoctorSignupForm';
@@ -99,7 +100,10 @@ function ScheduleDetailRoute() {
     <ConsolidatedScheduleView
       initialScheduleId={scheduleId}
       mode={mode}
-      onBackToList={() => navigate(`/escala?modo=${mode}`)}
+      onBackToList={() => {
+        const setor = getCurrentSetorId();
+        navigate(setor ? `/escala?modo=${mode}&setor=${setor}` : '/');
+      }}
     />
   );
 }

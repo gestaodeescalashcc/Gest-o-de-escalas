@@ -3,6 +3,7 @@ import { Calendar, Download, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus,
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { setCurrentSetor } from '../../lib/setorContext';
 import CreateScheduleModal from './CreateScheduleModal';
 import AutoFillModal, { ScaleConfig } from './AutoFillModal';
 import { exportScheduleToExcel } from '../../utils/excelExport';
@@ -388,6 +389,14 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
       loadHolidays();
     }
   }, [selectedMonth]);
+
+  // Mantém o "setor atual" (contexto fixo) ao abrir/trocar a escala.
+  useEffect(() => {
+    if (selectedDepartment) {
+      const name = departments.find(d => d.id === selectedDepartment)?.name;
+      setCurrentSetor(selectedDepartment, name);
+    }
+  }, [selectedDepartment, departments]);
 
   const loadAbsenceReasons = async () => {
     const { data } = await supabase
