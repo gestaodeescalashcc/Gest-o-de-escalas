@@ -3315,11 +3315,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                     className="appearance-none bg-transparent border-0 pr-9 pl-0 py-0 text-xl sm:text-2xl font-bold text-gray-900 leading-tight focus:outline-none focus:ring-0 cursor-pointer max-w-full truncate hover:text-gray-700 transition-colors"
                     style={{ WebkitAppearance: 'none' }}
                   >
-                    {schedules.map((schedule) => (
-                      <option key={schedule.id} value={schedule.id}>
-                        {schedule.name}
-                      </option>
-                    ))}
+                    {schedules
+                      .filter(s => !selectedDepartment || s.department_id === selectedDepartment)
+                      .map((schedule) => (
+                        <option key={schedule.id} value={schedule.id}>
+                          {schedule.name}
+                        </option>
+                      ))}
                   </select>
                   <ChevronDown
                     className="pointer-events-none absolute right-0 w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors"
