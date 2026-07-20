@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Filter, Download, ChevronDown, ChevronUp, Coffee } from 'lucide-react';
+import { Calendar, Filter, Download, ChevronDown, ChevronUp, Coffee, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { getCurrentSetorId, setCurrentSetor } from '../../lib/setorContext';
 import { exportToPDF, escapeHTML } from '../../utils/pdfExport';
 import MealScheduleView from './MealScheduleView';
 import ToastContainer from '../Common/ToastContainer';
@@ -56,16 +58,26 @@ export default function DailyScheduleView() {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+  // Inicia no setor do contexto fixo (persistido); 'all' só se nenhum escolhido.
+  const [selectedDepartment, setSelectedDepartment] = useState<string>(getCurrentSetorId() ?? 'all');
   const [selectedShiftType, setSelectedShiftType] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [expandedDepartments, setExpandedDepartments] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'schedule' | 'meals'>('schedule');
   const { toasts, toast, removeToast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadDepartments();
   }, []);
+
+  // Mantém o "setor atual" ao trocar o filtro para um setor específico.
+  useEffect(() => {
+    if (selectedDepartment !== 'all') {
+      const name = departments.find(d => d.id === selectedDepartment)?.name;
+      setCurrentSetor(selectedDepartment, name);
+    }
+  }, [selectedDepartment, departments]);
 
   useEffect(() => {
     if (selectedDate) {
@@ -318,8 +330,20 @@ export default function DailyScheduleView() {
         <div className="flex items-center gap-3">
           <Calendar className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 flex-shrink-0" />
           <div>
+            {selectedDepartment !== 'all' && (
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-blue-700 mb-0.5 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+              >
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Setores
+              </button>
+            )}
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Escala do Dia</h1>
-            <p className="text-xs sm:text-sm text-gray-600">Profissionais escalados</p>
+            <p className="text-xs sm:text-sm text-gray-600">
+              {(selectedDepartment !== 'all' && departments.find(d => d.id === selectedDepartment)?.name) ||
+                'Profissionais escalados'}
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
