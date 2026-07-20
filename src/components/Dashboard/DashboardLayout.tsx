@@ -173,6 +173,17 @@ const ADMIN_ONLY = new Set([
   'fiscal-exports',
 ]);
 
+// Itens escondidos da sidebar (foco na estratégia de escala por setor).
+// Só somem do menu — rotas e dados continuam existindo. Para reexibir, remova daqui.
+const HIDDEN_ITEMS = new Set([
+  // REP-P (Ponto) inteiro
+  'timesheet-clock', 'punch-mirror', 'punch-adjustments', 'hour-bank', 'fiscal-exports', 'establishments',
+  // Tabelas (mantém Setores)
+  'categories', 'companies',
+  // Administração (mantém Usuários)
+  'history', 'reports',
+]);
+
 const GROUP_ICONS: Record<string, typeof Calendar> = {
   schedule: Calendar,
   'rep-p': Shield,
@@ -297,6 +308,7 @@ export default function DashboardLayout({
   const visibleItems = useMemo(() => {
     if (permissionsLoading) return [];
     return MENU_ITEMS.filter(item => {
+      if (HIDDEN_ITEMS.has(item.id)) return false;
       if (item.onlyForRole && item.onlyForRole !== roleName) return false;
       if (item.hiddenForRoles && roleName && item.hiddenForRoles.includes(roleName)) return false;
       if (ADMIN_ONLY.has(item.id)) return isAdmin();

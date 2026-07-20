@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { getCurrentSetorId } from '../../lib/setorContext';
 import CreateProfessionalModal from './CreateProfessionalModal';
 import EditProfessionalModal from './EditProfessionalModal';
 import { TableSkeleton } from '../Common/Skeleton';
@@ -100,7 +101,8 @@ export default function ProfessionalsView() {
   // o usuário clicar no filtro "Inativos".
   const [filterActive, setFilterActive] = useState<boolean | null>(true);
   const [filterCategory, setFilterCategory] = useState<string>('');
-  const [filterDepartment, setFilterDepartment] = useState<string>('');
+  // Inicia filtrado no setor do contexto fixo (setorContext).
+  const [filterDepartment, setFilterDepartment] = useState<string>(getCurrentSetorId() ?? '');
   const [filterCompany, setFilterCompany] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);

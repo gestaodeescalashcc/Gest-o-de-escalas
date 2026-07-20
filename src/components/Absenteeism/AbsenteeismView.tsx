@@ -13,6 +13,7 @@ import { TableSkeleton } from '../Common/Skeleton';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import CreateAbsenceModal from './CreateAbsenceModal';
 import { usePermissions } from '../../hooks/usePermissions';
+import { getCurrentSetorId } from '../../lib/setorContext';
 
 export interface AbsenceReason {
   id: string;
@@ -85,7 +86,7 @@ export default function AbsenteeismView() {
 
   // Filters
   const [search, setSearch] = useState('');
-  const [filterDept, setFilterDept] = useState('');
+  const [filterDept, setFilterDept] = useState(getCurrentSetorId() ?? '');
   const [filterReason, setFilterReason] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
   const [filterJustified, setFilterJustified] = useState<'all' | 'yes' | 'no'>('all');
