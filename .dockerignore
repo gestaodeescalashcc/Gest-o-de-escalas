@@ -1,0 +1,16 @@
+node_modules
+dist
+dist-ssr
+.git
+.gitignore
+.env.local
+.env.*.local
+.vercel
+.claude
+supabase
+# arquivos de dados/scripts na raiz (não entram no build do frontend)
+/*.md
+/*.xlsx
+/*.csv
+/*.sql
+/_*
