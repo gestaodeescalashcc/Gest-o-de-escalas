@@ -26,3 +26,6 @@ dist-ssr
 .claude/
 supabase/.temp/
 .mcp.json
+
+# Handoff/briefing local (contém senhas) — não versionar
+HANDOFF-CLAUDE.md
