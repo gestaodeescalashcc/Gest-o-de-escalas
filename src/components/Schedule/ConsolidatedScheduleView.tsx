@@ -41,6 +41,7 @@ interface Shift {
   original_shift_type?: string | null;
   original_start_time?: string | null;
   original_end_time?: string | null;
+  original_professional_id?: string | null;
   published_at?: string | null;
   company_id?: string | null;
   original_company_id?: string | null;
@@ -302,24 +303,38 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   const canReopenPlanning =
     isPublished && (isAdmin() || (canUpdate('schedules') && isCoordOfSchedule));
 
+  // Dono "efetivo" do shift para fins de agrupamento/totais, de acordo com o
+  // modo de visualização atual:
+  // - Planejada CONGELADA (publicada): usa o dono do snapshot (original_professional_id).
+  //   Sem isso, uma troca aprovada DEPOIS da publicação "rouba" retroativamente
+  //   o plantão da grade e dos totais da Planejada do profissional original.
+  // - Troca/Realizada (ou rascunho ainda não publicado): usa o dono corrente.
+  const getEffectiveOwnerId = (shift: { professional_id: string | null; original_professional_id?: string | null }): string | null => {
+    if (viewMode === 'planejada' && isPublished) {
+      return shift.original_professional_id || null;
+    }
+    return shift.professional_id;
+  };
+
   // Cache armazena ARRAY de shifts por profissional/dia — permite plantão duplo
   // (ex: SD + SN no mesmo dia quando alguém cobre depois do próprio plantão).
   const shiftsCache = useMemo(() => {
     const cache = new Map<string, Map<string, Shift[]>>();
 
     shifts.forEach(shift => {
-      if (!shift.professional_id) return;
-      if (!cache.has(shift.professional_id)) {
-        cache.set(shift.professional_id, new Map());
+      const ownerId = getEffectiveOwnerId(shift);
+      if (!ownerId) return;
+      if (!cache.has(ownerId)) {
+        cache.set(ownerId, new Map());
       }
-      const dayMap = cache.get(shift.professional_id)!;
+      const dayMap = cache.get(ownerId)!;
       const arr = dayMap.get(shift.shift_date) || [];
       arr.push(shift);
       dayMap.set(shift.shift_date, arr);
     });
 
     return cache;
-  }, [shifts]);
+  }, [shifts, viewMode, isPublished]);
 
   // Helper: retorna o shift_type "efetivo" do shift de acordo com o modo atual
   // de visualização. Crucial para totais (horas/dias) baterem com a grade.
@@ -337,7 +352,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   const totalHoursCache = useMemo(() => {
     const cache = new Map<string, number>();
     professionals.forEach(prof => {
-      const professionalShifts = shifts.filter(s => s.professional_id === prof.id);
+      const professionalShifts = shifts.filter(s => getEffectiveOwnerId(s) === prof.id);
       let totalHours = 0;
       professionalShifts.forEach(shift => {
         const name = getEffectiveShiftType(shift);
@@ -362,7 +377,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
       // mesmo dia conta como 1 dia trabalhado, não 2.
       const uniqueWorkDates = new Set<string>();
       shifts.forEach(s => {
-        if (s.professional_id !== prof.id) return;
+        if (getEffectiveOwnerId(s) !== prof.id) return;
         const name = getEffectiveShiftType(s);
         if (!name) return;
         if (NON_WORK_TYPES.has(name)) return;
@@ -667,7 +682,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
           .eq('professionals.active', true),
         supabase
           .from('shifts')
-          .select('id, professional_id, shift_date, shift_type, start_time, end_time, original_shift_type, original_start_time, original_end_time, published_at, company_id, original_company_id, deleted_in_realizada_at')
+          .select('id, professional_id, shift_date, shift_type, start_time, end_time, original_shift_type, original_start_time, original_end_time, original_professional_id, published_at, company_id, original_company_id, deleted_in_realizada_at')
           .eq('schedule_id', selectedSchedule)
           .gte('shift_date', startDate)
           .lte('shift_date', endDate)
@@ -710,8 +725,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
 
         const shiftsArr = shiftsData.data ?? [];
         setShifts(shiftsArr);
+        // Inclui tanto o dono corrente quanto o dono original (snapshot) do plantão
+        // — um profissional cujo plantão foi todo trocado após a publicação ainda
+        // precisa aparecer como linha na grade da Planejada.
         const profsWithShifts = new Set(
-          shiftsArr.map(s => s.professional_id).filter((id): id is string => !!id)
+          shiftsArr
+            .flatMap(s => [s.professional_id, (s as any).original_professional_id])
+            .filter((id): id is string => !!id)
         );
         const linkedProfIds = new Set(((linksData?.data ?? []) as any[]).map(l => l.professional_id));
 
@@ -1468,39 +1488,37 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
       }
       const targetShift = live(trocaTargetProf);
 
-      // Aplica a troca nos campos vivos: o plantão de origem passa ao profissional alvo.
-      const { error: e1 } = await supabase
-        .from('shifts')
-        .update({ professional_id: trocaTargetProf } as any)
-        .eq('id', reqShift.id);
-      if (e1) { toast.error('Erro ao trocar: ' + e1.message); return; }
-
+      // Aplica a troca de forma ATÔMICA: uma única operação no banco, sem
+      // updates sequenciais separados (que deixavam a troca pela metade se o
+      // 2º update falhasse). A propagação para `shifts` é garantida pelo
+      // trigger trg_propagate_shift_swap_approval em shift_swaps — não
+      // depende do client fazer os 2 updates certinho.
       if (targetShift) {
-        const { error: e2 } = await supabase
-          .from('shifts')
-          .update({ professional_id: selectedCell.profId } as any)
-          .eq('id', targetShift.id);
-        if (e2) { toast.error('Erro ao trocar (alvo): ' + e2.message); return; }
-      }
-
-      // Registra a troca (status Aprovado — aplicada diretamente pela gestão).
-      const { error: e3 } = await supabase
-        .from('shift_swaps')
-        .insert({
-          original_shift_id: reqShift.id,
-          offered_shift_id: targetShift?.id ?? null,
-          requesting_professional_id: selectedCell.profId,
-          target_professional_id: trocaTargetProf,
-          reason: 'Troca aplicada pela gestão',
-          status: 'Aprovado',
+        // Troca recíproca: RPC atômica já usada pela tela de aprovação de trocas.
+        const { error } = await supabase.rpc('create_and_apply_swap', {
+          p_original_shift_id: reqShift.id,
+          p_offered_shift_id: targetShift.id,
+          p_requesting_professional_id: selectedCell.profId,
+          p_target_professional_id: trocaTargetProf,
+          p_reason: 'Troca aplicada pela gestão',
         } as any);
-      if (e3) {
-        // Troca já aplicada nos shifts; só o registro falhou. Avisa mas não reverte.
-        console.error('Erro ao registrar shift_swap:', e3);
-        toast.warning('Troca aplicada, mas o registro do histórico falhou.');
+        if (error) { toast.error('Erro ao trocar: ' + error.message); return; }
       } else {
-        toast.success('Troca aplicada e registrada.');
+        // Cessão simples (sem plantão do alvo nesse dia): registra já Aprovada;
+        // o trigger de propagação move o plantão para o profissional alvo.
+        const { error } = await supabase
+          .from('shift_swaps')
+          .insert({
+            original_shift_id: reqShift.id,
+            offered_shift_id: null,
+            requesting_professional_id: selectedCell.profId,
+            target_professional_id: trocaTargetProf,
+            reason: 'Troca aplicada pela gestão',
+            status: 'Aprovado',
+          } as any);
+        if (error) { toast.error('Erro ao trocar: ' + error.message); return; }
       }
+      toast.success('Troca aplicada e registrada.');
 
       setHasChanges(true);
       setShowQuickMenu(false);
