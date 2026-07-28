@@ -6,7 +6,6 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { setCurrentSetor } from '../../lib/setorContext';
 import CreateScheduleModal from './CreateScheduleModal';
 import AutoFillModal, { ScaleConfig } from './AutoFillModal';
-import { exportScheduleToExcel } from '../../utils/excelExport';
 import { SHIFT_TYPES } from '../../lib/shiftTypes';
 import ConfirmDialog from '../Common/ConfirmDialog';
 import ToastContainer from '../Common/ToastContainer';
@@ -1685,25 +1684,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
         }
       }
 
-      let updateErrors = 0;
-      for (const shift of shiftsToUpdate) {
+      if (shiftsToUpdate.length > 0) {
         const { error } = await supabase
           .from('shifts')
           .update({
-            shift_type: shift.shift_type,
-            start_time: shift.start_time,
-            end_time: shift.end_time,
+            shift_type: shiftType.name,
+            start_time: shiftType.start,
+            end_time: shiftType.end,
           })
-          .eq('id', shift.id);
+          .in('id', shiftsToUpdate.map(s => s.id));
 
         if (error) {
-          console.error('Erro ao atualizar turno:', error);
-          updateErrors++;
+          console.error('Erro ao atualizar turnos:', error);
+          toast.warning('Alguns turnos não puderam ser atualizados: ' + error.message);
         }
-      }
-
-      if (updateErrors > 0) {
-        toast.warning(`${updateErrors} turno(s) não puderam ser atualizados.`);
       }
 
       if (shiftsToInsert.length > 0) {
@@ -1767,25 +1761,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
         }
       }
 
-      let updateErrorsEven = 0;
-      for (const shift of shiftsToUpdate) {
+      if (shiftsToUpdate.length > 0) {
         const { error } = await supabase
           .from('shifts')
           .update({
-            shift_type: shift.shift_type,
-            start_time: shift.start_time,
-            end_time: shift.end_time,
+            shift_type: shiftType.name,
+            start_time: shiftType.start,
+            end_time: shiftType.end,
           })
-          .eq('id', shift.id);
+          .in('id', shiftsToUpdate.map(s => s.id));
 
         if (error) {
-          console.error('Erro ao atualizar turno:', error);
-          updateErrorsEven++;
+          console.error('Erro ao atualizar turnos:', error);
+          toast.warning('Alguns turnos não puderam ser atualizados: ' + error.message);
         }
-      }
-
-      if (updateErrorsEven > 0) {
-        toast.warning(`${updateErrorsEven} turno(s) não puderam ser atualizados.`);
       }
 
       if (shiftsToInsert.length > 0) {
@@ -1853,20 +1842,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
         }
       }
 
-      let updateErrors = 0;
-      for (const shift of shiftsToUpdate) {
+      if (shiftsToUpdate.length > 0) {
         const { error } = await supabase
           .from('shifts')
           .update({
-            shift_type: shift.shift_type,
-            start_time: shift.start_time,
-            end_time: shift.end_time,
+            shift_type: shiftType.name,
+            start_time: shiftType.start,
+            end_time: shiftType.end,
           })
-          .eq('id', shift.id);
-        if (error) updateErrors++;
-      }
-      if (updateErrors > 0) {
-        toast.warning(`${updateErrors} turno(s) não puderam ser atualizados.`);
+          .in('id', shiftsToUpdate.map(s => s.id));
+        if (error) {
+          console.error('Erro ao atualizar turnos:', error);
+          toast.warning('Alguns turnos não puderam ser atualizados: ' + error.message);
+        }
       }
 
       if (shiftsToInsert.length > 0) {
@@ -1927,25 +1915,20 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
         }
       }
 
-      let updateErrorsAll = 0;
-      for (const shift of shiftsToUpdate) {
+      if (shiftsToUpdate.length > 0) {
         const { error } = await supabase
           .from('shifts')
           .update({
-            shift_type: shift.shift_type,
-            start_time: shift.start_time,
-            end_time: shift.end_time,
+            shift_type: shiftType.name,
+            start_time: shiftType.start,
+            end_time: shiftType.end,
           })
-          .eq('id', shift.id);
+          .in('id', shiftsToUpdate.map(s => s.id));
 
         if (error) {
-          console.error('Erro ao atualizar turno:', error);
-          updateErrorsAll++;
+          console.error('Erro ao atualizar turnos:', error);
+          toast.warning('Alguns turnos não puderam ser atualizados: ' + error.message);
         }
-      }
-
-      if (updateErrorsAll > 0) {
-        toast.warning(`${updateErrorsAll} turno(s) não puderam ser atualizados.`);
       }
 
       if (shiftsToInsert.length > 0) {
@@ -2137,6 +2120,21 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
       const [year, month] = selectedMonth.split('-');
       const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
 
+      // Constrói TODAS as linhas do padrão em memória (sem await no loop de
+      // dias) e insere de uma vez por profissional — antes era 1 insert
+      // AWAITED por dia (até ~30 round-trips sequenciais por profissional).
+      const buildRow = (professionalId: string, date: string, shift: typeof SHIFT_TYPES[0]) => ({
+        professional_id: professionalId,
+        department_id: selectedDepartment,
+        schedule_id: selectedSchedule,
+        shift_date: date,
+        shift_type: shift.name,
+        start_time: shift.start,
+        end_time: shift.end,
+        status: 'Agendado',
+        created_by: user?.id,
+      });
+
       for (const config of configs) {
         const { professionalId, pattern, startDay } = config;
 
@@ -2151,10 +2149,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
           }
         }
 
+        const professional = professionals.find(p => p.id === professionalId);
+        const rowsToInsert: any[] = [];
+
         if (pattern === '12x36-day' || pattern === '12x36-night') {
           const shiftType = pattern === '12x36-day' ? 'SD' : 'SN';
           const shift = SHIFT_TYPES.find(st => st.code === shiftType)!;
-          const professional = professionals.find(p => p.id === professionalId);
           const contractedHours = professional?.contracted_hours_per_month || 180;
           let totalHours = 0;
 
@@ -2163,32 +2163,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
               console.warn(`Carga horária de ${professional?.full_name} seria excedida. Parando em ${totalHours}h de ${contractedHours}h contratadas.`);
               break;
             }
-
             const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
-
-            const { error: insertError } = await supabase
-              .from('shifts')
-              .insert({
-                professional_id: professionalId,
-                department_id: selectedDepartment,
-                schedule_id: selectedSchedule,
-                shift_date: date,
-                shift_type: shift.name,
-                start_time: shift.start,
-                end_time: shift.end,
-                status: 'Agendado',
-                created_by: user?.id,
-              });
-
-            if (insertError) {
-              console.error('Erro ao inserir turno:', insertError);
-            } else {
-              totalHours += shift.hours;
-            }
+            rowsToInsert.push(buildRow(professionalId, date, shift));
+            totalHours += shift.hours;
           }
         } else if (pattern === '24x48') {
           const shift24 = SHIFT_TYPES.find(st => st.code === 'P')!;
-          const professional = professionals.find(p => p.id === professionalId);
           const contractedHours = professional?.contracted_hours_per_month || 240;
           let totalHours = 0;
 
@@ -2197,30 +2177,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
               console.warn(`Carga horária de ${professional?.full_name} seria excedida. Parando em ${totalHours}h de ${contractedHours}h contratadas.`);
               break;
             }
-
             const date = `${year}-${month}-${day.toString().padStart(2, '0')}`;
-
-            const { error: insertError } = await supabase.from('shifts').insert({
-              professional_id: professionalId,
-              department_id: selectedDepartment,
-              schedule_id: selectedSchedule,
-              shift_date: date,
-              shift_type: shift24.name,
-              start_time: shift24.start,
-              end_time: shift24.end,
-              status: 'Agendado',
-              created_by: user?.id,
-            });
-
-            if (insertError) {
-              console.error('Erro ao inserir turno:', insertError);
-            } else {
-              totalHours += shift24.hours;
-            }
+            rowsToInsert.push(buildRow(professionalId, date, shift24));
+            totalHours += shift24.hours;
           }
         } else if (pattern === 'admin-morning') {
           const shiftM = SHIFT_TYPES.find(st => st.code === 'M')!;
-          const professional = professionals.find(p => p.id === professionalId);
           const contractedHours = professional?.contracted_hours_per_month || 120;
           let totalHours = 0;
 
@@ -2233,27 +2195,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 console.warn(`Carga horária de ${professional?.full_name} seria excedida. Parando em ${totalHours}h de ${contractedHours}h contratadas.`);
                 break;
               }
-
-              const { error: insertError } = await supabase.from('shifts').insert({
-                professional_id: professionalId,
-                department_id: selectedDepartment,
-                schedule_id: selectedSchedule,
-                shift_date: date,
-                shift_type: shiftM.name,
-                start_time: shiftM.start,
-                end_time: shiftM.end,
-                status: 'Agendado',
-                created_by: user?.id,
-              });
-
-              if (!insertError) {
-                totalHours += shiftM.hours;
-              }
+              rowsToInsert.push(buildRow(professionalId, date, shiftM));
+              totalHours += shiftM.hours;
             }
           }
         } else if (pattern === 'admin-afternoon') {
           const shiftT = SHIFT_TYPES.find(st => st.code === 'T')!;
-          const professional = professionals.find(p => p.id === professionalId);
           const contractedHours = professional?.contracted_hours_per_month || 120;
           let totalHours = 0;
 
@@ -2266,27 +2213,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 console.warn(`Carga horária de ${professional?.full_name} seria excedida. Parando em ${totalHours}h de ${contractedHours}h contratadas.`);
                 break;
               }
-
-              const { error: insertError } = await supabase.from('shifts').insert({
-                professional_id: professionalId,
-                department_id: selectedDepartment,
-                schedule_id: selectedSchedule,
-                shift_date: date,
-                shift_type: shiftT.name,
-                start_time: shiftT.start,
-                end_time: shiftT.end,
-                status: 'Agendado',
-                created_by: user?.id,
-              });
-
-              if (!insertError) {
-                totalHours += shiftT.hours;
-              }
+              rowsToInsert.push(buildRow(professionalId, date, shiftT));
+              totalHours += shiftT.hours;
             }
           }
         } else if (pattern === 'admin-full') {
           const shiftMT = SHIFT_TYPES.find(st => st.code === 'MT')!;
-          const professional = professionals.find(p => p.id === professionalId);
           const contractedHours = professional?.contracted_hours_per_month || 200;
           let totalHours = 0;
 
@@ -2299,23 +2231,17 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 console.warn(`Carga horária de ${professional?.full_name} seria excedida. Parando em ${totalHours}h de ${contractedHours}h contratadas.`);
                 break;
               }
-
-              const { error: insertError } = await supabase.from('shifts').insert({
-                professional_id: professionalId,
-                department_id: selectedDepartment,
-                schedule_id: selectedSchedule,
-                shift_date: date,
-                shift_type: shiftMT.name,
-                start_time: shiftMT.start,
-                end_time: shiftMT.end,
-                status: 'Agendado',
-                created_by: user?.id,
-              });
-
-              if (!insertError) {
-                totalHours += shiftMT.hours;
-              }
+              rowsToInsert.push(buildRow(professionalId, date, shiftMT));
+              totalHours += shiftMT.hours;
             }
+          }
+        }
+
+        if (rowsToInsert.length > 0) {
+          const { error: insertError } = await supabase.from('shifts').insert(rowsToInsert);
+          if (insertError) {
+            console.error('Erro ao inserir turnos:', insertError);
+            toast.error(`Erro ao inserir turnos de ${professional?.full_name}: ${insertError.message}`);
           }
         }
       }
@@ -2864,6 +2790,9 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     const suffix = viewMode === 'realizada' ? ' (Realizada)' : '';
 
     try {
+      // Import dinâmico: exceljs/jszip só entram no bundle quando o botão
+      // de exportar é de fato clicado, não no carregamento inicial da grade.
+      const { exportScheduleToExcel } = await import('../../utils/excelExport');
       await exportScheduleToExcel({
         scheduleName: cs.name + suffix,
         departmentName: dept?.name || '',
@@ -3597,13 +3526,13 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                             // Código da PLANEJADA (snapshot original) para comparar com o vigente.
                             // Em troca/realizada destacamos células que divergem da planejada.
                             const snapshotCode = getOriginalShiftCode(prof.id, day);
+                            const cellAbsence = findAbsenceForCell(prof.id, day);
                             const cellAbsenceForMark = (viewMode === 'troca' || viewMode === 'realizada')
-                              ? findAbsenceForCell(prof.id, day) : null;
+                              ? cellAbsence : null;
                             const isChangedFromPlanned =
                               (viewMode === 'troca' || viewMode === 'realizada') &&
                               !!snapshotCode &&
                               (code !== snapshotCode || !!cellAbsenceForMark);
-                            const cellAbsence = findAbsenceForCell(prof.id, day);
                             // Indicador visual de divergência DESATIVADO — a Planejada
                             // e a Realizada são vistas independentes e INTACTAS. Sem
                             // bordas vermelhas, sem pontos de aviso. Quem quiser ver

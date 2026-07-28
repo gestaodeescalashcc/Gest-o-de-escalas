@@ -4,7 +4,6 @@ import { X, User, Camera, CheckCircle, AlertCircle, Loader2 } from 'lucide-react
 import { supabase } from '../../lib/supabase';
 import { usePermissions } from '../../hooks/usePermissions';
 import FaceCaptureModal from '../FacialRecognition/FaceCaptureModal';
-import { extractFaceDescriptor, descriptorToArray, loadModels } from '../../services/faceRecognition';
 import { useToast } from '../../hooks/useToast';
 import ToastContainer from '../Common/ToastContainer';
 
@@ -120,6 +119,9 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
 
   const initModels = async () => {
     try {
+      // Import dinâmico: face-api.js (~640kB) só entra no bundle quando este
+      // modal é de fato aberto, não no carregamento inicial do app inteiro.
+      const { loadModels } = await import('../../services/faceRecognition');
       await loadModels();
       setModelsReady(true);
     } catch (err) {
@@ -204,6 +206,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
 
     setTimeout(async () => {
       try {
+        const { loadModels, extractFaceDescriptor, descriptorToArray } = await import('../../services/faceRecognition');
         if (!modelsReady) {
           await loadModels();
           setModelsReady(true);
