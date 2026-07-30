@@ -1050,7 +1050,7 @@ async function exportGeneric(data: ExportData) {
   const rawBuffer = await workbook.xlsx.writeBuffer();
   const outBuffer = await sanitizeXlsxBuffer(rawBuffer as ArrayBuffer);
   const filename = `${sanitizeFilename(data.scheduleName)}.xlsx`;
-  downloadBuffer(outBuffer, filename);
+  return { buffer: outBuffer, filename };
 }
 
 /**
@@ -1065,7 +1065,19 @@ export async function exportScheduleToExcel(data: ExportData): Promise<void> {
   // bagunçadas após inserir os dados. Agora montamos o arquivo do zero,
   // com layout consistente, dias trabalhados calculados de fato, tinta
   // de SAB/DOM em toda a coluna e linhas de total por código.
-  await exportGeneric(data);
+  const { buffer, filename } = await exportGeneric(data);
+  downloadBuffer(buffer, filename);
+}
+
+/**
+ * Mesma geração de exportScheduleToExcel, mas retorna o buffer em vez de
+ * baixar — usado pra exportação em lote (ScheduleView), que empacota
+ * vários arquivos num único .zip em vez de disparar N downloads.
+ */
+export async function generateScheduleExcelBuffer(
+  data: ExportData
+): Promise<{ buffer: ArrayBuffer; filename: string }> {
+  return exportGeneric(data);
 }
 
 // Função tryExportFromTemplate ainda existe acima mas não é mais chamada,

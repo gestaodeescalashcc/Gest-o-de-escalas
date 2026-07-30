@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, AlertTriangle, FileSpreadsheet, ArrowLeft } from 'lucide-react';
+import { Plus, Search, Calendar, Eye, Trash2, FileText, Filter, Building2, Clock, AlertTriangle, FileSpreadsheet, ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { setCurrentSetor } from '../../lib/setorContext';
@@ -69,6 +69,7 @@ export default function ScheduleView({ onNavigateToSchedule, initialDepartment }
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [deleteAllConfirmText, setDeleteAllConfirmText] = useState('');
   const [deletingAll, setDeletingAll] = useState(false);
+  const [exportingBatch, setExportingBatch] = useState(false);
   const { toasts, toast, removeToast } = useToast();
   const { isAdmin, allowedDepartments } = usePermissions();
   const navigate = useNavigate();
@@ -258,6 +259,114 @@ export default function ScheduleView({ onNavigateToSchedule, initialDepartment }
     }
   };
 
+  // Exportação em lote: gera 1 .xlsx por escala e empacota tudo num único
+  // .zip (evita disparar N downloads separados do navegador). Usa o código
+  // corrente do plantão (shift_type) — não aplica overlay de ausências nem
+  // distingue Planejada/Realizada; é um snapshot pra arquivo/backup, não a
+  // visão operacional do dia a dia (essa já existe na grade, uma de cada vez).
+  const exportSchedulesBatch = async (schedulesToExport: MonthlySchedule[]) => {
+    if (schedulesToExport.length === 0) {
+      toast.error('Nenhuma escala para exportar.');
+      return;
+    }
+    setExportingBatch(true);
+    try {
+      const [{ generateScheduleExcelBuffer }, { getShiftByName }, JSZipModule] = await Promise.all([
+        import('../../utils/excelExport'),
+        import('../../lib/shiftTypes'),
+        import('jszip'),
+      ]);
+      const JSZip = JSZipModule.default;
+      const zip = new JSZip();
+      let failCount = 0;
+
+      for (const schedule of schedulesToExport) {
+        try {
+          const monthStr = schedule.month.slice(0, 7);
+          const { data: shiftsData, error: shiftsErr } = await supabase
+            .from('shifts')
+            .select('professional_id, shift_date, shift_type, deleted_in_realizada_at')
+            .eq('schedule_id', schedule.id);
+          if (shiftsErr) throw shiftsErr;
+
+          const profIds = Array.from(new Set((shiftsData ?? []).map((s: any) => s.professional_id).filter(Boolean)));
+          if (profIds.length === 0) continue;
+
+          const { data: profsData, error: profsErr } = await supabase
+            .from('professionals')
+            .select('id, full_name, registration_number, coren, contracted_hours_per_month, category:professional_categories(name)')
+            .in('id', profIds);
+          if (profsErr) throw profsErr;
+
+          const shiftsByProf = new Map<string, Map<number, string>>();
+          const codesByProfDay = new Map<string, string[]>();
+          (shiftsData ?? []).forEach((s: any) => {
+            if (s.deleted_in_realizada_at) return;
+            const shiftType = getShiftByName(s.shift_type);
+            if (!shiftType) return;
+            const day = parseInt(s.shift_date.slice(8, 10), 10);
+            const key = `${s.professional_id}|${day}`;
+            const arr = codesByProfDay.get(key) ?? [];
+            arr.push(shiftType.code);
+            codesByProfDay.set(key, arr);
+          });
+          codesByProfDay.forEach((codes, key) => {
+            const [profId, dayStr] = key.split('|');
+            const day = parseInt(dayStr, 10);
+            let code = codes[0] || '';
+            if (codes.length === 2) {
+              const set = new Set(codes);
+              if (set.has('SD') && set.has('SN')) code = 'P';
+              else if (set.has('M') && set.has('T')) code = 'MT';
+            }
+            if (!shiftsByProf.has(profId)) shiftsByProf.set(profId, new Map());
+            if (code) shiftsByProf.get(profId)!.set(day, code);
+          });
+
+          const { buffer, filename } = await generateScheduleExcelBuffer({
+            scheduleName: schedule.name,
+            departmentName: schedule.department?.name || '',
+            month: monthStr,
+            professionals: (profsData ?? []).map((p: any) => ({
+              id: p.id,
+              full_name: p.full_name,
+              registration_number: p.registration_number,
+              coren: p.coren,
+              category_name: p.category?.name,
+              contracted_hours: p.contracted_hours_per_month,
+            })),
+            shiftsByProf,
+          });
+          zip.file(filename, buffer);
+        } catch (err) {
+          console.error(`Erro ao exportar escala "${schedule.name}":`, err);
+          failCount++;
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `escalas_${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      if (failCount > 0) {
+        toast.warning(`${schedulesToExport.length - failCount} escala(s) exportada(s); ${failCount} falharam.`);
+      } else {
+        toast.success(`${schedulesToExport.length} escala(s) exportada(s) em um único .zip.`);
+      }
+    } catch (err: any) {
+      console.error('Erro ao exportar escalas em lote:', err);
+      toast.error('Erro ao exportar escalas: ' + (err?.message ?? 'desconhecido'));
+    } finally {
+      setExportingBatch(false);
+    }
+  };
+
   const handleViewSchedule = (scheduleId: string) => {
     if (onNavigateToSchedule) {
       onNavigateToSchedule(scheduleId);
@@ -325,6 +434,25 @@ export default function ScheduleView({ onNavigateToSchedule, initialDepartment }
         <div className="flex gap-2 sm:gap-3">
           {viewMode === 'schedules' && (
             <>
+              <button
+                onClick={() => exportSchedulesBatch(filteredSchedules)}
+                disabled={exportingBatch || filteredSchedules.length === 0}
+                className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base disabled:opacity-50"
+                title="Baixar as escalas filtradas (respeitando os filtros de setor/mês acima) em um único .zip"
+              >
+                {exportingBatch ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                <span className="hidden sm:inline">Baixar com filtros</span>
+                <span className="sm:hidden">Baixar</span>
+              </button>
+              <button
+                onClick={() => exportSchedulesBatch(schedules)}
+                disabled={exportingBatch || schedules.length === 0}
+                className="hidden md:flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base disabled:opacity-50"
+                title="Baixar TODAS as escalas (ignora os filtros) em um único .zip"
+              >
+                {exportingBatch ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                Baixar todas as escalas
+              </button>
               <button
                 onClick={() => setShowImportModal(true)}
                 className="flex items-center gap-2 bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50 px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base"
