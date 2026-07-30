@@ -1083,3 +1083,63 @@ export async function generateScheduleExcelBuffer(
 // Função tryExportFromTemplate ainda existe acima mas não é mais chamada,
 // mantida temporariamente caso queiramos reativar com outro template.
 void tryExportFromTemplate;
+
+export interface ProfessionalExportRow {
+  full_name: string;
+  registration_number: string | null;
+  category_name?: string;
+  department_name?: string;
+  company_name?: string | null;
+  cpf?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  hire_date?: string | null;
+  contracted_hours_per_month?: number | null;
+  active: boolean;
+}
+
+/**
+ * Exporta a lista de funcionários (já filtrada pela tela) em Excel.
+ * Baixa direto — lista única, sem necessidade de empacotar em .zip.
+ */
+export async function exportProfessionalsToExcel(rows: ProfessionalExportRow[]): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'MedScale';
+  workbook.created = new Date();
+  const ws = workbook.addWorksheet('Funcionários');
+
+  const headers = [
+    'Nome', 'Matrícula', 'Categoria', 'Setor', 'Empresa', 'CPF', 'Telefone', 'Email',
+    'Data de Admissão', 'Carga Horária Mensal', 'Status',
+  ];
+  const headerRow = ws.addRow(headers);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow.eachCell(cell => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+
+  rows.forEach(p => {
+    ws.addRow([
+      p.full_name,
+      p.registration_number || '',
+      p.category_name || '',
+      p.department_name || '',
+      p.company_name || '',
+      p.cpf || '',
+      p.phone || '',
+      p.email || '',
+      p.hire_date ? new Date(p.hire_date + 'T00:00:00').toLocaleDateString('pt-BR') : '',
+      p.contracted_hours_per_month ?? '',
+      p.active ? 'Ativo' : 'Inativo',
+    ]);
+  });
+
+  ws.columns.forEach(col => { col.width = 20; });
+  ws.getColumn(1).width = 32;
+
+  const rawBuffer = await workbook.xlsx.writeBuffer();
+  const outBuffer = await sanitizeXlsxBuffer(rawBuffer as ArrayBuffer);
+  const filename = `funcionarios_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  downloadBuffer(outBuffer, filename);
+}

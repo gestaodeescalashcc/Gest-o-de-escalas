@@ -110,7 +110,10 @@ export default function ProfessionalsView() {
   // Inicia filtrado no setor do contexto fixo (setorContext).
   const [filterDepartment, setFilterDepartment] = useState<string>(getCurrentSetorId() ?? '');
   const [filterCompany, setFilterCompany] = useState<string>('');
+  const [filterHireFrom, setFilterHireFrom] = useState<string>('');
+  const [filterHireTo, setFilterHireTo] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(() => {
     try {
@@ -137,7 +140,7 @@ export default function ProfessionalsView() {
   // Reset to first page when any filter changes
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, filterActive, filterCategory, filterDepartment, filterCompany]);
+  }, [searchTerm, filterActive, filterCategory, filterDepartment, filterCompany, filterHireFrom, filterHireTo]);
 
   const loadData = async () => {
     setLoading(true);
@@ -255,6 +258,35 @@ export default function ProfessionalsView() {
     setFilterCategory('');
     setFilterDepartment('');
     setFilterCompany('');
+    setFilterHireFrom('');
+    setFilterHireTo('');
+  };
+
+  const handleExportProfessionals = async () => {
+    setExporting(true);
+    try {
+      const { exportProfessionalsToExcel } = await import('../../utils/excelExport');
+      await exportProfessionalsToExcel(
+        filteredProfessionals.map(p => ({
+          full_name: p.full_name,
+          registration_number: p.registration_number,
+          category_name: p.category?.name,
+          department_name: p.department?.name,
+          company_name: p.company?.name,
+          cpf: p.cpf,
+          phone: p.phone,
+          email: p.email,
+          hire_date: p.hire_date,
+          contracted_hours_per_month: p.contracted_hours_per_month ?? p.contracted_hours,
+          active: p.active,
+        }))
+      );
+      toast.success(`${filteredProfessionals.length} funcionário(s) exportado(s).`);
+    } catch (err: any) {
+      toast.error('Erro ao exportar: ' + (err?.message ?? 'desconhecido'));
+    } finally {
+      setExporting(false);
+    }
   };
 
   const filteredProfessionals = useMemo(() => {
@@ -275,10 +307,13 @@ export default function ProfessionalsView() {
       const matchesDepartment = !filterDepartment || prof.department_id === filterDepartment;
       const matchesCompany =
         !filterCompany || (prof.company && prof.company.id === filterCompany);
+      const matchesHireFrom = !filterHireFrom || (!!prof.hire_date && prof.hire_date >= filterHireFrom);
+      const matchesHireTo = !filterHireTo || (!!prof.hire_date && prof.hire_date <= filterHireTo);
 
-      return matchesSearch && matchesActive && matchesCategory && matchesDepartment && matchesCompany;
+      return matchesSearch && matchesActive && matchesCategory && matchesDepartment && matchesCompany
+        && matchesHireFrom && matchesHireTo;
     });
-  }, [professionals, searchTerm, filterActive, filterCategory, filterDepartment, filterCompany]);
+  }, [professionals, searchTerm, filterActive, filterCategory, filterDepartment, filterCompany, filterHireFrom, filterHireTo]);
 
   const paginatedProfessionals = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -290,6 +325,8 @@ export default function ProfessionalsView() {
     filterCategory,
     filterDepartment,
     filterCompany,
+    filterHireFrom,
+    filterHireTo,
   ].filter(Boolean).length;
 
   if (error) {
@@ -331,16 +368,30 @@ export default function ProfessionalsView() {
             )}
           </p>
         </div>
-        {canCreate('professionals') && (
-          <button
-            type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <Plus className="w-5 h-5" aria-hidden="true" />
-            Novo Profissional
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {canManageProfessionals && (
+            <button
+              type="button"
+              onClick={handleExportProfessionals}
+              disabled={exporting || filteredProfessionals.length === 0}
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg shadow-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+              title="Exportar a lista filtrada em Excel"
+            >
+              <FileText className="w-5 h-5" aria-hidden="true" />
+              {exporting ? 'Exportando...' : 'Exportar'}
+            </button>
+          )}
+          {canCreate('professionals') && (
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <Plus className="w-5 h-5" aria-hidden="true" />
+              Novo Profissional
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -507,6 +558,29 @@ export default function ProfessionalsView() {
                     ))}
                   </select>
                 </div>
+
+                {canManageProfessionals && (
+                  <div className="md:col-span-2 lg:col-span-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Data de admissão
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={filterHireFrom}
+                        onChange={e => setFilterHireFrom(e.target.value)}
+                        className="min-h-[40px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+                      />
+                      <span className="text-sm text-gray-500">até</span>
+                      <input
+                        type="date"
+                        value={filterHireTo}
+                        onChange={e => setFilterHireTo(e.target.value)}
+                        className="min-h-[40px] px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
