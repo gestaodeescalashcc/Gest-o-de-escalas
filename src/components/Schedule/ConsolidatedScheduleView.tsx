@@ -1107,6 +1107,16 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   const handleShiftSelect = async (shiftType: typeof SHIFT_TYPES[0]) => {
     if (!selectedCell) return;
 
+    // Matrícula obrigatória: não lança plantão pra profissional sem matrícula.
+    const profForShift = professionals.find(p => p.id === selectedCell.profId);
+    if (!profForShift?.registration_number) {
+      toast.error(
+        `${profForShift?.full_name || 'Este profissional'} não tem matrícula cadastrada. Cadastre a matrícula antes de lançar o plantão.`
+      );
+      setShowQuickMenu(false);
+      return;
+    }
+
     try {
       const [year, month] = selectedMonth.split('-');
       const date = `${year}-${month}-${selectedCell.day.toString().padStart(2, '0')}`;

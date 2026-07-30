@@ -156,7 +156,17 @@ export default function ImportScheduleModal({ onClose, onSuccess }: ImportSchedu
         .filter(ip => importableProfs.some(m => m.row === ip.row))
         .reduce((acc, ip) => acc + ip.shifts.filter(s => s.resolvedName).length, 0)
     : 0;
-  const canImport = !!parsed && !!deptId && /^\d{4}-\d{2}$/.test(monthValue) && totalShifts > 0 && !importing;
+  // Matrícula obrigatória: bloqueia a importação se alguma linha importável
+  // (já casada ou marcada pra criar) não tiver matrícula.
+  const missingRegistration = importableProfs.filter(m => {
+    if (m.matchedId) {
+      const prof = professionals.find(p => p.id === m.matchedId);
+      return !prof?.registration_number;
+    }
+    return !m.registration;
+  });
+  const canImport = !!parsed && !!deptId && /^\d{4}-\d{2}$/.test(monthValue) && totalShifts > 0
+    && missingRegistration.length === 0 && !importing;
 
   const startImport = () => {
     if (existingScheduleId) setConfirmReplace(true);
@@ -166,6 +176,12 @@ export default function ImportScheduleModal({ onClose, onSuccess }: ImportSchedu
   const doImport = async () => {
     setConfirmReplace(false);
     if (!parsed || !deptId || !monthValue) return;
+    if (missingRegistration.length > 0) {
+      toast.error(
+        `Não é possível lançar a escala: ${missingRegistration.length} profissional(is) sem matrícula (${missingRegistration.map(m => m.name).join(', ')}). Preencha a matrícula na planilha ou no cadastro antes de importar.`
+      );
+      return;
+    }
     setImporting(true);
     try {
       const [yStr, mStr] = monthValue.split('-');
@@ -381,10 +397,16 @@ export default function ImportScheduleModal({ onClose, onSuccess }: ImportSchedu
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {matches.map(m => (
-                        <tr key={m.row}>
+                      {matches.map(m => {
+                        const isMissingRegistration = m.action !== 'skip' && missingRegistration.some(x => x.row === m.row);
+                        return (
+                        <tr key={m.row} className={isMissingRegistration ? 'bg-red-50' : undefined}>
                           <td className="px-3 py-2 text-gray-900">{m.name}</td>
-                          <td className="px-3 py-2 text-gray-500">{m.registration ?? '—'}</td>
+                          <td className={`px-3 py-2 ${isMissingRegistration ? 'text-red-700 font-medium' : 'text-gray-500'}`}>
+                            {m.matchedId
+                              ? (professionals.find(p => p.id === m.matchedId)?.registration_number ?? 'SEM MATRÍCULA')
+                              : (m.registration ?? 'SEM MATRÍCULA')}
+                          </td>
                           <td className="px-3 py-2 text-center text-gray-600">{m.shiftCount}</td>
                           <td className="px-3 py-2">
                             {m.matchedId ? (
@@ -403,10 +425,19 @@ export default function ImportScheduleModal({ onClose, onSuccess }: ImportSchedu
                             )}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+
+                {missingRegistration.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-800">
+                    <strong>Matrícula obrigatória:</strong> {missingRegistration.length} profissional(is) sem
+                    matrícula — corrija na planilha ou no cadastro antes de importar:{' '}
+                    {missingRegistration.map(m => m.name).join(', ')}.
+                  </div>
+                )}
 
                 {parsed.unknownCodes.length > 0 && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-800">
