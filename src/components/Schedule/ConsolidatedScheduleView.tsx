@@ -2901,7 +2901,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
       tint: 'bg-blue-50 text-blue-700 border-blue-200',
     },
     troca: {
-      label: 'TROCA E REMANEJAMENTO',
+      label: 'ALTERAÇÕES',
       cls: 'text-indigo-700',
       Icon: Repeat,
       accent: 'from-indigo-500 to-indigo-700',
@@ -2925,7 +2925,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
         - Faixa colorida grossa (âncora do modo)
         - Título grande + subtítulo curto (o que a página faz, uma linha)
         - Toolbar à direita, alinhada com o título
-        A navegação entre camadas vive na sidebar (Planejamento / Trocas & Remanejamento
+        A navegação entre camadas vive na sidebar (Planejamento / Alterações
         / Realizada), então NÃO há segmented control aqui. Isso evita a impressão de
         "abas na mesma tela" que confundia com trocas e ausências.
       */}
@@ -3962,12 +3962,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
               {/* Header informativo — explica o que cada modo permite */}
               {viewMode === 'planejada' && isPublished && (
                 <div className="px-3 py-1.5 mx-2 mb-1 bg-blue-50 rounded text-xs text-blue-700">
-                  Planejada publicada — somente leitura. Use "Troca e Remanejamento" ou "Realizada" para mudanças.
+                  Planejada publicada — somente leitura. Use "Alterações" ou "Realizada" para mudanças.
                 </div>
               )}
               {viewMode === 'troca' && (
                 <div className="px-3 py-1.5 mx-2 mb-1 bg-indigo-50 rounded text-xs text-indigo-700">
-                  Troca e Remanejamento — aplique troca, remanejamento ou liberação por dobra.
+                  Alterações — aplique troca, remanejamento ou liberação por dobra.
                 </div>
               )}
               {viewMode === 'realizada' && (
@@ -4283,7 +4283,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
               {viewMode === 'planejada' && isPublished && (
                 <div className="px-3 py-2 text-xs text-gray-500">
                   Nada a fazer aqui na Planejada. Para mudar plantões deste mês,
-                  use <span className="font-semibold text-indigo-700">Trocas &amp; Remanejamento</span>;
+                  use <span className="font-semibold text-indigo-700">Alterações</span>;
                   para lançar faltas, use <span className="font-semibold text-emerald-700">Realizada</span>.
                 </div>
               )}

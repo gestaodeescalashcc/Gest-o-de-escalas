@@ -135,7 +135,7 @@ const MENU_ITEMS: MenuItem[] = [
   // mas cada modo tem toolbar/popover próprios (ver ConsolidatedScheduleView).
   // A separação na sidebar é o que quebra a confusão visual — cada camada é uma "página".
   { id: 'schedule-planejada', path: '/escala?modo=planejada', label: 'Planejamento', icon: LayoutGrid, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'blue', scheduleMode: 'planejada', matches: matchScheduleMode('planejada'), keywords: 'escala planejada mês montagem' },
-  { id: 'schedule-troca', path: '/escala?modo=troca', label: 'Trocas & Remanejamento', icon: Repeat, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'indigo', scheduleMode: 'troca', matches: matchScheduleMode('troca'), keywords: 'troca remanejamento reatribuir plantão' },
+  { id: 'schedule-troca', path: '/escala?modo=troca', label: 'Alterações', icon: Repeat, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'indigo', scheduleMode: 'troca', matches: matchScheduleMode('troca'), keywords: 'troca remanejamento alteracoes reatribuir plantão' },
   { id: 'schedule-realizada', path: '/escala?modo=realizada', label: 'Realizada', icon: CheckCircle2, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'], accent: 'orange', scheduleMode: 'realizada', matches: matchScheduleMode('realizada'), keywords: 'realizada faltas atestados coberturas' },
   { id: 'daily', path: '/escala-diaria', label: 'Escala do Dia', icon: ClipboardList, module: 'schedules', group: 'schedule', hiddenForRoles: ['Médico'] },
   { id: 'professionals', path: '/profissionais', label: 'Profissionais', icon: Users, module: 'professionals', group: 'schedule', hiddenForRoles: ['Médico'] },
