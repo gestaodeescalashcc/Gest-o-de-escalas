@@ -22,12 +22,33 @@ interface EditProfessionalModalProps {
     phone: string | null;
     email: string | null;
     contracted_hours_per_month?: number;
+    active?: boolean;
     on_leave?: boolean;
     leave_reason?: string | null;
     leave_started_at?: string | null;
+    leave_end_date?: string | null;
+    cbo?: string | null;
+    emergency_contact_name?: string | null;
+    emergency_contact_phone?: string | null;
+    emergency_contact_relationship?: string | null;
+    bank_name?: string | null;
+    bank_agency?: string | null;
+    bank_account?: string | null;
+    admission_process_number?: string | null;
+    termination_process_number?: string | null;
+    termination_date?: string | null;
+    labor_restriction?: string | null;
   };
   onClose: () => void;
   onSuccess: () => void;
+}
+
+type StatusOption = 'Ativo' | 'Inativo' | 'Licença Médica';
+
+function statusFromProfessional(p: { active?: boolean; on_leave?: boolean }): StatusOption {
+  if (p.on_leave) return 'Licença Médica';
+  if (p.active === false) return 'Inativo';
+  return 'Ativo';
 }
 
 export default function EditProfessionalModal({ professional, onClose, onSuccess }: EditProfessionalModalProps) {
@@ -81,10 +102,61 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
     phone: professional.phone || '',
     email: professional.email || '',
     contracted_hours_per_month: professional.contracted_hours_per_month || 180,
-    on_leave: professional.on_leave || false,
+    status: statusFromProfessional(professional) as StatusOption,
     leave_reason: professional.leave_reason || '',
     leave_started_at: professional.leave_started_at || '',
+    leave_end_date: professional.leave_end_date || '',
+    cbo: professional.cbo || '',
+    emergency_contact_name: professional.emergency_contact_name || '',
+    emergency_contact_phone: professional.emergency_contact_phone || '',
+    emergency_contact_relationship: professional.emergency_contact_relationship || '',
+    bank_name: professional.bank_name || '',
+    bank_agency: professional.bank_agency || '',
+    bank_account: professional.bank_account || '',
+    admission_process_number: professional.admission_process_number || '',
+    termination_process_number: professional.termination_process_number || '',
+    termination_date: professional.termination_date || '',
+    labor_restriction: professional.labor_restriction || '',
   });
+
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [newIncident, setNewIncident] = useState({ event_date: '', event_type: '', description: '' });
+  const [savingIncident, setSavingIncident] = useState(false);
+
+  const loadIncidents = async () => {
+    const { data, error } = await supabase
+      .from('professional_incidents')
+      .select('id, event_date, event_type, description, created_at')
+      .eq('professional_id', professional.id)
+      .order('event_date', { ascending: false });
+    if (!error && data) setIncidents(data);
+  };
+
+  const handleAddIncident = async () => {
+    if (!newIncident.event_date || !newIncident.event_type.trim()) {
+      toast.error('Preencha data e tipo do evento.');
+      return;
+    }
+    setSavingIncident(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from('professional_incidents').insert({
+        professional_id: professional.id,
+        event_date: newIncident.event_date,
+        event_type: newIncident.event_type.trim(),
+        description: newIncident.description.trim() || null,
+        created_by: user?.id,
+      } as any);
+      if (error) throw error;
+      setNewIncident({ event_date: '', event_type: '', description: '' });
+      await loadIncidents();
+      toast.success('Evento registrado no histórico.');
+    } catch (err: any) {
+      toast.error('Erro ao registrar evento: ' + err.message);
+    } finally {
+      setSavingIncident(false);
+    }
+  };
 
   useEffect(() => {
     loadCategories();
@@ -92,6 +164,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
     loadCompanies();
     loadFacialData();
     loadLinks();
+    loadIncidents();
     initModels();
   }, []);
 
@@ -255,6 +328,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
     setLoading(true);
 
     try {
+      const isOnLeave = formData.status === 'Licença Médica';
       const { data: updated, error } = await supabase
         .from('professionals')
         .update({
@@ -267,14 +341,27 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
           company_id: formData.company_id,
           registration_number: formData.registration_number || null,
           coren: formData.coren?.trim() || null,
-          on_leave: formData.on_leave,
-          leave_reason: formData.on_leave ? (formData.leave_reason?.trim() || null) : null,
-          leave_started_at: formData.on_leave ? (formData.leave_started_at || null) : null,
+          active: formData.status !== 'Inativo',
+          on_leave: isOnLeave,
+          leave_reason: isOnLeave ? (formData.leave_reason?.trim() || null) : null,
+          leave_started_at: isOnLeave ? (formData.leave_started_at || null) : null,
+          leave_end_date: isOnLeave ? (formData.leave_end_date || null) : null,
           phone: formData.phone || null,
           email: formData.email || null,
           contracted_hours_per_month: formData.contracted_hours_per_month,
+          cbo: formData.cbo?.trim() || null,
+          emergency_contact_name: formData.emergency_contact_name?.trim() || null,
+          emergency_contact_phone: formData.emergency_contact_phone?.trim() || null,
+          emergency_contact_relationship: formData.emergency_contact_relationship?.trim() || null,
+          bank_name: formData.bank_name?.trim() || null,
+          bank_agency: formData.bank_agency?.trim() || null,
+          bank_account: formData.bank_account?.trim() || null,
+          admission_process_number: formData.admission_process_number?.trim() || null,
+          termination_process_number: formData.termination_process_number?.trim() || null,
+          termination_date: formData.termination_date || null,
+          labor_restriction: formData.labor_restriction?.trim() || null,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', professional.id)
         .select('id, on_leave, leave_reason');
 
@@ -651,27 +738,23 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
             )}
           </div>
 
-          {/* Afastamento */}
+          {/* Status */}
           <div className="border-t border-gray-200 pt-4">
-            <label className="flex items-start gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={formData.on_leave}
-                onChange={(e) => setFormData({ ...formData, on_leave: e.target.checked })}
-                className="w-4 h-4 mt-0.5 text-amber-600 border-gray-300 rounded focus:ring-amber-500"
-              />
-              <div className="flex-1">
-                <span className="font-medium text-gray-900">Profissional afastado</span>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Marca o profissional como afastado. Ele não aparece na grade da escala, mas fica listado no rodapé.
-                </p>
-              </div>
-            </label>
-            {formData.on_leave && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 pl-7">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as StatusOption })}
+              className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            >
+              <option value="Ativo">Ativo</option>
+              <option value="Inativo">Inativo</option>
+              <option value="Licença Médica">Licença Médica</option>
+            </select>
+            {formData.status === 'Licença Médica' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Motivo do afastamento
+                    Motivo da licença
                   </label>
                   <input
                     type="text"
@@ -683,7 +766,7 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Início do afastamento <span className="text-gray-400 font-normal">(opcional)</span>
+                    Início da licença <span className="text-gray-400 font-normal">(opcional)</span>
                   </label>
                   <input
                     type="date"
@@ -692,8 +775,206 @@ export default function EditProfessionalModal({ professional, onClose, onSuccess
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-sm"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Data fim da licença <span className="text-gray-400 font-normal">(opcional)</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.leave_end_date}
+                    onChange={(e) => setFormData({ ...formData, leave_end_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 text-sm"
+                  />
+                </div>
               </div>
             )}
+          </div>
+
+          {/* Dados de RH */}
+          <div className="border-t border-gray-200 pt-4 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900">Dados de RH</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">CBO</label>
+                <input
+                  type="text"
+                  value={formData.cbo}
+                  onChange={(e) => setFormData({ ...formData, cbo: e.target.value })}
+                  placeholder="Ex: 2235-05"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Restrição laboral</label>
+                <input
+                  type="text"
+                  value={formData.labor_restriction}
+                  onChange={(e) => setFormData({ ...formData, labor_restriction: e.target.value })}
+                  placeholder="Ex: Não pode plantão noturno"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nº processo (admissão)</label>
+                <input
+                  type="text"
+                  value={formData.admission_process_number}
+                  onChange={(e) => setFormData({ ...formData, admission_process_number: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nº processo (demissão)</label>
+                <input
+                  type="text"
+                  value={formData.termination_process_number}
+                  onChange={(e) => setFormData({ ...formData, termination_process_number: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Data de demissão</label>
+                <input
+                  type="date"
+                  value={formData.termination_date}
+                  onChange={(e) => setFormData({ ...formData, termination_date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Contato de emergência */}
+          <div className="border-t border-gray-200 pt-4 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900">Contato de emergência</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <input
+                  type="text"
+                  value={formData.emergency_contact_name}
+                  onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                <input
+                  type="tel"
+                  value={formData.emergency_contact_phone}
+                  onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Grau de parentesco</label>
+                <input
+                  type="text"
+                  value={formData.emergency_contact_relationship}
+                  onChange={(e) => setFormData({ ...formData, emergency_contact_relationship: e.target.value })}
+                  placeholder="Ex: Cônjuge, Mãe, Irmão..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dados bancários */}
+          <div className="border-t border-gray-200 pt-4 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900">Dados bancários</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instituição</label>
+                <input
+                  type="text"
+                  value={formData.bank_name}
+                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Agência</label>
+                <input
+                  type="text"
+                  value={formData.bank_agency}
+                  onChange={(e) => setFormData({ ...formData, bank_agency: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Conta</label>
+                <input
+                  type="text"
+                  value={formData.bank_account}
+                  onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Histórico do colaborador */}
+          <div className="border-t border-gray-200 pt-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Histórico na unidade</h3>
+            {incidents.length > 0 ? (
+              <ul className="space-y-2">
+                {incidents.map((inc) => (
+                  <li key={inc.id} className="text-sm bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-900">{inc.event_type}</span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(inc.event_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                    {inc.description && (
+                      <p className="text-gray-600 mt-1">{inc.description}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">Nenhum evento registrado ainda.</p>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Data</label>
+                <input
+                  type="date"
+                  value={newIncident.event_date}
+                  onChange={(e) => setNewIncident({ ...newIncident, event_date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de evento</label>
+                <input
+                  type="text"
+                  value={newIncident.event_type}
+                  onChange={(e) => setNewIncident({ ...newIncident, event_type: e.target.value })}
+                  placeholder="Ex: Acidente de trabalho"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Descrição</label>
+                  <input
+                    type="text"
+                    value={newIncident.description}
+                    onChange={(e) => setNewIncident({ ...newIncident, description: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddIncident}
+                  disabled={savingIncident}
+                  className="px-3 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-lg transition text-sm font-medium disabled:opacity-50 whitespace-nowrap"
+                >
+                  {savingIncident ? 'Salvando...' : 'Adicionar'}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-gray-200">

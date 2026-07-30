@@ -970,11 +970,61 @@ export type Database = {
           },
         ]
       }
+      professional_incidents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_date: string
+          event_type: string
+          id: string
+          professional_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date: string
+          event_type: string
+          id?: string
+          professional_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          professional_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_incidents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "system_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_incidents_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           active: boolean | null
+          admission_process_number: string | null
+          bank_account: string | null
+          bank_agency: string | null
+          bank_name: string | null
           block_separator_after: boolean
           category_id: string | null
+          cbo: string | null
           company_id: string | null
           contracted_hours_per_month: number
           coren: string | null
@@ -983,23 +1033,35 @@ export type Database = {
           department_id: string | null
           display_order: number | null
           email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
           establishment_id: string | null
           full_name: string
           hire_date: string | null
           id: string
+          labor_restriction: string | null
+          leave_end_date: string | null
           leave_reason: string | null
           leave_started_at: string | null
           on_leave: boolean
           phone: string | null
           pis_number: string | null
           registration_number: string | null
+          termination_date: string | null
+          termination_process_number: string | null
           updated_at: string | null
           user_id: string | null
         }
         Insert: {
           active?: boolean | null
+          admission_process_number?: string | null
+          bank_account?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
           block_separator_after?: boolean
           category_id?: string | null
+          cbo?: string | null
           company_id?: string | null
           contracted_hours_per_month?: number
           coren?: string | null
@@ -1008,23 +1070,35 @@ export type Database = {
           department_id?: string | null
           display_order?: number | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           establishment_id?: string | null
           full_name: string
           hire_date?: string | null
           id?: string
+          labor_restriction?: string | null
+          leave_end_date?: string | null
           leave_reason?: string | null
           leave_started_at?: string | null
           on_leave?: boolean
           phone?: string | null
           pis_number?: string | null
           registration_number?: string | null
+          termination_date?: string | null
+          termination_process_number?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
         Update: {
           active?: boolean | null
+          admission_process_number?: string | null
+          bank_account?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
           block_separator_after?: boolean
           category_id?: string | null
+          cbo?: string | null
           company_id?: string | null
           contracted_hours_per_month?: number
           coren?: string | null
@@ -1033,16 +1107,23 @@ export type Database = {
           department_id?: string | null
           display_order?: number | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           establishment_id?: string | null
           full_name?: string
           hire_date?: string | null
           id?: string
+          labor_restriction?: string | null
+          leave_end_date?: string | null
           leave_reason?: string | null
           leave_started_at?: string | null
           on_leave?: boolean
           phone?: string | null
           pis_number?: string | null
           registration_number?: string | null
+          termination_date?: string | null
+          termination_process_number?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
@@ -1997,7 +2078,6 @@ export type Database = {
         Returns: string
       }
       unaccent: { Args: { "": string }; Returns: string }
-      unpublish_schedule: { Args: { p_schedule_id: string }; Returns: Json }
       user_has_permission: {
         Args: { p_action: string; p_module: string }
         Returns: boolean

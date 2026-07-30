@@ -47,6 +47,15 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
     phone: '',
     email: '',
     contracted_hours_per_month: 180,
+    cbo: '',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+    emergency_contact_relationship: '',
+    bank_name: '',
+    bank_agency: '',
+    bank_account: '',
+    admission_process_number: '',
+    labor_restriction: '',
   });
 
   const formatCPF = (value: string) => {
@@ -178,8 +187,17 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
         phone: formData.phone || null,
         email: formData.email || null,
         contracted_hours_per_month: formData.contracted_hours_per_month,
+        cbo: formData.cbo?.trim() || null,
+        emergency_contact_name: formData.emergency_contact_name?.trim() || null,
+        emergency_contact_phone: formData.emergency_contact_phone?.trim() || null,
+        emergency_contact_relationship: formData.emergency_contact_relationship?.trim() || null,
+        bank_name: formData.bank_name?.trim() || null,
+        bank_agency: formData.bank_agency?.trim() || null,
+        bank_account: formData.bank_account?.trim() || null,
+        admission_process_number: formData.admission_process_number?.trim() || null,
+        labor_restriction: formData.labor_restriction?.trim() || null,
         active: true,
-      }).select().maybeSingle();
+      } as any).select().maybeSingle();
 
       if (error) throw error;
       if (!professionalData) throw new Error('Falha ao criar profissional');
@@ -512,6 +530,111 @@ export default function CreateProfessionalModal({ onClose, onSuccess }: CreatePr
                 Capturar Biometria Facial
               </button>
             )}
+          </div>
+
+          {/* Dados de RH */}
+          <div className="border-t border-gray-200 pt-4 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900">Dados de RH</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">CBO</label>
+                <input
+                  type="text"
+                  value={formData.cbo}
+                  onChange={(e) => setFormData({ ...formData, cbo: e.target.value })}
+                  placeholder="Ex: 2235-05"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Restrição laboral</label>
+                <input
+                  type="text"
+                  value={formData.labor_restriction}
+                  onChange={(e) => setFormData({ ...formData, labor_restriction: e.target.value })}
+                  placeholder="Ex: Não pode plantão noturno"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nº processo (admissão)</label>
+                <input
+                  type="text"
+                  value={formData.admission_process_number}
+                  onChange={(e) => setFormData({ ...formData, admission_process_number: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Contato de emergência */}
+          <div className="border-t border-gray-200 pt-4 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900">Contato de emergência</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <input
+                  type="text"
+                  value={formData.emergency_contact_name}
+                  onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                <input
+                  type="tel"
+                  value={formData.emergency_contact_phone}
+                  onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Grau de parentesco</label>
+                <input
+                  type="text"
+                  value={formData.emergency_contact_relationship}
+                  onChange={(e) => setFormData({ ...formData, emergency_contact_relationship: e.target.value })}
+                  placeholder="Ex: Cônjuge, Mãe, Irmão..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dados bancários */}
+          <div className="border-t border-gray-200 pt-4 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-900">Dados bancários</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Instituição</label>
+                <input
+                  type="text"
+                  value={formData.bank_name}
+                  onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Agência</label>
+                <input
+                  type="text"
+                  value={formData.bank_agency}
+                  onChange={(e) => setFormData({ ...formData, bank_agency: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Conta</label>
+                <input
+                  type="text"
+                  value={formData.bank_account}
+                  onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Afastamento */}

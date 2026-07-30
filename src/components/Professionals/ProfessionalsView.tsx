@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getCurrentSetorId } from '../../lib/setorContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import CreateProfessionalModal from './CreateProfessionalModal';
 import EditProfessionalModal from './EditProfessionalModal';
 import { TableSkeleton } from '../Common/Skeleton';
@@ -85,6 +86,11 @@ function normalize(s: string | null | undefined) {
 }
 
 export default function ProfessionalsView() {
+  const { canCreate, canUpdate, canDelete } = usePermissions();
+  // Quem não pode editar cadastro (hoje: Coordenador, Diretoria Médica,
+  // Médico, Visualizador) vê só Nome + Matrícula — sem dado sensível de RH
+  // (CPF, contato, dados bancários, etc.) nem botões de ação.
+  const canManageProfessionals = canUpdate('professionals');
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -325,14 +331,16 @@ export default function ProfessionalsView() {
             )}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          <Plus className="w-5 h-5" aria-hidden="true" />
-          Novo Profissional
-        </button>
+        {canCreate('professionals') && (
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <Plus className="w-5 h-5" aria-hidden="true" />
+            Novo Profissional
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -514,11 +522,15 @@ export default function ProfessionalsView() {
               icon={Users}
               title="Nenhum profissional cadastrado"
               description="Cadastre profissionais para começar a montar suas escalas."
-              action={{
-                label: 'Cadastrar primeiro profissional',
-                onClick: () => setShowCreateModal(true),
-                icon: Plus,
-              }}
+              action={
+                canCreate('professionals')
+                  ? {
+                      label: 'Cadastrar primeiro profissional',
+                      onClick: () => setShowCreateModal(true),
+                      icon: Plus,
+                    }
+                  : undefined
+              }
             />
           ) : (
             <EmptyState
@@ -541,27 +553,36 @@ export default function ProfessionalsView() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Nome
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Categoria
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
-                      Setor
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
-                      Empresa
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
-                      Contato
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
-                      Horas
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      <span className="sr-only">Ações</span>
-                    </th>
+                    {!canManageProfessionals && (
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Matrícula
+                      </th>
+                    )}
+                    {canManageProfessionals && (
+                      <>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Categoria
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+                          Setor
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+                          Empresa
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+                          Contato
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+                          Horas
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          <span className="sr-only">Ações</span>
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -570,84 +591,96 @@ export default function ProfessionalsView() {
                       <td className="px-4 py-3">
                         <div>
                           <div className="font-medium text-gray-900">{prof.full_name}</div>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                            {prof.registration_number && (
-                              <span className="text-xs text-gray-500 inline-flex items-center gap-1">
-                                <FileText className="w-3 h-3" aria-hidden="true" />
-                                {prof.registration_number}
-                              </span>
-                            )}
-                            {prof.coren && (
-                              <span className="text-xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium ring-1 ring-inset ring-emerald-200">
-                                COREN: {prof.coren}
-                              </span>
-                            )}
-                            {prof.on_leave && (
-                              <span
-                                className="text-xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium ring-1 ring-inset ring-amber-300"
-                                title={prof.leave_reason || 'Afastado'}
-                              >
-                                AFASTADO{prof.leave_reason ? `: ${prof.leave_reason}` : ''}
-                              </span>
-                            )}
-                          </div>
+                          {canManageProfessionals && (
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                              {prof.registration_number && (
+                                <span className="text-xs text-gray-500 inline-flex items-center gap-1">
+                                  <FileText className="w-3 h-3" aria-hidden="true" />
+                                  {prof.registration_number}
+                                </span>
+                              )}
+                              {prof.coren && (
+                                <span className="text-xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium ring-1 ring-inset ring-emerald-200">
+                                  COREN: {prof.coren}
+                                </span>
+                              )}
+                              {prof.on_leave && (
+                                <span
+                                  className="text-xs inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium ring-1 ring-inset ring-amber-300"
+                                  title={prof.leave_reason || 'Afastado'}
+                                >
+                                  AFASTADO{prof.leave_reason ? `: ${prof.leave_reason}` : ''}
+                                </span>
+                              )}
+                            </div>
+                          )}
                           {/* Mobile-only condensed info */}
-                          <div className="md:hidden text-xs text-gray-500 mt-1">
-                            {prof.department?.name || 'Sem setor'}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-white whitespace-nowrap"
-                          style={{ backgroundColor: prof.category?.color || '#6B7280' }}
-                        >
-                          {prof.category?.name || 'Sem categoria'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 hidden md:table-cell text-sm text-gray-900">
-                        {prof.department?.name || '-'}
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell text-sm text-gray-900">
-                        {prof.company?.name || '-'}
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell">
-                        <div className="space-y-0.5">
-                          {prof.phone && (
-                            <div className="text-xs text-gray-600 flex items-center gap-1">
-                              <Phone className="w-3 h-3" aria-hidden="true" />
-                              {prof.phone}
+                          {canManageProfessionals && (
+                            <div className="md:hidden text-xs text-gray-500 mt-1">
+                              {prof.department?.name || 'Sem setor'}
                             </div>
-                          )}
-                          {prof.email && (
-                            <div className="text-xs text-gray-600 flex items-center gap-1 truncate max-w-[200px]">
-                              <Mail className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
-                              <span className="truncate">{prof.email}</span>
-                            </div>
-                          )}
-                          {!prof.phone && !prof.email && (
-                            <span className="text-xs text-gray-400">-</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell text-sm text-gray-900">
-                        {prof.contracted_hours != null ? `${prof.contracted_hours}h` : '-'}
-                      </td>
-                      <td className="px-4 py-3">
-                        {prof.active ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                            <UserCheck className="w-3 h-3" aria-hidden="true" />
-                            Ativo
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            <UserX className="w-3 h-3" aria-hidden="true" />
-                            Inativo
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
+                      {!canManageProfessionals && (
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {prof.registration_number || '-'}
+                        </td>
+                      )}
+                      {canManageProfessionals && (
+                        <>
+                          <td className="px-4 py-3">
+                            <span
+                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-white whitespace-nowrap"
+                              style={{ backgroundColor: prof.category?.color || '#6B7280' }}
+                            >
+                              {prof.category?.name || 'Sem categoria'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 hidden md:table-cell text-sm text-gray-900">
+                            {prof.department?.name || '-'}
+                          </td>
+                          <td className="px-4 py-3 hidden lg:table-cell text-sm text-gray-900">
+                            {prof.company?.name || '-'}
+                          </td>
+                          <td className="px-4 py-3 hidden lg:table-cell">
+                            <div className="space-y-0.5">
+                              {prof.phone && (
+                                <div className="text-xs text-gray-600 flex items-center gap-1">
+                                  <Phone className="w-3 h-3" aria-hidden="true" />
+                                  {prof.phone}
+                                </div>
+                              )}
+                              {prof.email && (
+                                <div className="text-xs text-gray-600 flex items-center gap-1 truncate max-w-[200px]">
+                                  <Mail className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                                  <span className="truncate">{prof.email}</span>
+                                </div>
+                              )}
+                              {!prof.phone && !prof.email && (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 hidden md:table-cell text-sm text-gray-900">
+                            {prof.contracted_hours != null ? `${prof.contracted_hours}h` : '-'}
+                          </td>
+                          <td className="px-4 py-3">
+                            {prof.active ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                <UserCheck className="w-3 h-3" aria-hidden="true" />
+                                Ativo
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <UserX className="w-3 h-3" aria-hidden="true" />
+                                Inativo
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
                         <div className="inline-flex items-center gap-1">
+                          {canUpdate('professionals') && (
                           <button
                             type="button"
                             onClick={() => setEditingProfessional(prof)}
@@ -658,6 +691,8 @@ export default function ProfessionalsView() {
                             <Edit2 className="w-4 h-4" aria-hidden="true" />
                             <span className="hidden sm:inline">Editar</span>
                           </button>
+                          )}
+                          {canDelete('professionals') && (
                           <button
                             type="button"
                             onClick={() => setDeletingProf(prof)}
@@ -667,8 +702,11 @@ export default function ProfessionalsView() {
                           >
                             <Trash2 className="w-4 h-4" aria-hidden="true" />
                           </button>
+                          )}
                         </div>
-                      </td>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
