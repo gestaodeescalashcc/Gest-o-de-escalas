@@ -28,6 +28,9 @@ interface Professional {
   display_order?: number | null;
   block_separator_after?: boolean;
   created_at?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  emergency_contact_relationship?: string | null;
 }
 
 interface Shift {
@@ -106,6 +109,8 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [hasChanges, setHasChanges] = useState(false);
   const [showAddProfessionalModal, setShowAddProfessionalModal] = useState(false);
+  // Clique no nome do colaborador na grade — mostra nome completo + contato de emergência.
+  const [contactInfoProf, setContactInfoProf] = useState<Professional | null>(null);
   const [showCreateScheduleModal, setShowCreateScheduleModal] = useState(false);
   const [allProfessionals, setAllProfessionals] = useState<Professional[]>([]);
 
@@ -671,12 +676,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
       const [primaryProfsData, linkedProfsData, shiftsData, linksData] = await Promise.all([
         supabase
           .from('professionals')
-          .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, created_at, category:professional_categories!category_id(name), department:departments!department_id(name)')
+          .select('id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, created_at, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, category:professional_categories!category_id(name), department:departments!department_id(name)')
           .eq('department_id', selectedDepartment)
           .eq('active', true),
         supabase
           .from('professional_department_links')
-          .select('professional_id, professionals!inner(id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, created_at, active, category:professional_categories!category_id(name), department:departments!department_id(name))')
+          .select('professional_id, professionals!inner(id, full_name, registration_number, coren, contracted_hours_per_month, on_leave, leave_reason, display_order, block_separator_after, created_at, active, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship, category:professional_categories!category_id(name), department:departments!department_id(name))')
           .eq('department_id', selectedDepartment)
           .eq('professionals.active', true),
         supabase
@@ -3511,7 +3516,12 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                               {prof.registration_number || '-'}
                             </td>
                           )}
-                          <td className={`sticky-name border border-gray-300 px-2 py-1.5 font-medium sticky z-10 whitespace-nowrap truncate ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`} style={{ left: isMobile ? 0 : '70px', maxWidth: isMobile ? '100px' : '180px' }} title={prof.full_name}>
+                          <td
+                            className={`sticky-name border border-gray-300 px-2 py-1.5 font-medium sticky z-10 whitespace-nowrap truncate cursor-pointer hover:underline hover:text-blue-700 ${isOverWorkload(prof.id) ? 'bg-red-50' : 'bg-white'}`}
+                            style={{ left: isMobile ? 0 : '70px', maxWidth: isMobile ? '100px' : '180px' }}
+                            title={`${prof.full_name} — clique para ver nome completo e contato de emergência`}
+                            onClick={() => setContactInfoProf(prof)}
+                          >
                             {isMobile ? (prof.full_name.length > 12 ? prof.full_name.slice(0, 12) + '…' : prof.full_name) : prof.full_name}
                           </td>
                           {!isMobile && (
@@ -4648,6 +4658,41 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 Concluir
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {contactInfoProf && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setContactInfoProf(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Nome completo</h3>
+              <button
+                onClick={() => setContactInfoProf(null)}
+                className="p-1 hover:bg-gray-100 rounded-lg transition"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5 text-gray-500" aria-hidden="true" />
+              </button>
+            </div>
+            <p className="text-gray-900 font-medium mb-5">{contactInfoProf.full_name}</p>
+
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Contato de emergência</h3>
+            {contactInfoProf.emergency_contact_name || contactInfoProf.emergency_contact_phone ? (
+              <div className="space-y-1 text-sm text-gray-700 bg-gray-50 rounded-lg p-3">
+                <p><span className="text-gray-500">Nome:</span> {contactInfoProf.emergency_contact_name || '—'}</p>
+                <p><span className="text-gray-500">Telefone:</span> {contactInfoProf.emergency_contact_phone || '—'}</p>
+                <p><span className="text-gray-500">Parentesco:</span> {contactInfoProf.emergency_contact_relationship || '—'}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Nenhum contato de emergência cadastrado.</p>
+            )}
           </div>
         </div>
       )}
