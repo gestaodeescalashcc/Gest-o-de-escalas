@@ -1073,10 +1073,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     });
 
   const handleCellClick = (profId: string, day: number, event: React.MouseEvent) => {
-    // Realizada é somente-leitura (apenas o RESULTADO: Planejada/Troca + ausências +
-    // coberturas). Faltas/atestados entram pelo módulo Absenteísmo, não aqui.
-    if (isRealizada) return;
-    // Nos demais modos o menu sempre abre — as opções variam por permissão e estado
+    // O menu sempre abre — as opções variam por permissão e estado
     // (modo edição: turnos+remover; modo visualização ou escala bloqueada:
     // apenas Trocar e Registrar Ausência).
     const rect = (event.target as HTMLElement).getBoundingClientRect();
