@@ -3023,6 +3023,19 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 Excel
               </button>
 
+              {/* Consolidado da FESF — o documento que o setor entrega todo mês.
+                  Fica na barra normal (não só no modo edição) porque quem gera
+                  é o coordenador conferindo a Realizada, que nem entra em edição. */}
+              <button
+                onClick={handleGerarConsolidado}
+                disabled={generatingConsolidado}
+                title="Gera o Consolidado Mensal de Frequência (FESF 5.11 FML 007) deste setor no mês"
+                className="inline-flex items-center gap-1.5 h-9 px-3 bg-teal-50 text-teal-800 border border-teal-300 rounded-md hover:bg-teal-100 transition-colors text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-teal-700" aria-hidden="true" />
+                {generatingConsolidado ? 'Gerando…' : 'Consolidado'}
+              </button>
+
               {/* Ausência — só na Realizada. É o fluxo próprio dela. */}
               {viewMode === 'realizada' && currentSchedule && !isMobile && (
                 <button
