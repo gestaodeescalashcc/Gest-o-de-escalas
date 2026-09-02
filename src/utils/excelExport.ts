@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 
 // ExcelJS produz XLSX com inconsistências que fazem o Excel pedir recovery
 // ao abrir o arquivo. Pós-processamos o zip antes do download para limpar.
-async function sanitizeXlsxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+export async function sanitizeXlsxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
   const zip = await JSZip.loadAsync(buffer);
 
   // 1) [Content_Types].xml: remover <Default Extension="vml"> órfão
