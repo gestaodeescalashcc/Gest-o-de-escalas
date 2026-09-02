@@ -252,11 +252,13 @@ export function buildConsolidadoRows(input: {
       nome: prof.full_name,
       cargo: prof.cargo || '',
       ch: prof.contracted_hours_per_month ?? '',
+      // Somar horas fracionárias em ponto flutuante produz "95.99999999999999".
+      // Isso vai para folha de pagamento: arredonda para 2 casas.
+      faltasHoras: faltasHoras ? Math.round(faltasHoras * 100) / 100 : '',
       diurnos: diurnos || '',
       noturnos: noturnos || '',
       mt: formatarMT(diaInteiro, manhas, tardes),
       plantaoExtra: extrasPorProfissional[prof.id] ?? '',
-      faltasHoras: faltasHoras || '',
       datasFaltas: [...new Set(diasFalta)]
         .sort((a, b) => a - b)
         .map(d => String(d).padStart(2, '0'))

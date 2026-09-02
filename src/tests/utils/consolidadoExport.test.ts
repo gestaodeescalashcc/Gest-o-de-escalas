@@ -252,3 +252,26 @@ describe('buildConsolidadoRows — montagem da lista', () => {
     expect(linha.unidade).toBe('HECC');
   });
 });
+
+describe('buildConsolidadoRows — horas fracionárias', () => {
+  it('não deixa vazar erro de ponto flutuante nas horas de falta', () => {
+    // 96h divididas em 7 dias e somadas de volta dão 95.99999999999999 em
+    // ponto flutuante. Achado ao reproduzir o consolidado real de julho/2026.
+    const dias = ['02', '04', '06', '11', '17', '21', '23'];
+    const [linha] = buildConsolidadoRows({
+      mes: MES,
+      professionals: [prof()],
+      shifts: turnos([[1, 'SD']]),
+      absences: dias.map(d => ({
+        professional_id: 'p1',
+        start_date: `${MES}-${d}`,
+        end_date: `${MES}-${d}`,
+        shift_type: 'SD',
+        hours_per_day: 96 / 7,
+        is_justified: false,
+        reason_name: 'Falta injustificada',
+      })),
+    });
+    expect(linha.faltasHoras).toBe(96);
+  });
+});
