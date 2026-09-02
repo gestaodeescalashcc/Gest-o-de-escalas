@@ -70,6 +70,7 @@ export default function ScheduleView({ onNavigateToSchedule, initialDepartment }
   const [deleteAllConfirmText, setDeleteAllConfirmText] = useState('');
   const [deletingAll, setDeletingAll] = useState(false);
   const [exportingBatch, setExportingBatch] = useState(false);
+  const [generatingConsolidado, setGeneratingConsolidado] = useState(false);
   const { toasts, toast, removeToast } = useToast();
   const { isAdmin, allowedDepartments } = usePermissions();
   const navigate = useNavigate();
@@ -264,6 +265,36 @@ export default function ScheduleView({ onNavigateToSchedule, initialDepartment }
   // corrente do plantão (shift_type) — não aplica overlay de ausências nem
   // distingue Planejada/Realizada; é um snapshot pra arquivo/backup, não a
   // visão operacional do dia a dia (essa já existe na grade, uma de cada vez).
+  // Consolidado Mensal de Frequência da FESF. Com setor no filtro sai o do
+  // setor; sem setor, o do hospital inteiro — que é o arquivo que o RH hoje
+  // monta juntando as planilhas de todos os setores na mão.
+  const handleGerarConsolidado = async () => {
+    if (!filterMonth) {
+      toast.warning('Escolha o mês no filtro acima para gerar o consolidado.');
+      return;
+    }
+    setGeneratingConsolidado(true);
+    try {
+      const { gerarConsolidado } = await import('../../services/consolidado');
+      const dept = filterDepartment ? departments.find(d => d.id === filterDepartment) : undefined;
+      const { linhas, arquivo } = await gerarConsolidado({
+        mes: filterMonth,
+        departmentIds: filterDepartment ? [filterDepartment] : undefined,
+        servicoPrograma: dept?.name,
+      });
+      if (linhas === 0) {
+        toast.warning('Nenhuma frequência nesse mês — o consolidado saiu em branco.');
+      } else {
+        toast.success(`Consolidado gerado com ${linhas} profissionais: ${arquivo}`);
+      }
+    } catch (err: any) {
+      console.error('Erro ao gerar consolidado:', err);
+      toast.error('Erro ao gerar consolidado: ' + (err?.message ?? 'desconhecido'));
+    } finally {
+      setGeneratingConsolidado(false);
+    }
+  };
+
   const exportSchedulesBatch = async (schedulesToExport: MonthlySchedule[]) => {
     if (schedulesToExport.length === 0) {
       toast.error('Nenhuma escala para exportar.');
@@ -452,6 +483,26 @@ export default function ScheduleView({ onNavigateToSchedule, initialDepartment }
               >
                 {exportingBatch ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
                 Baixar todas as escalas
+              </button>
+              {/* Consolidado da FESF: sem setor no filtro, sai o hospital inteiro
+                  — é assim que o RH deixa de juntar as planilhas dos 22 setores. */}
+              <button
+                onClick={handleGerarConsolidado}
+                disabled={generatingConsolidado || !filterMonth}
+                className="flex items-center gap-2 bg-teal-50 border border-teal-300 text-teal-800 hover:bg-teal-100 px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                title={
+                  filterMonth
+                    ? `Gera o Consolidado Mensal de Frequência (FESF 5.11 FML 007) de ${
+                        filterDepartment
+                          ? departments.find(d => d.id === filterDepartment)?.name
+                          : 'TODOS os setores'
+                      }`
+                    : 'Escolha o mês no filtro acima para gerar o consolidado'
+                }
+              >
+                {generatingConsolidado ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileSpreadsheet className="w-5 h-5" />}
+                <span className="hidden sm:inline">Consolidado FESF</span>
+                <span className="sm:hidden">Consolidado</span>
               </button>
               <button
                 onClick={() => setShowImportModal(true)}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
-import { Calendar, Download, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee } from 'lucide-react';
+import { Calendar, Download, CreditCard as Edit3, Copy, Save, X, UserPlus, Plus, Trash2, Zap, MoreVertical, Sparkles, ChevronDown, ChevronLeft, ChevronRight, Users, CheckCircle2, Lock, Unlock, CalendarX, ArrowLeftRight, AlertCircle, Clock, ArrowUpDown, Repeat, Shuffle, Coffee, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -106,6 +106,7 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
   const [editMode, setEditMode] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ profId: string; day: number } | null>(null);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const [generatingConsolidado, setGeneratingConsolidado] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [hasChanges, setHasChanges] = useState(false);
   const [showAddProfessionalModal, setShowAddProfessionalModal] = useState(false);
@@ -2830,6 +2831,36 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
     }
   };
 
+  // Consolidado Mensal de Frequência (FESF 5.11 FML 007) do setor desta escala.
+  // O gerador vive em services/consolidado — a mesma função atende o RH para o
+  // hospital inteiro, a partir da lista de escalas.
+  const handleGerarConsolidado = async () => {
+    if (!selectedDepartment) {
+      toast.warning('Escolha um setor para gerar o consolidado.');
+      return;
+    }
+    setGeneratingConsolidado(true);
+    try {
+      const { gerarConsolidado } = await import('../../services/consolidado');
+      const dept = departments.find(d => d.id === selectedDepartment);
+      const { linhas, arquivo } = await gerarConsolidado({
+        mes: selectedMonth,
+        departmentIds: [selectedDepartment],
+        servicoPrograma: dept?.name,
+      });
+      if (linhas === 0) {
+        toast.warning('Nenhuma frequência no mês — o consolidado saiu em branco.');
+      } else {
+        toast.success(`Consolidado gerado com ${linhas} profissionais: ${arquivo}`);
+      }
+    } catch (err: any) {
+      console.error('Erro ao gerar consolidado:', err);
+      toast.error('Erro ao gerar consolidado: ' + (err?.message ?? 'desconhecido'));
+    } finally {
+      setGeneratingConsolidado(false);
+    }
+  };
+
   const daysInMonth = getDaysInMonth();
   // Mostra a coluna COREN só quando há profissionais de enfermagem na escala
   // (categoria contém "enferm" no nome)
@@ -3162,6 +3193,15 @@ export default function ConsolidatedScheduleView({ initialScheduleId, mode, onBa
                 <Download className="w-4 h-4" aria-hidden="true" />
                 Exportar Excel
                 {viewMode === 'realizada' && <span className="text-[10px] font-bold">(Realizada)</span>}
+              </button>
+              <button
+                onClick={handleGerarConsolidado}
+                disabled={generatingConsolidado}
+                title="Gera o Consolidado Mensal de Frequência (FESF 5.11 FML 007) deste setor, a partir da Realizada do mês"
+                className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 rounded-lg transition-colors text-sm font-medium bg-teal-50 text-teal-800 border border-teal-300 hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <FileSpreadsheet className="w-4 h-4" aria-hidden="true" />
+                {generatingConsolidado ? 'Gerando…' : 'Consolidado FESF'}
               </button>
               <button
                 onClick={() => {
